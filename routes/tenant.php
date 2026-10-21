@@ -60,7 +60,7 @@ Route::middleware([
         Route::get('/challans/{id}/print', [FeeStructureController::class, 'printChallan'])->name('tenant.challans.print');
 
         // Principal & Admin Portal
-        Route::prefix('admin')->group(function () {
+        Route::prefix('admin')->middleware(['tenant.role:admin,principal,accountant,registrar,librarian,vice_principal'])->group(function () {
             Route::get('/dashboard', [AdminPortalController::class, 'index'])->name('tenant.admin.dashboard');
             
             // Admissions
@@ -235,7 +235,7 @@ Route::middleware([
         });
 
         // Teacher Staff Portal
-        Route::prefix('teacher')->group(function () {
+        Route::prefix('teacher')->middleware(['tenant.role:teacher,staff,principal,admin'])->group(function () {
             Route::get('/dashboard', [TeacherPortalController::class, 'index'])->name('tenant.teacher.dashboard');
             Route::get('/attendance', [TeacherPortalController::class, 'showAttendance'])->name('tenant.teacher.attendance');
             Route::post('/attendance', [TeacherPortalController::class, 'storeAttendance'])->name('tenant.teacher.attendance.store');
@@ -269,7 +269,7 @@ Route::middleware([
         Route::get('/payments/success', [\App\Http\Controllers\Tenant\PaymentController::class, 'success'])->name('tenant.payments.success');
 
         // Student Portal
-        Route::prefix('student')->group(function () {
+        Route::prefix('student')->middleware(['tenant.role:student,admin'])->group(function () {
             Route::get('/dashboard', [StudentPortalController::class, 'index'])->name('tenant.student.dashboard');
             Route::post('/assignments/{id}/submit', [StudentPortalController::class, 'submitAssignment'])->name('tenant.student.assignments.submit');
             Route::post('/assignments/{id}/appeal', [StudentPortalController::class, 'submitAppeal'])->name('tenant.student.assignments.appeal');
@@ -285,7 +285,7 @@ Route::middleware([
         });
 
         // Parent Guardian Portal
-        Route::prefix('parent')->group(function () {
+        Route::prefix('parent')->middleware(['tenant.role:parent,guardian,admin'])->group(function () {
             Route::get('/dashboard', [ParentPortalController::class, 'index'])->name('tenant.parent.dashboard');
             Route::post('/challans/{id}/pay', [ParentPortalController::class, 'payChallan'])->name('tenant.parent.challans.pay');
             Route::post('/leaves', [ParentPortalController::class, 'submitLeaveRequest'])->name('tenant.parent.leaves.store');
