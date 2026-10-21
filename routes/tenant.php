@@ -56,6 +56,10 @@ Route::middleware([
     // Public Embeddable Admissions Inquiry API (for school external website)
     Route::post('/api/v1/inquiries', [AdmissionController::class, 'storeInquiry'])->name('tenant.api.inquiries.store');
 
+    // Tenant Liveness and Readiness Health Check API
+    Route::get('/api/tenant-health', [\App\Http\Controllers\Tenant\TenantHealthCheckController::class, 'check'])->name('tenant.api.health');
+    Route::get('/api/tenant/health', [\App\Http\Controllers\Tenant\TenantHealthCheckController::class, 'check'])->name('tenant.api.health.alt');
+
     Route::middleware(['auth'])->group(function () {
         Route::get('/challans/{id}/print', [FeeStructureController::class, 'printChallan'])->name('tenant.challans.print');
 

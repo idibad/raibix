@@ -4,12 +4,16 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Central\SuperAdminController;
 use App\Http\Controllers\Central\CentralAuthController;
 use App\Http\Controllers\Central\SaaSCheckoutController;
+use App\Http\Controllers\Central\HealthCheckController;
 
 $centralDomains = config('tenancy.central_domains', []);
 $currentHost = request()->getHost();
 $domain = in_array($currentHost, $centralDomains)
     ? $currentHost
     : (parse_url(config('app.url'), PHP_URL_HOST) ?? $centralDomains[0] ?? 'localhost');
+
+Route::get('/api/health', [HealthCheckController::class, 'check'])->name('central.health');
+Route::get('/health', [HealthCheckController::class, 'check'])->name('central.health.alias');
 
 Route::get('/api/check-subdomain', function (\Illuminate\Http\Request $request) {
     $query = trim($request->query('q') ?? $request->query('subdomain') ?? '');
