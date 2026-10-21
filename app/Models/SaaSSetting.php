@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class SaaSSetting extends Model
 {
+    use CentralConnection;
+
     protected $table = 'saas_settings';
 
     protected $guarded = [];

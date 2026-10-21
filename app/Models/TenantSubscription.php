@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class TenantSubscription extends Model
 {
+    use CentralConnection;
+
     protected $guarded = [];
 
     protected $casts = [
