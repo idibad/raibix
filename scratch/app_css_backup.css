@@ -1,0 +1,274 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.vue';
+
+@theme {
+    --font-sans: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+:root {
+    /* Raibix Design Tokens — Light Mode */
+    --color-page: #FFFFFF;
+    --color-ink: #0B0D14;
+    --color-slate: #5B6270;
+    --color-mist: #F6F7F9;
+    --color-line: #E6E8EE;
+    --color-blue: #2F6BFF;
+    --color-blue-hover: #1E54DC;
+    --color-tint: #EEF3FF;
+    --color-success: #15803D;
+    --color-error: #B91C1C;
+    
+    --color-card-bg: #FFFFFF;
+    --color-card-border: #E6E8EE;
+    --color-input-bg: #FFFFFF;
+
+    /* Intelligence Core Gradient */
+    --gradient-core: linear-gradient(135deg, #8B5CF6 0%, #2F6BFF 100%);
+    --color-core-start: #8B5CF6;
+    --color-core-end: #2F6BFF;
+    --color-core-highlight: #B79CFF;
+
+    /* Motion Tokens */
+    --ease-raibix: cubic-bezier(0.22, 1, 0.36, 1);
+    --duration-micro: 200ms;
+    --duration-reveal: 700ms;
+}
+
+/* System Dark Mode (Automatic when prefers-color-scheme is dark) */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --color-page: #0B0D14;
+        --color-ink: #F4F5F8;
+        --color-slate: #9AA1B0;
+        --color-mist: #12151E;
+        --color-line: #232838;
+        --color-blue: #2F6BFF;
+        --color-blue-hover: #457BFF;
+        --color-tint: rgba(47, 107, 255, 0.12);
+        --color-card-bg: #12151E;
+        --color-card-border: #232838;
+        --color-input-bg: #161A26;
+    }
+}
+
+/* Explicit Dark Mode */
+:root[data-theme="dark"], html.dark {
+    --color-page: #0B0D14;
+    --color-ink: #F4F5F8;
+    --color-slate: #9AA1B0;
+    --color-mist: #12151E;
+    --color-line: #232838;
+    --color-blue: #2F6BFF;
+    --color-blue-hover: #457BFF;
+    --color-tint: rgba(47, 107, 255, 0.12);
+    --color-card-bg: #12151E;
+    --color-card-border: #232838;
+    --color-input-bg: #161A26;
+}
+
+/* Explicit Light Mode */
+:root[data-theme="light"], html.light {
+    --color-page: #FFFFFF;
+    --color-ink: #0B0D14;
+    --color-slate: #5B6270;
+    --color-mist: #F6F7F9;
+    --color-line: #E6E8EE;
+    --color-blue: #2F6BFF;
+    --color-blue-hover: #1E54DC;
+    --color-tint: #EEF3FF;
+    --color-card-bg: #FFFFFF;
+    --color-card-border: #E6E8EE;
+    --color-input-bg: #FFFFFF;
+}
+
+html {
+    scroll-behavior: smooth;
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+}
+
+body {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ==========================================================================
+   THE RAIBIX INTELLIGENCE CORE
+   Always a perfect circle, gradient 135deg #8B5CF6 -> #2F6BFF
+   ========================================================================== */
+
+.raibix-dot {
+    background: linear-gradient(135deg, #8B5CF6 0%, #2F6BFF 100%);
+    border-radius: 9999px;
+    display: inline-block;
+    flex-shrink: 0;
+    aspect-ratio: 1 / 1;
+}
+
+/* Large instance with volume, radial highlight (35%/25% #B79CFF), soft inner glow, subtle bloom, and grain */
+.raibix-orb-large {
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #8B5CF6 0%, #2F6BFF 100%);
+    position: relative;
+    box-shadow: 
+        0 30px 90px -15px rgba(139, 92, 246, 0.4),
+        0 12px 36px -6px rgba(47, 107, 255, 0.35),
+        inset 0 1px 2px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -16px 28px 0 rgba(11, 13, 20, 0.3);
+}
+
+.raibix-orb-large::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 35% 25%, #B79CFF 0%, rgba(183, 156, 255, 0.5) 25%, transparent 62%);
+    pointer-events: none;
+}
+
+.raibix-orb-large::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 0);
+    background-size: 8px 8px;
+    opacity: 0.18;
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   MOTION & ANIMATION SYSTEM
+   Easing: cubic-bezier(.22, 1, .36, 1)
+   ========================================================================== */
+
+@keyframes orb-breathing {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+.animate-orb-breathing {
+    animation: orb-breathing 8s var(--ease-raibix) infinite;
+}
+
+@keyframes float-loop-1 {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-8px) rotate(1.2deg);
+    }
+}
+
+@keyframes float-loop-2 {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-11px) rotate(-1.5deg);
+    }
+}
+
+@keyframes float-loop-3 {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-7px) rotate(0.8deg);
+    }
+}
+
+@keyframes float-loop-4 {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(-1deg);
+    }
+}
+
+.animate-float-1 { animation: float-loop-1 6.5s var(--ease-raibix) infinite; }
+.animate-float-2 { animation: float-loop-2 8.2s var(--ease-raibix) infinite 1.2s; }
+.animate-float-3 { animation: float-loop-3 7.4s var(--ease-raibix) infinite 0.6s; }
+.animate-float-4 { animation: float-loop-4 9.0s var(--ease-raibix) infinite 2.0s; }
+
+/* Infinite Marquee */
+@keyframes marquee-horizontal {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee-horizontal 28s linear infinite;
+}
+
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+
+/* Subtle button hover & press physics */
+.raibix-btn-hover {
+    transition: transform 200ms var(--ease-raibix), box-shadow 200ms var(--ease-raibix), background-color 200ms var(--ease-raibix);
+}
+
+.raibix-btn-hover:hover {
+    transform: translateY(-2px);
+}
+
+.raibix-btn-hover:active {
+    transform: scale(0.98);
+}
+
+/* Card hover lift */
+.raibix-card-hover {
+    transition: transform 250ms var(--ease-raibix), border-color 250ms var(--ease-raibix), box-shadow 250ms var(--ease-raibix);
+}
+
+.raibix-card-hover:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-blue);
+    box-shadow: 0 16px 36px -12px rgba(47, 107, 255, 0.12);
+}
+
+/* Focus Rings: 2px Blue WCAG AA */
+*:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+}
+
+/* prefers-reduced-motion honor */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .animate-orb-breathing,
+    .animate-float-1,
+    .animate-float-2,
+    .animate-float-3,
+    .animate-float-4,
+    .animate-marquee {
+        animation: none !important;
+    }
+}
