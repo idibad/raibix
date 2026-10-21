@@ -34,10 +34,10 @@
 
 ### Background Queueing & Asynchronous Workflows (QUEUE)
 
-- [ ] **QUEUE-01**: Refactor bulk monthly fee challan generation (`FeeStructureController::generateMonthlyChallans`) into queued background job (`GenerateMonthlyFeeChallansJob`).
-- [ ] **QUEUE-02**: Refactor CSV student and staff imports (`ImportController`) into queued background jobs with failure reporting.
-- [ ] **QUEUE-03**: Refactor third-party SMS and WhatsApp notification calls in `NotificationService` to dispatch via background queues.
-- [ ] **QUEUE-04**: Ensure all queued jobs dispatched within tenant context implement `TenantAwareJob` or boot tenancy dynamically.
+- [x] **QUEUE-01**: Refactor bulk monthly fee challan generation (`FeeStructureController::generateMonthlyChallans`) into queued background job (`GenerateMonthlyFeeChallansJob`).
+- [x] **QUEUE-02**: Refactor CSV student and staff imports (`ImportController`) into queued background jobs with failure reporting.
+- [x] **QUEUE-03**: Refactor third-party SMS and WhatsApp notification calls in `NotificationService` to dispatch via background queues.
+- [x] **QUEUE-04**: Ensure all queued jobs dispatched within tenant context implement `TenantAwareJob` or boot tenancy dynamically.
 
 ### Safe Health Checks & Monitoring (HEALTH)
 
@@ -88,10 +88,10 @@
 | SCOPE-02 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
 | SCOPE-03 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
 | SCOPE-04 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
-| QUEUE-01 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |
-| QUEUE-02 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |
-| QUEUE-03 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |
-| QUEUE-04 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |
+| QUEUE-01 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
+| QUEUE-02 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
+| QUEUE-03 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
+| QUEUE-04 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
 | HEALTH-01 | Phase 6: Safe Health-Check Endpoints | Pending |
 | HEALTH-02 | Phase 6: Safe Health-Check Endpoints | Pending |
 | HEALTH-03 | Phase 6: Safe Health-Check Endpoints | Pending |

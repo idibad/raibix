@@ -85,8 +85,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Refactor bulk fee generation and CSV imports into queued background jobs.
-- [ ] 05-02: Refactor notification dispatch and external API calls into tenant-aware queued jobs.
+- [x] 05-01: Refactor bulk fee generation and CSV imports into queued background jobs.
+- [x] 05-02: Refactor notification dispatch and external API calls into tenant-aware queued jobs.
 
 ### Phase 6: Safe Health-Check Endpoints
 **Goal**: Provide secure liveness and readiness monitoring endpoints that report application status without leaking sensitive topology.
@@ -127,6 +127,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Environment Configuration & Production Hardening | 2/2 | Complete | 2026-10-22 |
 | 3. Authentication, Authorization & RBAC Hardening | 2/2 | Complete | 2026-10-22 |
 | 4. Identifier Scoping & IDOR Remediation | 2/2 | Complete | 2026-10-22 |
-| 5. Asynchronous Queueing & Job Refactoring | 0/2 | Not started | - |
+| 5. Asynchronous Queueing & Job Refactoring | 2/2 | Complete | 2026-10-22 |
 | 6. Safe Health-Check Endpoints | 0/1 | Not started | - |
 | 7. Log Sanitization & Secure Storage Isolation | 0/2 | Not started | - |
