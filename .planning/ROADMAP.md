@@ -7,7 +7,7 @@ This roadmap defines the audit, hardening, multi-tenancy verification, authoriza
 ## Phases
 
 - [x] **Phase 1: Tenancy & Migration Architecture Audit** - Audit central vs tenant migrations, configure explicit database connections, and add CentralConnection traits.
-- [ ] **Phase 2: Environment Configuration & Production Hardening** - Separate local/staging/production environment configurations and enforce secure cookies, session encryption, and Redis stores.
+- [x] **Phase 2: Environment Configuration & Production Hardening** - Separate local/staging/production environment configurations and enforce secure cookies, session encryption, and Redis stores.
 - [ ] **Phase 3: Authentication, Authorization & RBAC Hardening** - Implement Spatie role/permission middleware across tenant routes and introduce Laravel authorization policies.
 - [ ] **Phase 4: Identifier Scoping & IDOR Remediation** - Eliminate unscoped global model lookups (`findOrFail($id)`) and enforce tenant and user ownership checks.
 - [ ] **Phase 5: Asynchronous Queueing & Job Refactoring** - Convert heavy synchronous operations (fee generation, CSV imports, external SMS/WhatsApp calls) into tenant-aware queued jobs.
@@ -42,8 +42,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Create environment presets (.env.example, .env.staging.example, .env.production.example).
-- [ ] 02-02: Harden session, cookie, cache, and error configuration in config files.
+- [x] 02-01: Create environment presets (.env.example, .env.staging.example, .env.production.example).
+- [x] 02-02: Harden session, cookie, cache, and error configuration in config files.
 
 ### Phase 3: Authentication, Authorization & RBAC Hardening
 **Goal**: Close authorization loopholes in tenant portals so users cannot access endpoints outside their assigned role.
@@ -124,7 +124,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Tenancy & Migration Architecture Audit | 2/2 | Complete | 2026-10-22 |
-| 2. Environment Configuration & Production Hardening | 0/2 | Not started | - |
+| 2. Environment Configuration & Production Hardening | 2/2 | Complete | 2026-10-22 |
 | 3. Authentication, Authorization & RBAC Hardening | 0/2 | Not started | - |
 | 4. Identifier Scoping & IDOR Remediation | 0/2 | Not started | - |
 | 5. Asynchronous Queueing & Job Refactoring | 0/2 | Not started | - |

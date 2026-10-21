@@ -7,10 +7,10 @@
 
 ### Environment & Production Hardening (ENV)
 
-- [ ] **ENV-01**: Separate local, staging, and production environment configurations into dedicated sample files (`.env.example`, `.env.staging.example`, `.env.production.example`).
-- [ ] **ENV-02**: Enforce `APP_DEBUG=false` in production configuration with production-safe error page fallbacks.
-- [ ] **ENV-03**: Configure production-safe session, cookie, and cache settings (`SESSION_SECURE_COOKIE=true`, `SESSION_ENCRYPT=true`, `SESSION_HTTP_ONLY=true`, `SESSION_SAME_SITE=lax`, and subdomain-safe `SESSION_DOMAIN`).
-- [ ] **ENV-04**: Configure production Redis connections for cache, session, and queue drivers with tenancy prefixing.
+- [x] **ENV-01**: Separate local, staging, and production environment configurations into dedicated sample files (`.env.example`, `.env.staging.example`, `.env.production.example`).
+- [x] **ENV-02**: Enforce `APP_DEBUG=false` in production configuration with production-safe error page fallbacks.
+- [x] **ENV-03**: Configure production-safe session, cookie, and cache settings (`SESSION_SECURE_COOKIE=true`, `SESSION_ENCRYPT=true`, `SESSION_HTTP_ONLY=true`, `SESSION_SAME_SITE=lax`, and subdomain-safe `SESSION_DOMAIN`).
+- [x] **ENV-04**: Configure production Redis connections for cache, session, and queue drivers with tenancy prefixing.
 
 ### Tenancy Architecture & Database Integrity (TEN)
 
@@ -77,10 +77,10 @@
 | TEN-02 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
 | TEN-03 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
 | TEN-04 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
-| ENV-01 | Phase 2: Environment Configuration & Production Hardening | Pending |
-| ENV-02 | Phase 2: Environment Configuration & Production Hardening | Pending |
-| ENV-03 | Phase 2: Environment Configuration & Production Hardening | Pending |
-| ENV-04 | Phase 2: Environment Configuration & Production Hardening | Pending |
+| ENV-01 | Phase 2: Environment Configuration & Production Hardening | Complete |
+| ENV-02 | Phase 2: Environment Configuration & Production Hardening | Complete |
+| ENV-03 | Phase 2: Environment Configuration & Production Hardening | Complete |
+| ENV-04 | Phase 2: Environment Configuration & Production Hardening | Complete |
 | AUTH-01 | Phase 3: Authentication, Authorization & RBAC Hardening | Pending |
 | AUTH-02 | Phase 3: Authentication, Authorization & RBAC Hardening | Pending |
 | AUTH-03 | Phase 3: Authentication, Authorization & RBAC Hardening | Pending |
