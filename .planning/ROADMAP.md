@@ -6,7 +6,7 @@ This roadmap defines the audit, hardening, multi-tenancy verification, authoriza
 
 ## Phases
 
-- [ ] **Phase 1: Tenancy & Migration Architecture Audit** - Audit central vs tenant migrations, configure explicit database connections, and add CentralConnection traits.
+- [x] **Phase 1: Tenancy & Migration Architecture Audit** - Audit central vs tenant migrations, configure explicit database connections, and add CentralConnection traits.
 - [ ] **Phase 2: Environment Configuration & Production Hardening** - Separate local/staging/production environment configurations and enforce secure cookies, session encryption, and Redis stores.
 - [ ] **Phase 3: Authentication, Authorization & RBAC Hardening** - Implement Spatie role/permission middleware across tenant routes and introduce Laravel authorization policies.
 - [ ] **Phase 4: Identifier Scoping & IDOR Remediation** - Eliminate unscoped global model lookups (`findOrFail($id)`) and enforce tenant and user ownership checks.
@@ -27,8 +27,8 @@ This roadmap defines the audit, hardening, multi-tenancy verification, authoriza
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Audit migration separation and add CentralConnection traits to central models.
-- [ ] 01-02: Configure explicit central and tenant template connections in database and tenancy configs.
+- [x] 01-01: Audit migration separation and add CentralConnection traits to central models.
+- [x] 01-02: Configure explicit central and tenant template connections in database and tenancy configs.
 
 ### Phase 2: Environment Configuration & Production Hardening
 **Goal**: Establish environment presets and harden production runtime settings for cookies, sessions, cache, and debugging.
@@ -123,7 +123,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Tenancy & Migration Architecture Audit | 0/2 | Not started | - |
+| 1. Tenancy & Migration Architecture Audit | 2/2 | Complete | 2026-10-22 |
 | 2. Environment Configuration & Production Hardening | 0/2 | Not started | - |
 | 3. Authentication, Authorization & RBAC Hardening | 0/2 | Not started | - |
 | 4. Identifier Scoping & IDOR Remediation | 0/2 | Not started | - |

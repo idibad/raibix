@@ -14,10 +14,10 @@
 
 ### Tenancy Architecture & Database Integrity (TEN)
 
-- [ ] **TEN-01**: Complete systematic audit of central migrations (`database/migrations/`) and tenant migrations (`database/migrations/tenant/`) to verify clean separation.
-- [ ] **TEN-02**: Explicitly define `'central'` and tenant template connections in `config/database.php` and configure them in `config/tenancy.php`.
-- [ ] **TEN-03**: Add `Stancl\Tenancy\Database\Concerns\CentralConnection` trait to central models (`SubscriptionPlan`, `Coupon`, `SaaSSetting`, `SaaSActivityLog`, `TenantSubscription`).
-- [ ] **TEN-04**: Configure tenant database managers for production MySQL and PostgreSQL schemas with proper database creation grants.
+- [x] **TEN-01**: Complete systematic audit of central migrations (`database/migrations/`) and tenant migrations (`database/migrations/tenant/`) to verify clean separation.
+- [x] **TEN-02**: Explicitly define `'central'` and tenant template connections in `config/database.php` and configure them in `config/tenancy.php`.
+- [x] **TEN-03**: Add `Stancl\Tenancy\Database\Concerns\CentralConnection` trait to central models (`SubscriptionPlan`, `Coupon`, `SaaSSetting`, `SaaSActivityLog`, `TenantSubscription`).
+- [x] **TEN-04**: Configure tenant database managers for production MySQL and PostgreSQL schemas with proper database creation grants.
 
 ### Authentication, Authorization & RBAC (AUTH)
 
@@ -73,10 +73,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEN-01 | Phase 1: Tenancy & Migration Architecture Audit | Pending |
-| TEN-02 | Phase 1: Tenancy & Migration Architecture Audit | Pending |
-| TEN-03 | Phase 1: Tenancy & Migration Architecture Audit | Pending |
-| TEN-04 | Phase 1: Tenancy & Migration Architecture Audit | Pending |
+| TEN-01 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
+| TEN-02 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
+| TEN-03 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
+| TEN-04 | Phase 1: Tenancy & Migration Architecture Audit | Complete |
 | ENV-01 | Phase 2: Environment Configuration & Production Hardening | Pending |
 | ENV-02 | Phase 2: Environment Configuration & Production Hardening | Pending |
 | ENV-03 | Phase 2: Environment Configuration & Production Hardening | Pending |
