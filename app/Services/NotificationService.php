@@ -43,6 +43,22 @@ class NotificationService
     }
 
     /**
+     * Asynchronously queue an SMS for background dispatch.
+     */
+    public function queueSms(string $phone, string $message, string $eventType = 'general'): \Illuminate\Foundation\Bus\PendingDispatch
+    {
+        return \App\Jobs\SendSmsJob::dispatch($phone, $message, $eventType);
+    }
+
+    /**
+     * Asynchronously queue a WhatsApp message for background dispatch.
+     */
+    public function queueWhatsapp(string $phone, string $message, string $eventType = 'general', ?string $templateName = null): \Illuminate\Foundation\Bus\PendingDispatch
+    {
+        return \App\Jobs\SendWhatsappJob::dispatch($phone, $message, $eventType, $templateName);
+    }
+
+    /**
      * Send multi-gateway pluggable SMS (Twilio, UrduBit, PariSMS, Clicksat).
      */
     public function sendSms(string $phone, string $message, string $eventType = 'general'): SmsLog

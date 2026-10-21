@@ -376,10 +376,10 @@ class AdminPortalController extends Controller
         $message = "URGENT REMINDER: Fee Challan {$challan->challan_number} of PKR {$challan->total_amount} is OVERDUE for {$challan->student->user?->name}. Please pay immediately via Parent Portal.";
 
         $notificationService = app(\App\Services\NotificationService::class);
-        $notificationService->sendSms($phone, $message, 'fee_challan');
-        $notificationService->sendWhatsapp($phone, $message, 'fee_challan', 'fee_challan_overdue');
+        $notificationService->queueSms($phone, $message, 'fee_challan');
+        $notificationService->queueWhatsapp($phone, $message, 'fee_challan', 'fee_challan_overdue');
 
-        return redirect()->back()->with('success', "Overdue reminder SMS/WhatsApp dispatched to {$phone}!");
+        return redirect()->back()->with('success', "Overdue reminder SMS/WhatsApp queued for background dispatch to {$phone}!");
     }
 
     /**
