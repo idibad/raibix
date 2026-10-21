@@ -27,10 +27,10 @@
 
 ### Tenant Scoping & Identifier Validation (SCOPE)
 
-- [ ] **SCOPE-01**: Review all tenant-aware controllers and eliminate all unscoped global identifier lookups (`findOrFail($id)`).
-- [ ] **SCOPE-02**: Scope `printChallan` and fee receipt endpoints so students and parents can only access their own records.
-- [ ] **SCOPE-03**: Scope `payChallan` and payment callback handling to verify student/parent ownership before processing.
-- [ ] **SCOPE-04**: Scope student records, gradebooks, report cards, and observation logs to the authorized user or parent relationship.
+- [x] **SCOPE-01**: Review all tenant-aware controllers and eliminate all unscoped global identifier lookups (`findOrFail($id)`).
+- [x] **SCOPE-02**: Scope `printChallan` and fee receipt endpoints so students and parents can only access their own records.
+- [x] **SCOPE-03**: Scope `payChallan` and payment callback handling to verify student/parent ownership before processing.
+- [x] **SCOPE-04**: Scope student records, gradebooks, report cards, and observation logs to the authorized user or parent relationship.
 
 ### Background Queueing & Asynchronous Workflows (QUEUE)
 
@@ -84,10 +84,10 @@
 | AUTH-01 | Phase 3: Authentication, Authorization & RBAC Hardening | Complete |
 | AUTH-02 | Phase 3: Authentication, Authorization & RBAC Hardening | Complete |
 | AUTH-03 | Phase 3: Authentication, Authorization & RBAC Hardening | Complete |
-| SCOPE-01 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |
-| SCOPE-02 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |
-| SCOPE-03 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |
-| SCOPE-04 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |
+| SCOPE-01 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
+| SCOPE-02 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
+| SCOPE-03 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
+| SCOPE-04 | Phase 4: Identifier Scoping & IDOR Remediation | Complete |
 | QUEUE-01 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |
 | QUEUE-02 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |
 | QUEUE-03 | Phase 5: Asynchronous Queueing & Job Refactoring | Pending |

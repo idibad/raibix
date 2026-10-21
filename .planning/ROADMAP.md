@@ -70,8 +70,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Audit and scope fee challan and payment endpoints in FeeStructureController, ParentPortalController, and PaymentController.
-- [ ] 04-02: Audit and scope student records, report cards, submissions, and ERP resource endpoints.
+- [x] 04-01: Audit and scope fee challan and payment endpoints in FeeStructureController, ParentPortalController, and PaymentController.
+- [x] 04-02: Audit and scope student records, report cards, submissions, and ERP resource endpoints.
 
 ### Phase 5: Asynchronous Queueing & Job Refactoring
 **Goal**: Offload heavy database queries, bulk loops, and third-party network requests into tenant-aware background jobs.
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Tenancy & Migration Architecture Audit | 2/2 | Complete | 2026-10-22 |
 | 2. Environment Configuration & Production Hardening | 2/2 | Complete | 2026-10-22 |
 | 3. Authentication, Authorization & RBAC Hardening | 2/2 | Complete | 2026-10-22 |
-| 4. Identifier Scoping & IDOR Remediation | 0/2 | Not started | - |
+| 4. Identifier Scoping & IDOR Remediation | 2/2 | Complete | 2026-10-22 |
 | 5. Asynchronous Queueing & Job Refactoring | 0/2 | Not started | - |
 | 6. Safe Health-Check Endpoints | 0/1 | Not started | - |
 | 7. Log Sanitization & Secure Storage Isolation | 0/2 | Not started | - |
