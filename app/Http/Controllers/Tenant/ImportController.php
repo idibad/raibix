@@ -38,109 +38,23 @@ class ImportController extends Controller
             return strtolower(trim(preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $col)));
         }, $header);
 
-        $successCount = 0;
-        $errorRows = [];
-
-        DB::beginTransaction();
-        try {
-            while (($row = fgetcsv($handle)) !== false) {
-                if (count($row) < count($header)) {
-                    continue; // skip incomplete row
-                }
-
-                $data = array_combine($header, array_slice($row, 0, count($header)));
-                
-                $name = trim($data['name'] ?? '');
-                $email = trim($data['email'] ?? '');
-                $rollNumber = trim($data['roll_number'] ?? '');
-                $className = trim($data['class_name'] ?? '');
-                $sectionName = trim($data['section_name'] ?? 'A');
-
-                if (empty($name) || empty($email)) {
-                    continue;
-                }
-
-                // Provision Class & Section automatically if new school
-                $class = SchoolClass::firstOrCreate(
-                    ['name' => !empty($className) ? $className : 'General Class'],
-                    ['level' => 'primary', 'numeric_grade' => 1]
-                );
-
-                $section = Section::firstOrCreate(
-                    ['class_id' => $class->id, 'name' => !empty($sectionName) ? $sectionName : 'A'],
-                    ['room_number' => '101']
-                );
-
-                // Create Student User
-                $user = User::firstOrCreate(
-                    ['email' => $email],
-                    [
-                        'name' => $name,
-                        'phone' => trim($data['phone'] ?? '03000000000'),
-                        'user_type' => 'student',
-                        'status' => 'active',
-                        'password' => Hash::make('Student@123'),
-                    ]
-                );
-
-                $studentRole = Role::firstOrCreate(['name' => 'Matric (9-10)', 'guard_name' => 'web']);
-                $user->assignRole($studentRole);
-
-                // Create Student Profile
-                $student = Student::firstOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'admission_number' => trim($data['admission_number'] ?? ('ADM-' . rand(1000, 9999))),
-                        'roll_number' => !empty($rollNumber) ? $rollNumber : (string)rand(100, 999),
-                        'current_class_id' => $class->id,
-                        'current_section_id' => $section->id,
-                        'gender' => trim($data['gender'] ?? 'Not Specified'),
-                        'date_of_birth' => trim($data['date_of_birth'] ?? '2010-01-01'),
-                        'status' => 'active',
-                    ]
-                );
-
-                // Handle Optional Parent linkage
-                $parentName = trim($data['parent_name'] ?? '');
-                $parentPhone = trim($data['parent_phone'] ?? '');
-                $parentEmail = trim($data['parent_email'] ?? ("parent.{$student->id}@" . (tenancy()->tenant ? tenancy()->tenant->id : 'school') . ".lms.test"));
-
-                if (!empty($parentName)) {
-                    $parentUser = User::firstOrCreate(
-                        ['email' => $parentEmail],
-                        [
-                            'name' => $parentName,
-                            'phone' => !empty($parentPhone) ? $parentPhone : '03000000000',
-                            'user_type' => 'parent',
-                            'status' => 'active',
-                            'password' => Hash::make('Parent@123'),
-                        ]
-                    );
-                    $parentRole = Role::firstOrCreate(['name' => 'Guardian', 'guard_name' => 'web']);
-                    $parentUser->assignRole($parentRole);
-
-                    $parentProfile = ParentsProfile::firstOrCreate(
-                        ['user_id' => $parentUser->id],
-                        [
-                            'father_name' => $parentName,
-                            'father_phone' => !empty($parentPhone) ? $parentPhone : '03000000000',
-                        ]
-                    );
-
-                    $student->update(['parent_id' => $parentProfile->id]);
-                }
-
-                $successCount++;
+        $rows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < count($header)) {
+                continue; // skip incomplete row
             }
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            fclose($handle);
-            return redirect()->back()->with('error', 'CSV Import Error: ' . $e->getMessage());
+
+            $rows[] = array_combine($header, array_slice($row, 0, count($header)));
+        }
+        fclose($handle);
+
+        if (empty($rows)) {
+            return redirect()->back()->with('error', 'CSV file contains no valid student records.');
         }
 
-        fclose($handle);
-        return redirect()->back()->with('success', "Successfully onboarded {$successCount} student profiles with class & section mappings via CSV!");
+        \App\Jobs\ImportStudentsJob::dispatch($rows);
+
+        return redirect()->back()->with('success', "CSV containing " . count($rows) . " student records has been queued for background import.");
     }
 
     /**

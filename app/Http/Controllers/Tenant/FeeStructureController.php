@@ -213,111 +213,21 @@ class FeeStructureController extends Controller
             'include_classes' => 'nullable|array' // optional filter by classes
         ]);
 
-        $query = Student::where('status', 'active');
-        if (!empty($validated['include_classes'])) {
-            $query->whereIn('current_class_id', $validated['include_classes']);
-        }
-
-        $students = $query->with(['currentClass'])->get();
-        $structures = FeeStructure::all()->keyBy('class_id');
-        $allOverrides = DB::table('student_fee_overrides')->where('is_active', true)->get()->groupBy('student_id');
-
-        $generatedCount = 0;
-
-        DB::beginTransaction();
-        try {
-            foreach ($students as $student) {
-                if (!$student->current_class_id || !isset($structures[$student->current_class_id])) {
-                    continue;
-                }
-
-                $structure = $structures[$student->current_class_id];
-
-                // Check if challan already generated for this student and month
-                $existing = FeeChallan::where('student_id', $student->id)
-                    ->where('month_year', $validated['month_year'])
-                    ->where('fee_type', 'monthly')
-                    ->first();
-
-                if ($existing) {
-                    continue; // skip double billing
-                }
-
-                // Compute base fees from class structure
-                $tuitionFee = $structure->monthly_tuition;
-                $labFee = $structure->lab_charges;
-                $transportFee = $structure->transport_charges;
-                $discountAmount = 0;
-
-                // Check for student overrides & scholarships
-                if (isset($allOverrides[$student->id])) {
-                    foreach ($allOverrides[$student->id] as $override) {
-                        if ($override->fee_category === 'tuition') {
-                            if ($override->discount_percentage > 0) {
-                                $discountAmount += ($tuitionFee * ($override->discount_percentage / 100));
-                            } else {
-                                $discountAmount += $override->discount_amount;
-                            }
-                        } elseif ($override->fee_category === 'lab') {
-                            if ($override->discount_percentage > 0) {
-                                $discountAmount += ($labFee * ($override->discount_percentage / 100));
-                            } else {
-                                $discountAmount += $override->discount_amount;
-                            }
-                        }
-                    }
-                }
-
-                // Compute previous overdue balances & library fines
-                $overdueBalance = FeeChallan::where('student_id', $student->id)
-                    ->where('status', '!=', 'paid')
-                    ->sum(DB::raw('total_amount - paid_amount'));
-
-                $totalAmount = max(0, $tuitionFee + $labFee + $transportFee - $discountAmount + $overdueBalance);
-
-                $challanNumber = 'CH-' . str_replace('-', '', $validated['month_year']) . '-' . str_pad($student->id, 4, '0', STR_PAD_LEFT);
-
-                FeeChallan::create([
-                    'challan_number' => $challanNumber,
-                    'student_id' => $student->id,
-                    'fee_type' => 'monthly',
-                    'month_year' => $validated['month_year'],
-                    'issue_date' => $validated['issue_date'],
-                    'due_date' => $validated['due_date'],
-                    'tuition_fee' => $tuitionFee,
-                    'lab_fee' => $labFee,
-                    'transport_fee' => $transportFee,
-                    'discount_amount' => $discountAmount,
-                    'fine_amount' => $overdueBalance,
-                    'total_amount' => $totalAmount,
-                    'paid_amount' => 0,
-                    'status' => 'unpaid'
-                ]);
-
-                $generatedCount++;
-            }
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to generate challans: ' . $e->getMessage()
-            ], 500);
-        }
+        \App\Jobs\GenerateMonthlyFeeChallansJob::dispatch(
+            $validated['month_year'],
+            $validated['issue_date'],
+            $validated['due_date'],
+            $validated['include_classes'] ?? null
+        );
 
         if ($request->wantsJson()) {
             return response()->json([
                 'status' => 'success',
-                'message' => "Successfully generated {$generatedCount} recurring monthly fee invoices for {$validated['month_year']}."
+                'message' => "Monthly fee invoice generation for {$validated['month_year']} has been queued and is processing in the background."
             ]);
         }
 
-        if ($generatedCount === 0) {
-            return redirect()->back()->with('error', "No fee invoices generated. Please ensure you have added a Fee Structure for the classes and that students are enrolled and active.");
-        }
-
-        return redirect()->back()->with('success', "Generated {$generatedCount} fee invoices cleanly.");
+        return redirect()->back()->with('success', "Monthly fee invoice generation for {$validated['month_year']} has been queued and is processing in the background.");
     }
 
     public function printChallan($id)
