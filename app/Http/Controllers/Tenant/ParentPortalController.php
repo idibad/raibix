@@ -219,6 +219,22 @@ class ParentPortalController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
+        $user = Auth::user();
+        $isAdmin = in_array(strtolower($user->user_type ?? ''), ['admin', 'principal']);
+        if (!$isAdmin && method_exists($user, 'hasAnyRole')) {
+            try {
+                $isAdmin = $user->hasAnyRole(['Super Admin', 'Principal', 'Admin']);
+            } catch (\Throwable $e) {}
+        }
+
+        if (!$isAdmin) {
+            $profile = $user->parentsProfile ?: \App\Models\ParentsProfile::where('user_id', $user->id)->first();
+            $allowedStudentIds = $profile ? $profile->students()->pluck('students.id')->toArray() : [];
+            if (!in_array((int) $validated['student_id'], $allowedStudentIds, true)) {
+                abort(403, 'Unauthorized. You may only submit leave requests for your own registered children.');
+            }
+        }
+
         \App\Models\Leave::create([
             'student_id' => $validated['student_id'],
             'reason' => $validated['reason'],

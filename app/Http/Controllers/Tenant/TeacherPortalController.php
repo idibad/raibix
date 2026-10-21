@@ -303,8 +303,14 @@ class TeacherPortalController extends Controller
         $submission = AssignmentSubmission::findOrFail($submissionId);
 
         $assignment = Assignment::findOrFail($submission->assignment_id);
-        if ($assignment->teacher_id !== $teacher->id && !$teacher->hasRole('Principal')) {
-            abort(403, 'Unauthorized');
+        $isPrivileged = in_array(strtolower($teacher->user_type ?? ''), ['admin', 'principal']);
+        if (!$isPrivileged && method_exists($teacher, 'hasAnyRole')) {
+            try {
+                $isPrivileged = $teacher->hasAnyRole(['Super Admin', 'Principal', 'Admin']);
+            } catch (\Throwable $e) {}
+        }
+        if ((int) $assignment->teacher_id !== (int) $teacher->id && !$isPrivileged) {
+            abort(403, 'Unauthorized: You cannot evaluate or grade assignments belonging to another teacher.');
         }
 
         $submission->update([
@@ -327,9 +333,14 @@ class TeacherPortalController extends Controller
         $teacher = Auth::user();
         $submission = AssignmentSubmission::findOrFail($submissionId);
         $assignment = Assignment::findOrFail($submission->assignment_id);
-
-        if ($assignment->teacher_id !== $teacher->id && !$teacher->hasRole('Principal')) {
-            abort(403, 'Unauthorized');
+        $isPrivileged = in_array(strtolower($teacher->user_type ?? ''), ['admin', 'principal']);
+        if (!$isPrivileged && method_exists($teacher, 'hasAnyRole')) {
+            try {
+                $isPrivileged = $teacher->hasAnyRole(['Super Admin', 'Principal', 'Admin']);
+            } catch (\Throwable $e) {}
+        }
+        if ((int) $assignment->teacher_id !== (int) $teacher->id && !$isPrivileged) {
+            abort(403, 'Unauthorized: You cannot evaluate or grade assignments belonging to another teacher.');
         }
 
         $maxMarks = floatval($assignment->total_marks ?? 20);
@@ -488,11 +499,33 @@ class TeacherPortalController extends Controller
             'admin_remarks' => 'nullable|string|max:500',
         ]);
 
-        $leave = Leave::findOrFail($id);
+        $teacher = Auth::user();
+        $leave = Leave::with('student')->findOrFail($id);
+
+        $isAdmin = in_array(strtolower($teacher->user_type ?? ''), ['admin', 'principal']);
+        if (!$isAdmin && method_exists($teacher, 'hasAnyRole')) {
+            try {
+                $isAdmin = $teacher->hasAnyRole(['Super Admin', 'Principal', 'Admin']);
+            } catch (\Throwable $e) {}
+        }
+
+        if (!$isAdmin) {
+            $student = $leave->student;
+            $sectionId = $student?->current_section_id;
+
+            $taughtSectionIds = Timetable::where('teacher_id', $teacher->id)->pluck('section_id')->unique();
+            $classTeacherSectionIds = Section::where('class_teacher_id', $teacher->id)->pluck('id');
+            $allRelevantSectionIds = $taughtSectionIds->merge($classTeacherSectionIds)->unique()->values();
+
+            if (!$sectionId || !$allRelevantSectionIds->contains($sectionId)) {
+                abort(403, 'Unauthorized: You are not assigned to this student\'s section.');
+            }
+        }
+
         $leave->update([
             'status'         => $validated['status'],
             'admin_remarks'  => $validated['admin_remarks'] ?? null,
-            'approved_by_id' => Auth::id(),
+            'approved_by_id' => $teacher->id,
         ]);
 
         return redirect()->back()->with('success', 'Student leave request ' . $validated['status'] . '.');

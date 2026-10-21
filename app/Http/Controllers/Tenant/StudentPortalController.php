@@ -244,6 +244,11 @@ class StudentPortalController extends Controller
 
         $user = Auth::user();
         $student = Student::where('user_id', $user->id)->firstOrFail();
+        $assignment = Assignment::findOrFail($assignmentId);
+
+        if ($assignment->section_id && (int) $assignment->section_id !== (int) $student->current_section_id) {
+            abort(403, 'Unauthorized: This assignment is for a different section.');
+        }
 
         $fileUrl = $validated['file_url'] ?? null;
         $fileName = null;
@@ -307,6 +312,10 @@ class StudentPortalController extends Controller
         $user = Auth::user();
         $student = Student::where('user_id', $user->id)->firstOrFail();
         $assignment = Assignment::findOrFail($assignmentId);
+
+        if ($assignment->section_id && (int) $assignment->section_id !== (int) $student->current_section_id) {
+            abort(403, 'Unauthorized: This assignment is for a different section.');
+        }
 
         AssignmentQuestion::create([
             'assignment_id' => $assignment->id,
