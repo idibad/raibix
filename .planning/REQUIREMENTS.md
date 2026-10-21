@@ -21,9 +21,9 @@
 
 ### Authentication, Authorization & RBAC (AUTH)
 
-- [ ] **AUTH-01**: Review authentication guards, redirect logic, and session lifecycles for both central and tenant portals.
-- [ ] **AUTH-02**: Implement Spatie role and permission middleware groups in `routes/tenant.php` (restricting Admin, Teacher, Student, and Parent routes).
-- [ ] **AUTH-03**: Create Laravel Policies (`FeeChallanPolicy`, `StudentPolicy`, `StaffPolicy`, `AssignmentPolicy`) to enforce object-level authorization checks.
+- [x] **AUTH-01**: Review authentication guards, redirect logic, and session lifecycles for both central and tenant portals.
+- [x] **AUTH-02**: Implement Spatie role and permission middleware groups in `routes/tenant.php` (restricting Admin, Teacher, Student, and Parent routes).
+- [x] **AUTH-03**: Create Laravel Policies (`FeeChallanPolicy`, `StudentPolicy`, `StaffPolicy`, `AssignmentPolicy`) to enforce object-level authorization checks.
 
 ### Tenant Scoping & Identifier Validation (SCOPE)
 
@@ -81,9 +81,9 @@
 | ENV-02 | Phase 2: Environment Configuration & Production Hardening | Complete |
 | ENV-03 | Phase 2: Environment Configuration & Production Hardening | Complete |
 | ENV-04 | Phase 2: Environment Configuration & Production Hardening | Complete |
-| AUTH-01 | Phase 3: Authentication, Authorization & RBAC Hardening | Pending |
-| AUTH-02 | Phase 3: Authentication, Authorization & RBAC Hardening | Pending |
-| AUTH-03 | Phase 3: Authentication, Authorization & RBAC Hardening | Pending |
+| AUTH-01 | Phase 3: Authentication, Authorization & RBAC Hardening | Complete |
+| AUTH-02 | Phase 3: Authentication, Authorization & RBAC Hardening | Complete |
+| AUTH-03 | Phase 3: Authentication, Authorization & RBAC Hardening | Complete |
 | SCOPE-01 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |
 | SCOPE-02 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |
 | SCOPE-03 | Phase 4: Identifier Scoping & IDOR Remediation | Pending |

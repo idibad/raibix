@@ -56,8 +56,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Apply role and permission middleware groups across `routes/tenant.php`.
-- [ ] 03-02: Generate and register Laravel authorization policies for core tenant models.
+- [x] 03-01: Apply role and permission middleware groups across `routes/tenant.php`.
+- [x] 03-02: Generate and register Laravel authorization policies for core tenant models.
 
 ### Phase 4: Identifier Scoping & IDOR Remediation
 **Goal**: Ensure all tenant data access is strictly scoped to authenticated user ownership, eliminating Insecure Direct Object References.
@@ -125,7 +125,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Tenancy & Migration Architecture Audit | 2/2 | Complete | 2026-10-22 |
 | 2. Environment Configuration & Production Hardening | 2/2 | Complete | 2026-10-22 |
-| 3. Authentication, Authorization & RBAC Hardening | 0/2 | Not started | - |
+| 3. Authentication, Authorization & RBAC Hardening | 2/2 | Complete | 2026-10-22 |
 | 4. Identifier Scoping & IDOR Remediation | 0/2 | Not started | - |
 | 5. Asynchronous Queueing & Job Refactoring | 0/2 | Not started | - |
 | 6. Safe Health-Check Endpoints | 0/1 | Not started | - |
