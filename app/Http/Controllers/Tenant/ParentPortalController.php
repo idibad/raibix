@@ -148,6 +148,7 @@ class ParentPortalController extends Controller
         ]);
 
         $challan = FeeChallan::findOrFail($challanId);
+        \Illuminate\Support\Facades\Gate::authorize('pay', $challan);
 
         if ($validated['gateway'] === 'jazzcash') {
             // Prepare canonical JazzCash request and calculate HMAC-SHA256 pp_SecureHash

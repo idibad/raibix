@@ -3,16 +3,45 @@
 namespace App\Policies;
 
 use App\Models\FeeChallan;
+use App\Models\ParentsProfile;
+use App\Models\Student;
 use App\Models\User;
 
 class FeeChallanPolicy
 {
     /**
+     * Check user role or user_type.
+     */
+    protected function hasRoleOrType(User $user, array $roles, array $types): bool
+    {
+        $userType = strtolower($user->user_type ?? '');
+        if (in_array($userType, array_map('strtolower', $types), true)) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasAnyRole')) {
+            try {
+                if ($user->hasAnyRole($roles)) {
+                    return true;
+                }
+            } catch (\Throwable $e) {
+                // Table or permission package fallback
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Determine whether the user can view any fee challans.
      */
     public function viewAny(User $user): bool
     {
-        return in_array($user->user_type, ['admin', 'principal', 'accountant', 'registrar', 'staff', 'teacher']);
+        return $this->hasRoleOrType(
+            $user,
+            ['Super Admin', 'Principal', 'Admin', 'Accountant', 'Registrar', 'Staff', 'Teacher'],
+            ['admin', 'principal', 'accountant', 'registrar', 'staff', 'teacher']
+        );
     }
 
     /**
@@ -21,22 +50,43 @@ class FeeChallanPolicy
     public function view(User $user, FeeChallan $challan): bool
     {
         // Admin and financial staff can view any challan
-        if (in_array($user->user_type, ['admin', 'principal', 'accountant', 'registrar'])) {
+        if ($this->hasRoleOrType(
+            $user,
+            ['Super Admin', 'Principal', 'Admin', 'Accountant', 'Registrar'],
+            ['admin', 'principal', 'accountant', 'registrar']
+        )) {
             return true;
         }
 
         // Student can view their own challan
-        if ($user->user_type === 'student') {
-            return (int) $challan->student_id === (int) $user->student?->id;
+        if ($this->hasRoleOrType($user, ['Student'], ['student'])) {
+            $studentId = $user->student?->id;
+            if (!$studentId) {
+                $student = Student::where('user_id', $user->id)->first();
+                $studentId = $student?->id;
+            }
+
+            return $studentId !== null && (int) $challan->student_id === (int) $studentId;
         }
 
         // Parent can view their child's challan
-        if (in_array($user->user_type, ['parent', 'guardian'])) {
-            $student = $challan->student;
+        if ($this->hasRoleOrType($user, ['Parent', 'Guardian'], ['parent', 'guardian'])) {
+            $parentProfileId = $user->parentsProfile?->id;
+            if (!$parentProfileId) {
+                $profile = ParentsProfile::where('user_id', $user->id)->first();
+                $parentProfileId = $profile?->id;
+            }
+
+            if (!$parentProfileId) {
+                return false;
+            }
+
+            $student = $challan->student ?: Student::find($challan->student_id);
             if (!$student) {
                 return false;
             }
-            return (int) $student->parent_id === (int) $user->parentsProfile?->id;
+
+            return (int) $student->parent_id === (int) $parentProfileId;
         }
 
         return false;
@@ -55,7 +105,11 @@ class FeeChallanPolicy
      */
     public function update(User $user, FeeChallan $challan): bool
     {
-        return in_array($user->user_type, ['admin', 'principal', 'accountant']);
+        return $this->hasRoleOrType(
+            $user,
+            ['Super Admin', 'Principal', 'Admin', 'Accountant'],
+            ['admin', 'principal', 'accountant']
+        );
     }
 
     /**
@@ -63,6 +117,10 @@ class FeeChallanPolicy
      */
     public function delete(User $user, FeeChallan $challan): bool
     {
-        return in_array($user->user_type, ['admin', 'principal']);
+        return $this->hasRoleOrType(
+            $user,
+            ['Super Admin', 'Principal', 'Admin'],
+            ['admin', 'principal']
+        );
     }
 }

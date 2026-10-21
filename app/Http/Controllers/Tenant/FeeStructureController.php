@@ -324,6 +324,8 @@ class FeeStructureController extends Controller
     {
         $challan = \App\Models\FeeChallan::with(['student.currentClass', 'transactions'])->findOrFail($id);
         
+        \Illuminate\Support\Facades\Gate::authorize('view', $challan);
+
         return inertia('Tenant/Admin/PrintChallan', [
             'challan' => $challan
         ]);

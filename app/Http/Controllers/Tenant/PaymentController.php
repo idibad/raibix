@@ -16,6 +16,7 @@ class PaymentController extends Controller
     public function checkout(Request $request, $id)
     {
         $challan = FeeChallan::where('id', $id)->where('status', '!=', 'paid')->firstOrFail();
+        \Illuminate\Support\Facades\Gate::authorize('pay', $challan);
 
         // Handle Manual Receipt Slip upload
         if ($request->input('gateway') === 'manual' || $request->hasFile('payment_receipt')) {
