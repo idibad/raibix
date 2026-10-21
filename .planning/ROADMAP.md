@@ -99,7 +99,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: Implement sanitized central and tenant health check endpoints with automated tests.
+- [x] 06-01: Implement sanitized central and tenant health check endpoints with automated tests.
 
 ### Phase 7: Log Sanitization & Secure Storage Isolation
 **Goal**: Strip sensitive tokens and PII from logs and secure uploaded student and financial documents.
@@ -128,5 +128,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Authentication, Authorization & RBAC Hardening | 2/2 | Complete | 2026-10-22 |
 | 4. Identifier Scoping & IDOR Remediation | 2/2 | Complete | 2026-10-22 |
 | 5. Asynchronous Queueing & Job Refactoring | 2/2 | Complete | 2026-10-22 |
-| 6. Safe Health-Check Endpoints | 0/1 | Not started | - |
+| 6. Safe Health-Check Endpoints | 1/1 | Complete | 2026-10-22 |
 | 7. Log Sanitization & Secure Storage Isolation | 0/2 | Not started | - |

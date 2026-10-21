@@ -41,9 +41,9 @@
 
 ### Safe Health Checks & Monitoring (HEALTH)
 
-- [ ] **HEALTH-01**: Implement `/api/health` or `/health` endpoint verifying central database connectivity.
-- [ ] **HEALTH-02**: Implement tenant-aware health check verifying tenant database connectivity, cache access, and storage writeability.
-- [ ] **HEALTH-03**: Ensure all health-check responses return sanitized status payloads (`{"status":"ok"}`) and HTTP 200/503 without exposing credentials, IPs, or internal topology.
+- [x] **HEALTH-01**: Implement `/api/health` or `/health` endpoint verifying central database connectivity.
+- [x] **HEALTH-02**: Implement tenant-aware health check verifying tenant database connectivity, cache access, and storage writeability.
+- [x] **HEALTH-03**: Ensure all health-check responses return sanitized status payloads (`{"status":"ok"}`) and HTTP 200/503 without exposing credentials, IPs, or internal topology.
 
 ### Log Sanitization & Storage Security (LOG)
 
@@ -92,9 +92,9 @@
 | QUEUE-02 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
 | QUEUE-03 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
 | QUEUE-04 | Phase 5: Asynchronous Queueing & Job Refactoring | Complete |
-| HEALTH-01 | Phase 6: Safe Health-Check Endpoints | Pending |
-| HEALTH-02 | Phase 6: Safe Health-Check Endpoints | Pending |
-| HEALTH-03 | Phase 6: Safe Health-Check Endpoints | Pending |
+| HEALTH-01 | Phase 6: Safe Health-Check Endpoints | Complete |
+| HEALTH-02 | Phase 6: Safe Health-Check Endpoints | Complete |
+| HEALTH-03 | Phase 6: Safe Health-Check Endpoints | Complete |
 | LOG-01 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
 | LOG-02 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
 | LOG-03 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
