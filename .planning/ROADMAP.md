@@ -113,8 +113,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01: Sanitize logging in `LogTenantRequests` and `NotificationService`.
-- [ ] 07-02: Refactor file uploads from `public/uploads/` to protected storage disks with authorized streaming controllers.
+- [x] 07-01: Sanitize logging in `LogTenantRequests` and `NotificationService`.
+- [x] 07-02: Refactor file uploads from `public/uploads/` to protected storage disks with authorized streaming controllers.
 
 ## Progress
 
@@ -129,4 +129,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Identifier Scoping & IDOR Remediation | 2/2 | Complete | 2026-10-22 |
 | 5. Asynchronous Queueing & Job Refactoring | 2/2 | Complete | 2026-10-22 |
 | 6. Safe Health-Check Endpoints | 1/1 | Complete | 2026-10-22 |
-| 7. Log Sanitization & Secure Storage Isolation | 0/2 | Not started | - |
+| 7. Log Sanitization & Secure Storage Isolation | 2/2 | Complete | 2026-10-22 |

@@ -47,10 +47,10 @@
 
 ### Log Sanitization & Storage Security (LOG)
 
-- [ ] **LOG-01**: Remove session IDs, auth tokens, and sensitive headers from `LogTenantRequests` middleware.
-- [ ] **LOG-02**: Sanitize `NotificationService` logging to mask phone numbers, OTPs, student names, and message content.
-- [ ] **LOG-03**: Refactor file uploads (`SaaSCheckoutController`, `PaymentController`, `StudentController`) from direct `public_path('uploads/...')` to tenant-isolated `Storage` disks.
-- [ ] **LOG-04**: Secure private documents (student birth certificates, CNICs, fee bank slips) behind authorization-protected download controllers.
+- [x] **LOG-01**: Remove session IDs, auth tokens, and sensitive headers from `LogTenantRequests` middleware.
+- [x] **LOG-02**: Sanitize `NotificationService` logging to mask phone numbers, OTPs, student names, and message content.
+- [x] **LOG-03**: Refactor file uploads (`SaaSCheckoutController`, `PaymentController`, `StudentController`) from direct `public_path('uploads/...')` to tenant-isolated `Storage` disks.
+- [x] **LOG-04**: Secure private documents (student birth certificates, CNICs, fee bank slips) behind authorization-protected download controllers.
 
 ## v2 Requirements
 
@@ -95,10 +95,10 @@
 | HEALTH-01 | Phase 6: Safe Health-Check Endpoints | Complete |
 | HEALTH-02 | Phase 6: Safe Health-Check Endpoints | Complete |
 | HEALTH-03 | Phase 6: Safe Health-Check Endpoints | Complete |
-| LOG-01 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
-| LOG-02 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
-| LOG-03 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
-| LOG-04 | Phase 7: Log Sanitization & Secure Storage Isolation | Pending |
+| LOG-01 | Phase 7: Log Sanitization & Secure Storage Isolation | Complete |
+| LOG-02 | Phase 7: Log Sanitization & Secure Storage Isolation | Complete |
+| LOG-03 | Phase 7: Log Sanitization & Secure Storage Isolation | Complete |
+| LOG-04 | Phase 7: Log Sanitization & Secure Storage Isolation | Complete |
 
 **Coverage:**
 - v1 requirements: 26 total
