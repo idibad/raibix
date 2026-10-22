@@ -1232,9 +1232,9 @@ onUnmounted(() => {
                         © 2026 Raibix Platform. All rights reserved.
                     </div>
                     <div class="flex items-center gap-6">
-                        <a href="#" class="hover:text-[#111318] transition-colors">Privacy Policy</a>
-                        <a href="#" class="hover:text-[#111318] transition-colors">Terms of Service</a>
-                        <a href="#" class="hover:text-[#111318] transition-colors">Security & Privacy</a>
+                        <Link href="/privacy" class="hover:text-[#111318] transition-colors">Privacy Policy</Link>
+                        <Link href="/terms" class="hover:text-[#111318] transition-colors">Terms of Service</Link>
+                        <Link href="/security" class="hover:text-[#111318] transition-colors">Security & Privacy</Link>
                     </div>
                 </div>
             </div>

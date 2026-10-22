@@ -50,6 +50,12 @@ Route::get('/api/check-subdomain', function (\Illuminate\Http\Request $request) 
 Route::domain($domain)->group(function () {
     // Public SaaS Landing Page & School Registration
     Route::get('/', [SuperAdminController::class, 'landing'])->name('central.landing');
+    Route::get('/privacy', [SuperAdminController::class, 'privacy'])->name('central.privacy');
+    Route::get('/privacy-policy', [SuperAdminController::class, 'privacy'])->name('central.privacy.alias');
+    Route::get('/terms', [SuperAdminController::class, 'terms'])->name('central.terms');
+    Route::get('/terms-of-service', [SuperAdminController::class, 'terms'])->name('central.terms.alias');
+    Route::get('/security', [SuperAdminController::class, 'security'])->name('central.security');
+    Route::get('/security-privacy', [SuperAdminController::class, 'security'])->name('central.security.alias');
     Route::post('/tenants', [SuperAdminController::class, 'storeTenant'])->name('central.tenants.store');
     Route::post('/inquiries', [SuperAdminController::class, 'storeInquiry'])->name('central.inquiries.store');
 

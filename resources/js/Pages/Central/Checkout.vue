@@ -663,7 +663,11 @@ onMounted(() => {
                                 </span>
                             </button>
 
-                            <p class="text-[11px] text-[#9CA3AF] text-center">
+                            <p class="text-[11px] text-[#9CA3AF] text-center leading-relaxed">
+                                By completing this order, you agree to the 
+                                <Link href="/terms" target="_blank" class="text-[#5B6270] underline hover:text-[#111318]">Terms of Service</Link> 
+                                and 
+                                <Link href="/privacy" target="_blank" class="text-[#5B6270] underline hover:text-[#111318]">Privacy Policy</Link>.
                                 Your school portal is initialized immediately and unlocked upon receipt verification.
                             </p>
                         </div>

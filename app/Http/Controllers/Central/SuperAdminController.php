@@ -40,6 +40,30 @@ class SuperAdminController extends Controller
     }
 
     /**
+     * Display Public Privacy Policy page.
+     */
+    public function privacy(): Response
+    {
+        return Inertia::render('Central/PrivacyPolicy');
+    }
+
+    /**
+     * Display Public Terms of Service page.
+     */
+    public function terms(): Response
+    {
+        return Inertia::render('Central/TermsOfService');
+    }
+
+    /**
+     * Display Public Security & Privacy Architecture page.
+     */
+    public function security(): Response
+    {
+        return Inertia::render('Central/SecurityPrivacy');
+    }
+
+    /**
      * Display Central Super Admin Dashboard with full control center metrics, logs, maintenance, and revenue ledgers.
      */
     public function index(): Response
