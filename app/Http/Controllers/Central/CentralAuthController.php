@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Central;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\SaaSActivityLog;
+use App\Mail\TwoFactorOtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,12 +23,10 @@ class CentralAuthController extends Controller
     {
         $requires2fa = (bool) $request->session()->has('2fa_user_id');
         $twoFactorEmail = $request->session()->get('2fa_user_email');
-        $twoFactorHint = $request->session()->get('2fa_code');
 
         return Inertia::render('Central/Login', [
             'initialRequires2fa' => $requires2fa,
             'twoFactorEmail' => $twoFactorEmail,
-            'twoFactorHint' => $twoFactorHint,
         ]);
     }
 
@@ -58,6 +59,13 @@ class CentralAuthController extends Controller
         $request->session()->put('2fa_expires_at', now()->addMinutes(10));
         $request->session()->put('2fa_remember', $request->boolean('remember'));
 
+        // Dispatch OTP email to administrator
+        try {
+            Mail::to($user->email)->send(new TwoFactorOtpMail($user, $otp));
+        } catch (\Throwable $e) {
+            Log::warning("Failed to dispatch 2FA OTP email to {$user->email}: " . $e->getMessage());
+        }
+
         SaaSActivityLog::create([
             'event_title' => '2FA Security Challenge Issued',
             'description' => "Two-factor verification challenge code issued for Super Admin session [{$user->email}].",
@@ -69,8 +77,7 @@ class CentralAuthController extends Controller
         return redirect()->route('login')->with([
             'requires_2fa' => true,
             'two_factor_email' => $user->email,
-            'two_factor_hint' => $otp,
-            'success' => "Security code sent! Enter code {$otp} to authenticate.",
+            'success' => 'A 6-digit verification code has been sent to your email.',
         ]);
     }
 
@@ -145,11 +152,19 @@ class CentralAuthController extends Controller
         $request->session()->put('2fa_code', $newOtp);
         $request->session()->put('2fa_expires_at', now()->addMinutes(10));
 
+        $user = User::find($userId);
+        if ($user) {
+            try {
+                Mail::to($user->email)->send(new TwoFactorOtpMail($user, $newOtp));
+            } catch (\Throwable $e) {
+                Log::warning("Failed to resend 2FA OTP email: " . $e->getMessage());
+            }
+        }
+
         return back()->with([
             'requires_2fa' => true,
             'two_factor_email' => $userEmail,
-            'two_factor_hint' => $newOtp,
-            'success' => "New 2FA security code issued: {$newOtp}",
+            'success' => 'A new verification code has been sent to your email.',
         ]);
     }
 
