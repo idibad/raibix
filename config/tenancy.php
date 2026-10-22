@@ -16,13 +16,15 @@ return [
      *
      * Only relevant if you're using the domain or subdomain identification middleware.
      */
-    'central_domains' => [
-        '127.0.0.1',
-        'localhost',
-        '192.168.100.7',
-        '192.168.100.7.nip.io',
-        '192.168.100.8',
-    ],
+    'central_domains' => env('CENTRAL_DOMAINS')
+        ? array_filter(array_map('trim', explode(',', (string) env('CENTRAL_DOMAINS'))))
+        : [
+            '127.0.0.1',
+            'localhost',
+            '192.168.100.7',
+            '192.168.100.7.nip.io',
+            '192.168.100.8',
+        ],
 
     /**
      * Tenancy bootstrappers are executed when tenancy is initialized.
