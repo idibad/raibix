@@ -63,7 +63,9 @@ class CentralAuthController extends Controller
         try {
             Mail::to($user->email)->send(new TwoFactorOtpMail($user, $otp));
         } catch (\Throwable $e) {
-            Log::warning("Failed to dispatch 2FA OTP email to {$user->email}: " . $e->getMessage());
+            Log::error("Failed to dispatch 2FA OTP email to {$user->email}: " . $e->getMessage(), [
+                'exception' => $e,
+            ]);
         }
 
         SaaSActivityLog::create([
@@ -157,7 +159,9 @@ class CentralAuthController extends Controller
             try {
                 Mail::to($user->email)->send(new TwoFactorOtpMail($user, $newOtp));
             } catch (\Throwable $e) {
-                Log::warning("Failed to resend 2FA OTP email: " . $e->getMessage());
+                Log::error("Failed to resend 2FA OTP email: " . $e->getMessage(), [
+                    'exception' => $e,
+                ]);
             }
         }
 
