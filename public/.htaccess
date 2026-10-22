@@ -1,3 +1,10 @@
+<IfModule mod_headers.c>
+    # Allow cross-subdomain access for webfonts and public assets
+    <FilesMatch "\.(ttf|ttc|otf|eot|woff|woff2|font\.css|css|js|png|jpe?g|svg|ico)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
