@@ -10,7 +10,10 @@ use App\Models\SaaSSetting;
 use App\Models\SaaSActivityLog;
 use App\Models\SaaSTransaction;
 use App\Models\PlatformInquiry;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -267,6 +270,16 @@ class SuperAdminController extends Controller
             ];
         });
 
+        $adminUsers = User::latest()->get()->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'created_at' => $u->created_at ? $u->created_at->format('d M Y, h:i A') : 'N/A',
+                'is_current_user' => Auth::id() === $u->id,
+            ];
+        });
+
         return Inertia::render('Central/Dashboard', [
             'tenants' => $tenants,
             'plans' => $plans,
@@ -277,6 +290,7 @@ class SuperAdminController extends Controller
             'coupons' => $coupons,
             'pendingApprovals' => $pendingApprovals,
             'inquiries' => $inquiries,
+            'adminUsers' => $adminUsers,
         ]);
     }
 
@@ -563,6 +577,99 @@ class SuperAdminController extends Controller
         ]);
 
         return redirect()->back()->with('success', "Global SaaS Platform Configurations saved successfully!");
+    }
+
+    /**
+     * Update authenticated Super Admin credentials & master profile.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'current_password' => ['nullable', 'string'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        // If updating password, verify current password
+        if (!empty($validated['password'])) {
+            if (empty($validated['current_password']) || !Hash::check($validated['current_password'], $user->password)) {
+                return back()->withErrors([
+                    'current_password' => 'The provided current password does not match our records.',
+                ]);
+            }
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->save();
+
+        SaaSActivityLog::create([
+            'event_title' => 'Super Admin Profile Updated',
+            'description' => "Administrator profile details updated for [{$user->name} ({$user->email})].",
+            'event_type' => 'info',
+            'actor_name' => $user->name,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->back()->with('success', 'Your administrator credentials have been updated successfully.');
+    }
+
+    /**
+     * Create a new central platform administrator.
+     */
+    public function storeAdminUser(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $newUser = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        SaaSActivityLog::create([
+            'event_title' => 'New Central Administrator Added',
+            'description' => "Super Admin added new administrator account [{$newUser->name} ({$newUser->email})].",
+            'event_type' => 'success',
+            'actor_name' => $request->user()?->name ?? 'Super Admin',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->back()->with('success', "Administrator account for {$newUser->name} created successfully.");
+    }
+
+    /**
+     * Remove a central platform administrator.
+     */
+    public function destroyAdminUser(User $user, Request $request)
+    {
+        if ($user->id === $request->user()->id) {
+            return back()->withErrors([
+                'error' => 'You cannot delete your own active administrator account.',
+            ]);
+        }
+
+        $userName = $user->name;
+        $userEmail = $user->email;
+        $user->delete();
+
+        SaaSActivityLog::create([
+            'event_title' => 'Central Administrator Removed',
+            'description' => "Administrator account [{$userName} ({$userEmail})] was removed from the platform.",
+            'event_type' => 'warning',
+            'actor_name' => $request->user()?->name ?? 'Super Admin',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->back()->with('success', "Administrator {$userName} has been removed.");
     }
 
     /**

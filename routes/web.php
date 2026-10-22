@@ -95,6 +95,11 @@ Route::domain($domain)->group(function () {
         Route::post('/super-admin/inquiries/{inquiry}/status', [SuperAdminController::class, 'updateInquiryStatus'])->name('central.inquiries.status');
         Route::delete('/super-admin/inquiries/{inquiry}', [SuperAdminController::class, 'destroyInquiry'])->name('central.inquiries.destroy');
 
+        // Profile & Central Admin Users Management
+        Route::post('/super-admin/profile', [SuperAdminController::class, 'updateProfile'])->name('central.profile.update');
+        Route::post('/super-admin/users', [SuperAdminController::class, 'storeAdminUser'])->name('central.users.store');
+        Route::delete('/super-admin/users/{user}', [SuperAdminController::class, 'destroyAdminUser'])->name('central.users.destroy');
+
         Route::post('/super-admin/settings', [SuperAdminController::class, 'updateSettings'])->name('central.settings.update');
         Route::post('/super-admin/coupons', [SuperAdminController::class, 'storeCoupon'])->name('central.coupons.store');
         Route::delete('/super-admin/coupons/{id}', [SuperAdminController::class, 'destroyCoupon'])->name('central.coupons.destroy');

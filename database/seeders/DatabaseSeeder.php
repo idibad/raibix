@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
 
     protected function seedCentralDemoData(): void
     {
-        User::firstOrCreate(['email' => 'testadmin@lms.com'], [
+        User::firstOrCreate(['email' => 'ibadshalmany@gmail.com'], [
             'name' => 'Super Admin',
             'password' => Hash::make('testadmin'),
         ]);

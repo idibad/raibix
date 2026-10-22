@@ -22,12 +22,20 @@ const activeTwoFactorEmail = computed(() => {
     return page.props.flash?.two_factor_email || props.twoFactorEmail || form.email;
 });
 
-// Watch flash message updates
-watch(() => page.props.flash, (flash) => {
-    if (flash?.requires_2fa) {
+// Watch props and flash updates to stay in sync
+watch(() => props.initialRequires2fa, (requires) => {
+    if (requires) {
+        step.value = '2fa';
+    } else {
+        step.value = 'credentials';
+    }
+});
+
+watch(() => page.props.flash?.requires_2fa, (requires) => {
+    if (requires) {
         step.value = '2fa';
     }
-}, { deep: true, immediate: true });
+}, { immediate: true });
 
 // Step 1 Form: Email & Password
 const form = useForm({
@@ -41,9 +49,7 @@ const showPassword = ref(false);
 const submitCredentials = () => {
     form.post('/super-admin/login', {
         onSuccess: () => {
-            if (page.props.flash?.requires_2fa) {
-                step.value = '2fa';
-            }
+            step.value = '2fa';
         },
         onFinish: () => form.reset('password'),
     });

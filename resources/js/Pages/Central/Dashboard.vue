@@ -39,6 +39,10 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    adminUsers: {
+        type: Array,
+        default: () => []
+    },
 });
 
 const page = usePage();
@@ -729,8 +733,76 @@ const deleteCoupon = (id, code) => {
 };
 
 // =============================================================================
-// 11. PLATFORM SETTINGS (STATIC NAME - NO DYNAMIC TITLE)
+// 11. PLATFORM SETTINGS, PROFILE CREDENTIALS & ADMIN USERS
 // =============================================================================
+const settingsSubTab = ref('profile'); // 'profile' | 'team' | 'platform'
+
+// Super Admin Profile & Credentials
+const profileForm = useForm({
+    name: page.props.auth?.user?.name || '',
+    email: page.props.auth?.user?.email || '',
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+});
+
+watch(() => page.props.auth?.user, (user) => {
+    if (user) {
+        profileForm.name = user.name || '';
+        profileForm.email = user.email || '';
+    }
+}, { immediate: true });
+
+const submitProfile = () => {
+    profileForm.post('/super-admin/profile', {
+        preserveScroll: true,
+        onSuccess: () => {
+            profileForm.reset('current_password', 'password', 'password_confirmation');
+            triggerAlert('Administrator credentials updated successfully.');
+        }
+    });
+};
+
+// Central Platform Administrators Management
+const showAddAdminModal = ref(false);
+const adminUserForm = useForm({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+});
+
+const openAddAdminModal = () => {
+    adminUserForm.reset();
+    adminUserForm.clearErrors();
+    showAddAdminModal.value = true;
+};
+
+const submitNewAdminUser = () => {
+    adminUserForm.post('/super-admin/users', {
+        preserveScroll: true,
+        onSuccess: () => {
+            showAddAdminModal.value = false;
+            adminUserForm.reset();
+            triggerAlert('New administrator added successfully.');
+        }
+    });
+};
+
+const deleteAdminUser = (admin) => {
+    triggerConfirm(
+        'Remove Administrator',
+        `Are you sure you want to remove administrator "${admin.name}" (${admin.email})? They will lose platform access immediately.`,
+        () => {
+            router.delete(`/super-admin/users/${admin.id}`, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert('Administrator account removed successfully.')
+            });
+        },
+        { icon: 'fa-trash-can', iconColor: 'text-red-500', confirmText: 'Yes, Remove', confirmClass: 'bg-red-600 hover:bg-red-700' }
+    );
+};
+
 const settingsForm = useForm({
     contact_email: props.platformSettings?.contact_email || 'admin@raibix.com',
     support_phone: props.platformSettings?.support_phone || '+1 (555) 019-2834',
@@ -2555,97 +2627,330 @@ const logout = () => {
                 </div>
 
                 <!-- ================= TAB 8: SYSTEM SETTINGS ================= -->
-                <!-- Dynamic platform title input removed per user instruction -->
-                <div v-if="activeTab === 'settings'" class="max-w-3xl space-y-6">
-                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-8 shadow-2xs space-y-6">
-                        <div class="border-b border-[#E6E8EE] pb-4">
-                            <h3 class="text-base font-extrabold text-[#111318]">Global Platform Configuration</h3>
-                            <p class="text-xs text-[#5B6270] mt-0.5">Control central communication channels, maintenance states, and trial parameters.</p>
+                <div v-if="activeTab === 'settings'" class="max-w-4xl space-y-6">
+                    <!-- Sub-tabs navigation -->
+                    <div class="flex items-center gap-2 border-b border-[#E6E8EE] pb-3 mb-6 overflow-x-auto">
+                        <button 
+                            @click="settingsSubTab = 'profile'"
+                            :class="settingsSubTab === 'profile' ? 'bg-[#111318] text-white shadow-xs' : 'bg-white text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE] hover:bg-[#F8F9FA]'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <i class="fa-solid fa-user-shield text-xs"></i>
+                            <span>My Profile & Credentials</span>
+                        </button>
+
+                        <button 
+                            @click="settingsSubTab = 'team'"
+                            :class="settingsSubTab === 'team' ? 'bg-[#111318] text-white shadow-xs' : 'bg-white text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE] hover:bg-[#F8F9FA]'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <i class="fa-solid fa-users-gear text-xs"></i>
+                            <span>Platform Administrators</span>
+                            <span class="px-1.5 py-0.5 text-[10px] rounded-full font-bold" :class="settingsSubTab === 'team' ? 'bg-white/20 text-white' : 'bg-[#F0F2F6] text-[#5B6270]'">
+                                {{ adminUsers?.length || 0 }}
+                            </span>
+                        </button>
+
+                        <button 
+                            @click="settingsSubTab = 'platform'"
+                            :class="settingsSubTab === 'platform' ? 'bg-[#111318] text-white shadow-xs' : 'bg-white text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE] hover:bg-[#F8F9FA]'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <i class="fa-solid fa-sliders text-xs"></i>
+                            <span>Platform Environment</span>
+                        </button>
+                    </div>
+
+                    <!-- SUB-TAB 1: MY PROFILE & CREDENTIALS -->
+                    <div v-if="settingsSubTab === 'profile'" class="space-y-6">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-7 sm:p-8 shadow-2xs space-y-6">
+                            <div class="border-b border-[#E6E8EE] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <h3 class="text-base font-extrabold text-[#111318]">Super Administrator Identity</h3>
+                                    <p class="text-xs text-[#5B6270] mt-0.5">Update your root administrator name, login email, and master password.</p>
+                                </div>
+                                <span class="rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs px-3 py-1 border border-emerald-200 flex items-center gap-1.5 self-start sm:self-auto">
+                                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                    <span>2FA Active via Resend</span>
+                                </span>
+                            </div>
+
+                            <form @submit.prevent="submitProfile" class="space-y-5">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">
+                                            Administrator Name
+                                        </label>
+                                        <input 
+                                            v-model="profileForm.name" 
+                                            type="text" 
+                                            required
+                                            class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-2.5 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                            :class="{ 'border-red-400 bg-red-50/40': profileForm.errors.name }"
+                                        />
+                                        <div v-if="profileForm.errors.name" class="mt-1 text-xs text-red-600 font-medium">
+                                            {{ profileForm.errors.name }}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">
+                                            Login Email Address
+                                        </label>
+                                        <input 
+                                            v-model="profileForm.email" 
+                                            type="email" 
+                                            required
+                                            class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-2.5 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                            :class="{ 'border-red-400 bg-red-50/40': profileForm.errors.email }"
+                                        />
+                                        <div v-if="profileForm.errors.email" class="mt-1 text-xs text-red-600 font-medium">
+                                            {{ profileForm.errors.email }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Password Update Section -->
+                                <div class="pt-4 border-t border-[#E6E8EE] space-y-4">
+                                    <div>
+                                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-[#111318]">Update Master Password</h4>
+                                        <p class="text-2xs text-[#5B6270]">Leave these fields empty if you only wish to update your name or email.</p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270] mb-1">
+                                                Current Password
+                                            </label>
+                                            <input 
+                                                v-model="profileForm.current_password" 
+                                                type="password" 
+                                                placeholder="••••••••"
+                                                autocomplete="current-password"
+                                                class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-3.5 py-2.5 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                                :class="{ 'border-red-400 bg-red-50/40': profileForm.errors.current_password }"
+                                            />
+                                            <div v-if="profileForm.errors.current_password" class="mt-1 text-2xs text-red-600 font-medium">
+                                                {{ profileForm.errors.current_password }}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270] mb-1">
+                                                New Password
+                                            </label>
+                                            <input 
+                                                v-model="profileForm.password" 
+                                                type="password" 
+                                                placeholder="Min. 8 characters"
+                                                autocomplete="new-password"
+                                                class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-3.5 py-2.5 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                                :class="{ 'border-red-400 bg-red-50/40': profileForm.errors.password }"
+                                            />
+                                            <div v-if="profileForm.errors.password" class="mt-1 text-2xs text-red-600 font-medium">
+                                                {{ profileForm.errors.password }}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270] mb-1">
+                                                Confirm New Password
+                                            </label>
+                                            <input 
+                                                v-model="profileForm.password_confirmation" 
+                                                type="password" 
+                                                placeholder="Repeat new password"
+                                                autocomplete="new-password"
+                                                class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-3.5 py-2.5 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-3 flex justify-end">
+                                    <button 
+                                        type="submit" 
+                                        :disabled="profileForm.processing"
+                                        class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-7 py-3 text-xs font-bold text-white shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+                                    >
+                                        {{ profileForm.processing ? 'Updating...' : 'Update My Credentials' }}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
+                    </div>
 
-                        <form @submit.prevent="submitSettings" class="space-y-6">
-                            
-                            <!-- Platform Identity Note -->
-                            <div class="p-4 rounded-2xl bg-[#EEF3FF] border border-[#D6E4FF] flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <img src="/images/raibix.png" alt="Raibix" class="h-6 w-auto object-contain" />
-                                    <div>
-                                        <p class="text-xs font-bold text-[#111318]">Platform Engine: Raibix Multi-Tenant SaaS</p>
-                                        <p class="text-2xs text-[#5B6270]">Platform branding is managed statically via system environment</p>
-                                    </div>
-                                </div>
-                                <span class="text-3xs font-bold text-[#2F6BFF] uppercase tracking-wider bg-white px-2.5 py-1 rounded-full border border-[#D6E4FF]">Static</span>
-                            </div>
-
-                            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <!-- SUB-TAB 2: PLATFORM ADMINISTRATORS -->
+                    <div v-if="settingsSubTab === 'team'" class="space-y-6">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-7 sm:p-8 shadow-2xs space-y-6">
+                            <div class="border-b border-[#E6E8EE] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Contact Email</label>
-                                    <input 
-                                        v-model="settingsForm.contact_email" 
-                                        type="email" 
-                                        required
-                                        class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
-                                    />
+                                    <h3 class="text-base font-extrabold text-[#111318]">Platform Administrators</h3>
+                                    <p class="text-xs text-[#5B6270] mt-0.5">Root users authorized to manage tenants, view revenue, and configure the SaaS engine.</p>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Phone Line</label>
-                                    <input 
-                                        v-model="settingsForm.support_phone" 
-                                        type="text" 
-                                        required
-                                        class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Default Free Trial Duration (Days)</label>
-                                    <input 
-                                        v-model.number="settingsForm.default_trial_days" 
-                                        type="number" 
-                                        min="1"
-                                        max="90"
-                                        required
-                                        class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
-                                    />
-                                </div>
-
-                                <div class="flex items-center justify-between rounded-xl bg-[#F8F9FA] p-4 border border-[#E6E8EE]">
-                                    <div>
-                                        <p class="text-xs font-bold text-[#111318]">Public Self-Registration</p>
-                                        <p class="text-2xs text-[#5B6270]">Allow schools to register on the landing page</p>
-                                    </div>
-                                    <input 
-                                        v-model="settingsForm.public_onboarding" 
-                                        type="checkbox" 
-                                        class="rounded-md border-[#E6E8EE] text-[#2F6BFF] focus:ring-[#2F6BFF] h-5 w-5 cursor-pointer"
-                                    />
-                                </div>
-                            </div>
-
-                            <!-- Maintenance Mode Switch -->
-                            <div class="flex items-center justify-between rounded-2xl bg-[#F8F9FA] p-5 border border-[#E6E8EE]">
-                                <div>
-                                    <p class="text-sm font-bold text-[#111318]">Global Maintenance Mode</p>
-                                    <p class="text-xs text-[#5B6270]">Temporarily pause tenant portal access for planned migrations or infrastructure maintenance.</p>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input v-model="settingsForm.maintenance_mode" type="checkbox" class="sr-only peer" />
-                                    <div class="w-11 h-6 bg-[#DADCE0] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2F6BFF]"></div>
-                                </label>
-                            </div>
-
-                            <div class="pt-2 flex justify-end">
                                 <button 
-                                    type="submit" 
-                                    :disabled="settingsForm.processing"
-                                    class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-7 py-3 text-xs font-bold text-white shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+                                    @click="openAddAdminModal"
+                                    class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] text-white px-4 py-2 text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer self-start sm:self-auto"
                                 >
-                                    {{ settingsForm.processing ? 'Saving...' : 'Save Configuration' }}
+                                    <i class="fa-solid fa-user-plus text-xs"></i>
+                                    <span>Add Administrator</span>
                                 </button>
                             </div>
-                        </form>
+
+                            <!-- Administrators Table -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-[#E6E8EE] text-[#5B6270] font-bold uppercase tracking-wider">
+                                            <th class="py-3 px-4">Administrator</th>
+                                            <th class="py-3 px-4">Role</th>
+                                            <th class="py-3 px-4">Added On</th>
+                                            <th class="py-3 px-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-[#E6E8EE] font-medium text-[#111318]">
+                                        <tr v-for="admin in adminUsers" :key="admin.id" class="hover:bg-[#F8F9FA]/60 transition-colors">
+                                            <td class="py-3.5 px-4">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="h-8 w-8 rounded-full bg-gradient-to-tr from-[#8B5CF6] to-[#2F6BFF] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                                                        {{ (admin.name || 'SA').substring(0, 2).toUpperCase() }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-bold text-[#111318] flex items-center gap-2">
+                                                            <span>{{ admin.name }}</span>
+                                                            <span v-if="admin.is_current_user" class="px-2 py-0.5 rounded-full bg-[#EEF3FF] text-[#2F6BFF] font-bold text-[10px] border border-[#D6E4FF]">
+                                                                You
+                                                            </span>
+                                                        </div>
+                                                        <div class="text-2xs text-[#5B6270] font-mono">{{ admin.email }}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td class="py-3.5 px-4">
+                                                <span class="px-2.5 py-1 rounded-full bg-[#F8F9FA] text-[#111318] font-bold text-[11px] border border-[#E6E8EE] inline-flex items-center gap-1">
+                                                    <i class="fa-solid fa-shield-halved text-[#2F6BFF] text-[10px]"></i>
+                                                    <span>Super Admin</span>
+                                                </span>
+                                            </td>
+
+                                            <td class="py-3.5 px-4 text-[#5B6270] whitespace-nowrap">
+                                                {{ admin.created_at }}
+                                            </td>
+
+                                            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                                <span v-if="admin.is_current_user" class="text-2xs font-semibold text-[#5B6270] italic">
+                                                    Active Session
+                                                </span>
+                                                <button 
+                                                    v-else
+                                                    @click="deleteAdminUser(admin)"
+                                                    title="Remove Administrator"
+                                                    class="rounded-lg border border-red-200 bg-red-50/50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 text-xs font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                                    <span>Remove</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUB-TAB 3: PLATFORM ENVIRONMENT -->
+                    <div v-if="settingsSubTab === 'platform'" class="space-y-6">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-8 shadow-2xs space-y-6">
+                            <div class="border-b border-[#E6E8EE] pb-4">
+                                <h3 class="text-base font-extrabold text-[#111318]">Global Platform Configuration</h3>
+                                <p class="text-xs text-[#5B6270] mt-0.5">Control central communication channels, maintenance states, and trial parameters.</p>
+                            </div>
+
+                            <form @submit.prevent="submitSettings" class="space-y-6">
+                                
+                                <!-- Platform Identity Note -->
+                                <div class="p-4 rounded-2xl bg-[#EEF3FF] border border-[#D6E4FF] flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <img src="/images/raibix.png" alt="Raibix" class="h-6 w-auto object-contain" />
+                                        <div>
+                                            <p class="text-xs font-bold text-[#111318]">Platform Engine: Raibix Multi-Tenant SaaS</p>
+                                            <p class="text-2xs text-[#5B6270]">Platform branding is managed statically via system environment</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-3xs font-bold text-[#2F6BFF] uppercase tracking-wider bg-white px-2.5 py-1 rounded-full border border-[#D6E4FF]">Static</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Contact Email</label>
+                                        <input 
+                                            v-model="settingsForm.contact_email" 
+                                            type="email" 
+                                            required
+                                            class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Phone Line</label>
+                                        <input 
+                                            v-model="settingsForm.support_phone" 
+                                            type="text" 
+                                            required
+                                            class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Default Free Trial Duration (Days)</label>
+                                        <input 
+                                            v-model.number="settingsForm.default_trial_days" 
+                                            type="number" 
+                                            min="1"
+                                            max="90"
+                                            required
+                                            class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                        />
+                                    </div>
+
+                                    <div class="flex items-center justify-between rounded-xl bg-[#F8F9FA] p-4 border border-[#E6E8EE]">
+                                        <div>
+                                            <p class="text-xs font-bold text-[#111318]">Public Self-Registration</p>
+                                            <p class="text-2xs text-[#5B6270]">Allow schools to register on the landing page</p>
+                                        </div>
+                                        <input 
+                                            v-model="settingsForm.public_onboarding" 
+                                            type="checkbox" 
+                                            class="rounded-md border-[#E6E8EE] text-[#2F6BFF] focus:ring-[#2F6BFF] h-5 w-5 cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Maintenance Mode Switch -->
+                                <div class="flex items-center justify-between rounded-2xl bg-[#F8F9FA] p-5 border border-[#E6E8EE]">
+                                    <div>
+                                        <p class="text-sm font-bold text-[#111318]">Global Maintenance Mode</p>
+                                        <p class="text-xs text-[#5B6270]">Temporarily pause tenant portal access for planned migrations or infrastructure maintenance.</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input v-model="settingsForm.maintenance_mode" type="checkbox" class="sr-only peer" />
+                                        <div class="w-11 h-6 bg-[#DADCE0] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2F6BFF]"></div>
+                                    </label>
+                                </div>
+
+                                <div class="pt-2 flex justify-end">
+                                    <button 
+                                        type="submit" 
+                                        :disabled="settingsForm.processing"
+                                        class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-7 py-3 text-xs font-bold text-white shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+                                    >
+                                        {{ settingsForm.processing ? 'Saving...' : 'Save Configuration' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3032,6 +3337,88 @@ const logout = () => {
                         </form>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: ADD ADMINISTRATOR ================= -->
+        <div v-if="showAddAdminModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+            <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E8EE]">
+                <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4 mb-5">
+                    <div>
+                        <h3 class="text-base font-extrabold text-[#111318]">Add Central Administrator</h3>
+                        <p class="text-xs text-[#5B6270] mt-0.5">Grants full root access to the Super Admin portal.</p>
+                    </div>
+                    <button @click="showAddAdminModal = false" class="text-[#5B6270] hover:text-[#111318] cursor-pointer">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitNewAdminUser" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-bold uppercase tracking-wider text-[#111318] mb-1">Full Name</label>
+                        <input 
+                            v-model="adminUserForm.name" 
+                            type="text" 
+                            required 
+                            placeholder="e.g. Sarah Jenkins"
+                            class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                            :class="{ 'border-red-400 bg-red-50/40': adminUserForm.errors.name }"
+                        />
+                        <div v-if="adminUserForm.errors.name" class="mt-1 text-2xs text-red-600 font-medium">
+                            {{ adminUserForm.errors.name }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold uppercase tracking-wider text-[#111318] mb-1">Email Address</label>
+                        <input 
+                            v-model="adminUserForm.email" 
+                            type="email" 
+                            required 
+                            placeholder="admin@raibix.com"
+                            class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                            :class="{ 'border-red-400 bg-red-50/40': adminUserForm.errors.email }"
+                        />
+                        <div v-if="adminUserForm.errors.email" class="mt-1 text-2xs text-red-600 font-medium">
+                            {{ adminUserForm.errors.email }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold uppercase tracking-wider text-[#111318] mb-1">Master Password</label>
+                        <input 
+                            v-model="adminUserForm.password" 
+                            type="password" 
+                            required 
+                            placeholder="Min. 8 characters"
+                            class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                            :class="{ 'border-red-400 bg-red-50/40': adminUserForm.errors.password }"
+                        />
+                        <div v-if="adminUserForm.errors.password" class="mt-1 text-2xs text-red-600 font-medium">
+                            {{ adminUserForm.errors.password }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold uppercase tracking-wider text-[#111318] mb-1">Confirm Password</label>
+                        <input 
+                            v-model="adminUserForm.password_confirmation" 
+                            type="password" 
+                            required 
+                            placeholder="Repeat password"
+                            class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                        />
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#E6E8EE] mt-6">
+                        <button type="button" @click="showAddAdminModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
+                            Cancel
+                        </button>
+                        <button type="submit" :disabled="adminUserForm.processing" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 text-xs font-bold text-white transition-all shadow-sm disabled:opacity-50 cursor-pointer">
+                            {{ adminUserForm.processing ? 'Adding...' : 'Add Administrator' }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 

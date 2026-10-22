@@ -69,6 +69,8 @@ class HandleInertiaRequests extends Middleware
                 'message' => fn () => $request->session()->get('message'),
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'requires_2fa' => fn () => (bool) ($request->session()->get('requires_2fa') || $request->session()->has('2fa_user_id')),
+                'two_factor_email' => fn () => $request->session()->get('two_factor_email') ?: $request->session()->get('2fa_user_email'),
             ],
         ]);
     }
