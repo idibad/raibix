@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\SmsLog;
+use App\Models\Student;
 use App\Models\WhatsappLog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -43,6 +43,31 @@ class NotificationService
     }
 
     /**
+     * Mask sensitive telephone numbers for audit and log outputs (e.g. 0300****123).
+     */
+    public function maskPhoneNumber(string $phone): string
+    {
+        $clean = preg_replace('/[^0-9+]/', '', $phone);
+        $length = strlen($clean);
+        if ($length <= 5) {
+            return str_repeat('*', $length);
+        }
+
+        return substr($clean, 0, 4) . str_repeat('*', max(2, $length - 6)) . substr($clean, -2);
+    }
+
+    /**
+     * Sanitize message contents for logging to strip OTPs, PINs, and passwords.
+     */
+    public function sanitizeMessageForLogging(string $message): string
+    {
+        // Mask 4-6 digit numeric OTPs/PINs
+        $sanitized = preg_replace('/\b\d{4,6}\b/', '****', $message);
+
+        return substr($sanitized, 0, 80) . (strlen($sanitized) > 80 ? '...' : '');
+    }
+
+    /**
      * Asynchronously queue an SMS for background dispatch.
      */
     public function queueSms(string $phone, string $message, string $eventType = 'general'): \Illuminate\Foundation\Bus\PendingDispatch
@@ -66,6 +91,8 @@ class NotificationService
         $provider = config('services.sms.provider', 'parisms'); // default regional Pakistani provider
         $status = 'sent';
         $gatewayResponse = ['status' => 'success', 'mock' => true];
+        $maskedPhone = $this->maskPhoneNumber($phone);
+        $sanitizedMsg = $this->sanitizeMessageForLogging($message);
 
         try {
             if ($provider === 'twilio' && config('services.twilio.sid')) {
@@ -90,12 +117,12 @@ class NotificationService
                 $status = $response->successful() ? 'sent' : 'failed';
             } else {
                 // Regional gateway (PariSMS / Clicksat) mock / fallback log
-                Log::info("SMS Dispatched via [{$provider}] to [{$phone}]: {$message}");
+                Log::info("SMS Dispatched via [{$provider}] to [{$maskedPhone}]: {$sanitizedMsg}");
             }
         } catch (\Exception $e) {
             $status = 'failed';
             $gatewayResponse = ['error' => $e->getMessage()];
-            Log::error("SMS Gateway Error ({$provider}): " . $e->getMessage());
+            Log::error("SMS Gateway Error ({$provider}) for [{$maskedPhone}]: " . $e->getMessage());
         }
 
         return SmsLog::create([
@@ -116,6 +143,8 @@ class NotificationService
         $provider = config('services.whatsapp.provider', 'cloud_api');
         $status = 'sent';
         $gatewayResponse = ['status' => 'success', 'mock' => true];
+        $maskedPhone = $this->maskPhoneNumber($phone);
+        $sanitizedMsg = $this->sanitizeMessageForLogging($message);
 
         try {
             if ($provider === 'cloud_api' && config('services.whatsapp.token')) {
@@ -130,12 +159,12 @@ class NotificationService
                 $gatewayResponse = $response->json();
                 $status = $response->successful() ? 'sent' : 'failed';
             } else {
-                Log::info("WhatsApp Dispatched via [{$provider}] to [{$phone}]: {$message}");
+                Log::info("WhatsApp Dispatched via [{$provider}] to [{$maskedPhone}]: {$sanitizedMsg}");
             }
         } catch (\Exception $e) {
             $status = 'failed';
             $gatewayResponse = ['error' => $e->getMessage()];
-            Log::error("WhatsApp Gateway Error ({$provider}): " . $e->getMessage());
+            Log::error("WhatsApp Gateway Error ({$provider}) for [{$maskedPhone}]: " . $e->getMessage());
         }
 
         return WhatsappLog::create([
