@@ -19,29 +19,39 @@ const defaultPlans = [
     {
         id: 1,
         code: 'starter',
-        name: 'Starter Plan',
-        price_monthly: 20000,
-        price_yearly: 192000,
-        max_students: 300,
-        features: ['Single-Tenant Isolated Database', 'Student & Guardian Records', 'Fee Voucher Generation', 'Parent & Student Portals']
+        name: 'Starter',
+        tagline: 'Small schools',
+        pricing_type: 'per_student',
+        price_per_student: 20,
+        minimum_monthly_bill: 2000,
+        price_monthly: 2000,
+        price_yearly: 24000,
+        features: ['Student and staff records', 'Attendance management', 'Classes & timetables', 'Exams & report cards', 'Homework & announcements', 'Portals']
     },
     {
         id: 2,
-        code: 'essential',
-        name: 'Essential Plan',
-        price_monthly: 40000,
-        price_yearly: 384000,
-        max_students: 1000,
-        features: ['1-Bill National Clearing Integration', 'Biometric & Turnstile Attendance', 'LMS & Digital Gradebook', 'Dedicated Campus Subdomain']
+        code: 'professional',
+        name: 'Professional',
+        tagline: 'Recommended',
+        featured: true,
+        pricing_type: 'per_student',
+        price_per_student: 35,
+        minimum_monthly_bill: 3500,
+        price_monthly: 3500,
+        price_yearly: 42000,
+        features: ['Everything in Starter', 'Fee management & records', 'Parent–teacher communication', 'Assignments & progress', 'Reports & analytics', 'Priority support']
     },
     {
         id: 3,
-        code: 'signature',
-        name: 'Signature Plan',
-        price_monthly: 50000,
-        price_yearly: 480000,
-        max_students: 5000,
-        features: ['Multi-Campus Consolidated Ledger', 'Custom Domain Mapping & SSL', 'QR-Verifiable Digital Transcripts', 'Priority 24/7 SLA Support']
+        code: 'premium',
+        name: 'Premium',
+        tagline: 'Advanced',
+        pricing_type: 'per_student',
+        price_per_student: 55,
+        minimum_monthly_bill: 5500,
+        price_monthly: 5500,
+        price_yearly: 66000,
+        features: ['Everything in Professional', 'Advanced analytics', 'Configurable workflows', 'Advanced exam tools', 'Data import assistance', 'Enhanced support']
     }
 ];
 
@@ -49,13 +59,14 @@ const availablePlans = computed(() => {
     return (props.allPlans && props.allPlans.length > 0) ? props.allPlans : defaultPlans;
 });
 
-// Selected Plan & Billing Cycle
+// Selected Plan, Estimated Students & Billing Cycle
 const billingCycle = ref('monthly');
+const estimatedStudents = ref(100);
 
 const findInitialPlan = () => {
     if (props.plan?.id) return props.plan;
     if (props.allPlans?.length > 0) {
-        return props.allPlans.find(p => p.code === 'essential') || props.allPlans[0];
+        return props.allPlans.find(p => p.code === 'professional') || props.allPlans[0];
     }
     return defaultPlans[1];
 };
@@ -67,19 +78,37 @@ const switchPlan = (plan) => {
     form.plan_id = plan.id;
 };
 
-// Current dynamic price
+// Current dynamic price based on per-student pricing & minimum monthly bill
+const monthlyCalculatedBase = computed(() => {
+    if (!selectedPlan.value) return 2000;
+    if (selectedPlan.value.pricing_type === 'custom') return 0;
+    const rate = Number(selectedPlan.value.price_per_student || 20);
+    const minBill = Number(selectedPlan.value.minimum_monthly_bill || 2000);
+    const count = Math.max(1, Number(estimatedStudents.value || 100));
+    return Math.max(minBill, count * rate);
+});
+
+const isMinimumFloorApplied = computed(() => {
+    if (!selectedPlan.value || selectedPlan.value.pricing_type === 'custom') return false;
+    const rate = Number(selectedPlan.value.price_per_student || 20);
+    const minBill = Number(selectedPlan.value.minimum_monthly_bill || 2000);
+    const count = Number(estimatedStudents.value || 0);
+    return (count * rate) < minBill;
+});
+
 const currentPrice = computed(() => {
     if (!selectedPlan.value) return 0;
+    if (selectedPlan.value.pricing_type === 'custom') return 0;
     if (billingCycle.value === 'yearly') {
-        return Number(selectedPlan.value.price_yearly) || Math.round(Number(selectedPlan.value.price_monthly) * 12 * 0.8);
+        return Math.round(monthlyCalculatedBase.value * 12 * 0.8);
     }
-    return Number(selectedPlan.value.price_monthly) || 0;
+    return Math.round(monthlyCalculatedBase.value);
 });
 
 const annualSavings = computed(() => {
-    if (!selectedPlan.value) return 0;
-    const monthlyTotal = Number(selectedPlan.value.price_monthly) * 12;
-    const yearlyTotal = Number(selectedPlan.value.price_yearly) || Math.round(monthlyTotal * 0.8);
+    if (!selectedPlan.value || selectedPlan.value.pricing_type === 'custom') return 0;
+    const monthlyTotal = monthlyCalculatedBase.value * 12;
+    const yearlyTotal = Math.round(monthlyTotal * 0.8);
     return Math.max(0, monthlyTotal - yearlyTotal);
 });
 
@@ -113,6 +142,7 @@ const form = useForm({
     admin_phone: '',
     admin_password: '',
     plan_id: selectedPlan.value?.id || 2,
+    estimated_students: estimatedStudents.value,
     billing_cycle: 'monthly',
     payment_gateway: 'manual',
     payment_receipt: null,
@@ -282,15 +312,15 @@ onMounted(() => {
                                 <span class="raibix-dot h-2 w-2"></span>
                                 <span class="font-extrabold text-sm text-[#111318]">{{ selectedPlan?.name }}</span>
                             </div>
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-[#2F6BFF] bg-[#2F6BFF]/10 px-2 py-0.5 rounded-full">
-                                {{ selectedPlan?.max_students }} Students
+                            <span class="text-[11px] font-bold text-[#2F6BFF]">
+                                PKR {{ selectedPlan?.price_per_student || 20 }}/student/mo
                             </span>
                         </div>
 
-                        <!-- Tier Switcher (Clean compact pills) -->
+                        <!-- Tier Switcher (Clean compact buttons) -->
                         <div class="grid grid-cols-3 gap-1.5 rounded-xl border border-[#E7E9EE] bg-white p-1 text-xs">
                             <button 
-                                v-for="p in availablePlans" 
+                                v-for="p in availablePlans.filter(p => p.code !== 'enterprise')" 
                                 :key="p.id" 
                                 type="button" 
                                 @click="switchPlan(p)"
@@ -301,8 +331,33 @@ onMounted(() => {
                                         : 'text-[#5B6270] hover:text-[#111318]'
                                 ]"
                             >
-                                {{ p.name.replace(' Plan', '') }}
+                                {{ p.name }}
                             </button>
+                        </div>
+
+                        <!-- Estimated Students Input & Rate Calculation -->
+                        <div class="space-y-2 pt-2 border-t border-[#E7E9EE]">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-[#111318]">Estimated Students</label>
+                                <span class="text-[11px] text-[#5B6270]">
+                                    Min. PKR {{ (selectedPlan?.minimum_monthly_bill || 2000).toLocaleString() }}/mo
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input 
+                                    v-model.number="estimatedStudents" 
+                                    @input="form.estimated_students = estimatedStudents"
+                                    type="number" 
+                                    min="10" 
+                                    max="25000" 
+                                    step="10"
+                                    class="w-full rounded-xl border border-[#E7E9EE] bg-white px-3.5 py-2 text-xs font-bold text-[#111318] focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                />
+                                <span class="text-xs font-medium text-[#5B6270] shrink-0">Students</span>
+                            </div>
+                            <p v-if="isMinimumFloorApplied" class="text-[11px] text-[#5B6270] leading-snug">
+                                Minimum monthly bill guarantee of PKR {{ (selectedPlan?.minimum_monthly_bill || 2000).toLocaleString() }}/month applied.
+                            </p>
                         </div>
 
                         <!-- Billing Frequency Toggle (Monthly vs Annual) -->
@@ -332,6 +387,18 @@ onMounted(() => {
 
                         <!-- Minimal Price Breakdown -->
                         <div class="space-y-2 pt-3 border-t border-[#E7E9EE] text-xs">
+                            <div class="flex justify-between text-[#5B6270]">
+                                <span>Rate / Student</span>
+                                <span class="text-[#111318] font-medium">PKR {{ selectedPlan?.price_per_student || 20 }}/mo</span>
+                            </div>
+                            <div class="flex justify-between text-[#5B6270]">
+                                <span>Student Count</span>
+                                <span class="text-[#111318] font-medium">{{ estimatedStudents || 100 }}</span>
+                            </div>
+                            <div class="flex justify-between text-[#5B6270]">
+                                <span>Monthly Base</span>
+                                <span class="text-[#111318] font-medium">PKR {{ monthlyCalculatedBase.toLocaleString() }}</span>
+                            </div>
                             <div class="flex justify-between text-[#5B6270]">
                                 <span>Subscription Period</span>
                                 <span class="text-[#111318] font-medium">{{ billingCycle === 'yearly' ? '12 Months' : '1 Month' }}</span>

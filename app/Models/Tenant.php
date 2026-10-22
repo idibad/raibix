@@ -43,6 +43,41 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         return $this->hasOne(TenantSubscription::class, 'tenant_id');
     }
 
+    /**
+     * Resolve the active subscription plan for this tenant.
+     */
+    public function getPlanAttribute(): ?SubscriptionPlan
+    {
+        try {
+            $subscription = $this->subscription()->with('plan')->latest()->first();
+            if ($subscription && $subscription->plan) {
+                return $subscription->plan;
+            }
+        } catch (\Throwable $e) {
+            // Central DB might be disconnected or executing in isolated context
+        }
+
+        $planId = $this->plan_id ?? ($this->data['plan_id'] ?? null);
+        if ($planId) {
+            return SubscriptionPlan::find($planId);
+        }
+
+        return SubscriptionPlan::where('code', 'starter')->first();
+    }
+
+    /**
+     * Check whether this tenant is permitted to access a specific system module.
+     */
+    public function canAccessModule(string $module): bool
+    {
+        $plan = $this->plan;
+        if (!$plan) {
+            return true;
+        }
+
+        return $plan->hasModule($module);
+    }
+
     public function getLogoAttribute($value)
     {
         if (empty($value)) {

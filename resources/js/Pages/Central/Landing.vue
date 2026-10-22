@@ -193,70 +193,94 @@ const defaultPlans = [
         id: 1,
         code: 'starter',
         name: 'Starter',
-        price_monthly: 20000,
-        price_yearly: 192000,
-        description: 'Core infrastructure for single-branch institutions.',
-        max_students: 300,
+        tagline: 'Small schools',
+        summary: 'Best for schools digitizing their basic academic operations.',
+        pricing_type: 'per_student',
+        price_per_student: 20,
+        minimum_monthly_bill: 2000,
         features: [
-            'Single-Tenant Isolated Database Container',
-            'Full Student & Guardian Information System',
-            'Daily Attendance & RFID Turnstile Webhook',
-            'Automated Fee Voucher Generation',
-            'Student & Parent Dedicated Portals',
-            'Standard Email Support'
+            'Student and staff records',
+            'Attendance management',
+            'Classes, sections and timetables',
+            'Exams, marks and report cards',
+            'Homework and announcements',
+            'Basic parent and student portals'
         ]
     },
     {
         id: 2,
-        code: 'essential',
-        name: 'Essential',
-        price_monthly: 40000,
-        price_yearly: 384000,
-        description: 'Complete operational automation with 1-Bill national clearing.',
-        max_students: 1000,
+        code: 'professional',
+        name: 'Professional',
+        tagline: 'Recommended',
         featured: true,
+        summary: 'Best for established schools wanting an integrated management system.',
+        pricing_type: 'per_student',
+        price_per_student: 35,
+        minimum_monthly_bill: 3500,
         features: [
-            'All capabilities in Starter',
-            'Direct 1-Bill National Bank Clearing Integration',
-            'Facial Recognition Real-Time Attendance Sync',
-            'Full Examination & Gradebook',
-            'Instant Parent SMS Notification Dispatcher',
-            'Dedicated Campus Subdomain (school.raibix.cloud)',
-            'Priority 4-Hour Support SLA'
+            'Everything in Starter, plus:',
+            'Fee management and payment records',
+            'Parent–teacher communication',
+            'Assignments and academic progress',
+            'More detailed reports and analytics',
+            'Role-based access and audit history',
+            'Priority support'
         ]
     },
     {
         id: 3,
-        code: 'signature',
-        name: 'Signature',
-        price_monthly: 50000,
-        price_yearly: 480000,
-        description: 'Multi-branch campus management with custom white-label domain.',
-        max_students: 5000,
+        code: 'premium',
+        name: 'Premium',
+        tagline: 'Advanced',
+        summary: 'For advanced institutions requiring comprehensive analytics & support.',
+        pricing_type: 'per_student',
+        price_per_student: 55,
+        minimum_monthly_bill: 5500,
         features: [
-            'All capabilities in Essential',
-            'Multi-Branch Consolidated Reporting & Audit',
-            'Custom Domain Mapping with SSL',
-            'QR-Verifiable Digital Transcripts',
-            'Dedicated Technical Account Manager',
-            '24/7 Priority Emergency Phone Support',
-            'Historical Data Migration Assistance'
+            'Everything in Professional, plus:',
+            'Advanced academic and administrative analytics',
+            'Configurable workflows and reports',
+            'Advanced exam and assessment tools',
+            'Data import assistance',
+            'Priority onboarding and staff training',
+            'Enhanced support arrangements'
+        ]
+    },
+    {
+        id: 4,
+        code: 'enterprise',
+        name: 'Enterprise',
+        tagline: 'Custom',
+        summary: 'For school chains and multi-campus institutions.',
+        pricing_type: 'custom',
+        price_per_student: 0,
+        minimum_monthly_bill: 0,
+        features: [
+            'Central management across campuses',
+            'Consolidated reporting',
+            'Custom integrations and workflows',
+            'Dedicated onboarding and service agreement',
+            'Negotiated volume pricing'
         ]
     }
 ];
 
 const plansList = computed(() => {
-    if (props.plans && props.plans.length >= 3) {
+    if (props.plans && props.plans.length >= 4) {
         return props.plans;
     }
     return defaultPlans;
 });
 
-const getDisplayPrice = (plan) => {
-    if (isAnnual.value) {
-        return plan.price_yearly ? Math.round(plan.price_yearly / 12) : Math.round(plan.price_monthly * 0.8);
+const getDisplayRate = (plan) => {
+    if (plan.pricing_type === 'custom') {
+        return null;
     }
-    return plan.price_monthly || 0;
+    const rate = Number(plan.price_per_student || 20);
+    if (isAnnual.value) {
+        return Math.round(rate * 0.8);
+    }
+    return rate;
 };
 
 // =============================================================================
@@ -908,7 +932,7 @@ onUnmounted(() => {
                  Compact horizontal panel beneath: "Not Sure Which Plan Fits?"
                  =============================================================== -->
             <section id="pricing" class="py-24 sm:py-32 bg-white border-t border-[#E7E9EE] scroll-mt-20">
-                <div class="mx-auto max-w-[1240px] px-6 sm:px-10">
+                <div class="mx-auto max-w-[1360px] px-6 sm:px-10">
                     
                     <!-- Section Heading & Annual/Monthly Switch -->
                     <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 text-left">
@@ -951,20 +975,20 @@ onUnmounted(() => {
                     <!-- ONE Large Enclosed Pricing Container (As specified) -->
                     <div class="rounded-3xl border border-[#E7E9EE] bg-[#F7F8FA] p-6 sm:p-10 space-y-10">
                         
-                        <!-- Three Plans Side by Side Inside Container -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
+                        <!-- Four Plans Side by Side Inside Container -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
                             
                             <div 
                                 v-for="plan in plansList" 
-                                :key="plan.id"
+                                :key="plan.id || plan.code"
                                 :class="[
-                                    'rounded-2xl p-8 flex flex-col justify-between text-left transition-all duration-200',
-                                    plan.featured 
-                                        ? 'bg-white border border-[#111318] shadow-md ring-1 ring-[#111318]' 
+                                    'rounded-2xl p-7 flex flex-col justify-between text-left transition-all duration-200',
+                                    (plan.featured || plan.code === 'professional')
+                                        ? 'bg-white border-2 border-[#111318] shadow-md ring-1 ring-[#111318]' 
                                         : 'bg-[#FBFBFC] border border-[#E7E9EE]'
                                 ]"
                             >
-                                <div>
+                                <div class="flex flex-col flex-1">
                                     <!-- 1. Small Circular Dot with Raibix Gradient -->
                                     <div class="flex items-center justify-between pb-4 border-b border-[#E7E9EE]">
                                         <div class="flex items-center gap-2.5">
@@ -972,51 +996,78 @@ onUnmounted(() => {
                                             <!-- 2. Prominent Plan Name -->
                                             <span class="text-sm font-extrabold text-[#111318] tracking-tight">{{ plan.name }}</span>
                                         </div>
-                                        <span v-if="plan.featured" class="text-[10px] font-bold uppercase tracking-wider text-[#2F6BFF] bg-[#2F6BFF]/10 px-2 py-0.5 rounded-full">
+                                        <span v-if="plan.featured || plan.code === 'professional'" class="text-[10px] font-bold uppercase tracking-wider text-[#2F6BFF] bg-[#2F6BFF]/10 px-2 py-0.5 rounded-full">
                                             Recommended
+                                        </span>
+                                        <span v-else-if="plan.tagline" class="text-[11px] font-semibold text-[#5B6270]">
+                                            {{ plan.tagline }}
                                         </span>
                                     </div>
 
                                     <!-- 3. Actual Price & Billing Frequency -->
-                                    <div class="mt-6 flex items-baseline gap-2">
-                                        <span class="text-4xl sm:text-5xl font-black text-[#111318] tracking-tight">
-                                            {{ Math.round(getDisplayPrice(plan) / 1000) }}k
-                                        </span>
-                                        <span class="text-xs font-semibold text-[#6B7280]">
-                                            PKR / month
-                                        </span>
+                                    <div v-if="plan.code === 'enterprise' || plan.pricing_type === 'custom'" class="mt-6">
+                                        <div class="text-3xl sm:text-4xl font-black text-[#111318] tracking-tight">Custom</div>
+                                        <div class="text-xs font-semibold text-[#6B7280] mt-1">Volume Pricing</div>
+                                        <p class="mt-2 text-xs font-medium text-[#5B6270]">
+                                            For school chains and multi-campus institutions.
+                                        </p>
+                                    </div>
+                                    <div v-else class="mt-6">
+                                        <div class="flex items-baseline gap-1.5 flex-wrap">
+                                            <span class="text-3xl sm:text-4xl font-black text-[#111318] tracking-tight">
+                                                PKR {{ getDisplayRate(plan) }}
+                                            </span>
+                                            <span class="text-xs font-semibold text-[#6B7280]">
+                                                / student / mo
+                                            </span>
+                                        </div>
+                                        <p class="mt-2 text-xs font-medium text-[#5B6270]">
+                                            Min. bill: PKR {{ (plan.minimum_monthly_bill || 2000).toLocaleString() }}/month per school
+                                        </p>
                                     </div>
 
-                                    <p class="mt-2 text-xs text-[#5B6270] leading-relaxed">
-                                        {{ plan.description }}
+                                    <p class="mt-3 text-xs text-[#5B6270] leading-relaxed">
+                                        {{ plan.summary || plan.description }}
                                     </p>
 
                                     <!-- 4. Concise List of Included Features -->
-                                    <div class="mt-6 space-y-2.5 pt-5 border-t border-[#E7E9EE]">
+                                    <div class="mt-6 space-y-2.5 pt-5 border-t border-[#E7E9EE] flex-1">
                                         <div 
                                             v-for="(feature, fIdx) in plan.features" 
                                             :key="fIdx"
                                             class="flex items-start gap-2.5 text-xs text-[#111318]"
                                         >
-                                            <span class="mt-1 h-1 w-1 rounded-full bg-[#111318] shrink-0"></span>
-                                            <span class="leading-relaxed">{{ feature }}</span>
+                                            <span v-if="!feature.toLowerCase().startsWith('everything in')" class="mt-1 h-1 w-1 rounded-full bg-[#111318] shrink-0"></span>
+                                            <span :class="feature.toLowerCase().startsWith('everything in') ? 'font-bold text-[#111318]' : 'leading-relaxed'">
+                                                {{ feature }}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- 5. Clear CTA -->
                                 <div class="mt-8 pt-5 border-t border-[#E7E9EE]">
+                                    <button 
+                                        v-if="plan.code === 'enterprise' || plan.pricing_type === 'custom'"
+                                        type="button" 
+                                        @click="expertModalOpen = true"
+                                        class="w-full flex items-center justify-center gap-2 rounded-full py-3.5 text-xs font-bold transition-all duration-200 cursor-pointer bg-white hover:bg-[#111318] hover:text-white text-[#111318] border border-[#E7E9EE]"
+                                    >
+                                        <span>Talk to Sales</span>
+                                        <span class="raibix-dot h-1.5 w-1.5"></span>
+                                    </button>
                                     <Link 
+                                        v-else
                                         :href="`/checkout/${plan.code}`"
                                         :class="[
                                             'w-full flex items-center justify-center gap-2 rounded-full py-3.5 text-xs font-bold transition-all duration-200 cursor-pointer',
-                                            plan.featured 
+                                            (plan.featured || plan.code === 'professional')
                                                 ? 'bg-[#111318] hover:bg-[#2F6BFF] text-white shadow-xs' 
                                                 : 'bg-white hover:bg-[#111318] hover:text-white text-[#111318] border border-[#E7E9EE]'
                                         ]"
                                     >
                                         <span>Get {{ plan.name }}</span>
-                                        <span v-if="plan.featured" class="raibix-dot h-1.5 w-1.5"></span>
+                                        <span v-if="plan.featured || plan.code === 'professional'" class="raibix-dot h-1.5 w-1.5"></span>
                                     </Link>
                                 </div>
                             </div>

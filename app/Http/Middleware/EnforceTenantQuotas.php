@@ -17,9 +17,31 @@ class EnforceTenantQuotas
             return $next($request);
         }
 
+        $plan = $tenant->plan;
+
+        // Module Access Gating: Starter tier excludes Fee Management & Challans
+        if ($plan && !$plan->hasModule('fees')) {
+            $isFeeRoute = $request->is('admin/fees*', 'fees*', 'api/fees*', 'admin/defaulters*', 'admin/payments*')
+                || $request->routeIs('tenant.admin.fees.*', 'tenant.challans.*');
+
+            if ($isFeeRoute) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => 'Module Gated',
+                        'message' => 'Fee Management is not included in the ' . $plan->name . ' plan. Please upgrade to Professional or higher to unlock Fee Management & Challan generation.'
+                    ], 403);
+                }
+
+                if ($request->isMethod('GET')) {
+                    return redirect()->route('tenant.admin.billing.index')->with('warning', 'Fee Management is not included in the ' . $plan->name . ' plan. Upgrade to Professional to unlock fee tracking and challan generation.');
+                }
+
+                abort(403, 'Fee Management is not included in the ' . $plan->name . ' plan. Please upgrade to Professional.');
+            }
+        }
+
         // We only need to check quotas on creation requests
         if ($request->isMethod('POST')) {
-            $plan = $tenant->plan;
             if (!$plan) {
                 return $next($request);
             }

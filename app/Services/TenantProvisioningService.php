@@ -25,6 +25,7 @@ class TenantProvisioningService
             'id' => $tenantId,
             'name' => $data['name'],
             'status' => 'active',
+            'plan_id' => $data['plan_id'] ?? null,
         ]);
 
         // 2. Create Domain associated with tenant

@@ -111,7 +111,7 @@ class AdminPortalController extends Controller
         });
 
         $currentPlanId = $tenant->plan_id ?? $tenantData['plan_id'] ?? null;
-        $currentPlan = collect($centralBillingData['plans'])->firstWhere('id', $currentPlanId) ?? collect($centralBillingData['plans'])->first();
+        $currentPlan = $tenant->plan ?? collect($centralBillingData['plans'])->firstWhere('id', $currentPlanId) ?? collect($centralBillingData['plans'])->first();
 
         // Fetch student pending manual fee payments
         $pendingPayments = \App\Models\FeeTransaction::where('status', 'pending')

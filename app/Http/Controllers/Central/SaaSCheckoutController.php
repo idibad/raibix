@@ -24,23 +24,29 @@ class SaaSCheckoutController extends Controller
             ->first();
 
         if (!$plan && in_array($planCode, ['growth', 'essential'])) {
-            $plan = SubscriptionPlan::whereIn('code', ['essential', 'growth'])->first();
+            $plan = SubscriptionPlan::whereIn('code', ['professional', 'starter'])->first();
         }
-        if (!$plan && in_array($planCode, ['enterprise', 'signature'])) {
-            $plan = SubscriptionPlan::whereIn('code', ['signature', 'enterprise'])->first();
+        if (!$plan && in_array($planCode, ['signature'])) {
+            $plan = SubscriptionPlan::whereIn('code', ['premium', 'professional'])->first();
         }
 
         if (!$plan) {
-            $plan = SubscriptionPlan::first();
+            $plan = SubscriptionPlan::where('code', 'professional')->first() ?? SubscriptionPlan::first();
         }
 
         if (!$plan) {
             return redirect('/')->with('error', 'Please select a valid subscription package.');
         }
 
+        $orderedCodes = ['starter', 'professional', 'premium', 'enterprise'];
+        $allPlans = SubscriptionPlan::where('is_active', true)->get()->sortBy(function ($p) use ($orderedCodes) {
+            $idx = array_search($p->code, $orderedCodes, true);
+            return $idx !== false ? $idx : 99;
+        })->values();
+
         return Inertia::render('Central/Checkout', [
             'plan' => $plan,
-            'allPlans' => SubscriptionPlan::where('is_active', true)->get(),
+            'allPlans' => $allPlans,
         ]);
     }
 
@@ -71,6 +77,7 @@ class SaaSCheckoutController extends Controller
             'admin_phone' => 'required|string|max:20',
             'admin_password' => 'required|string|min:6',
             'plan_id' => 'required|exists:subscription_plans,id',
+            'estimated_students' => 'nullable|integer|min:1',
             'billing_cycle' => 'required|in:monthly,yearly',
             'payment_gateway' => 'required|in:jazzcash,meezan_bank,trial_transfer,manual',
             'payment_receipt' => 'required_if:payment_gateway,manual|image|max:4096',
@@ -81,7 +88,14 @@ class SaaSCheckoutController extends Controller
         ]);
 
         $plan = SubscriptionPlan::findOrFail($validated['plan_id']);
-        $amount = $validated['billing_cycle'] === 'yearly' ? $plan->price_yearly : $plan->price_monthly;
+        $studentCount = (int) ($validated['estimated_students'] ?? 100);
+
+        if ($plan->pricing_type === 'custom') {
+            $amount = 0.00;
+        } else {
+            $monthlyBase = $plan->calculateMonthlyBill($studentCount);
+            $amount = $validated['billing_cycle'] === 'yearly' ? round($monthlyBase * 12 * 0.8, 2) : $monthlyBase;
+        }
 
         if (!empty($validated['coupon_code'])) {
             $coupon = \App\Models\Coupon::where('code', $validated['coupon_code'])

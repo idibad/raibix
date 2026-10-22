@@ -3009,13 +3009,13 @@ const collectionPercentage = computed(() => {
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="p-4 rounded-xl bg-[#F8F9FA] border border-[#DADCE0]">
                                 <span class="text-3xs font-bold text-[#5F6368] uppercase tracking-wider block">Current Plan</span>
-                                <span class="text-lg font-black text-[#1A73E8] block mt-1">{{ currentPlan ? currentPlan.name : 'Starter Plan' }}</span>
-                                <span class="text-2xs text-[#5F6368] block mt-1">Up to {{ currentPlan ? currentPlan.max_students : 500 }} students limit</span>
+                                <span class="text-lg font-black text-[#1A73E8] block mt-1">{{ currentPlan ? currentPlan.name : 'Starter' }}</span>
+                                <span class="text-2xs text-[#5F6368] block mt-1">{{ currentPlan?.tagline || 'Small schools' }}</span>
                             </div>
                             <div class="p-4 rounded-xl bg-[#F8F9FA] border border-[#DADCE0]">
-                                <span class="text-3xs font-bold text-[#5F6368] uppercase tracking-wider block">Billing Term</span>
-                                <span class="text-lg font-black text-[#202124] block mt-1">Monthly Billing</span>
-                                <span class="text-2xs text-[#5F6368] block mt-1">PKR {{ currentPlan ? currentPlan.price_monthly.toLocaleString() : '12,000' }} / month</span>
+                                <span class="text-3xs font-bold text-[#5F6368] uppercase tracking-wider block">Pricing Model</span>
+                                <span class="text-lg font-black text-[#202124] block mt-1">{{ currentPlan?.pricing_type === 'custom' ? 'Custom' : ('PKR ' + (currentPlan?.price_per_student || 20) + ' / student') }}</span>
+                                <span class="text-2xs text-[#5F6368] block mt-1">Min. bill: PKR {{ (currentPlan?.minimum_monthly_bill || 2000).toLocaleString() }}/mo</span>
                             </div>
                             <div class="p-4 rounded-xl bg-[#F8F9FA] border border-[#DADCE0]">
                                 <span class="text-3xs font-bold text-[#5F6368] uppercase tracking-wider block">License Status</span>
@@ -3036,7 +3036,7 @@ const collectionPercentage = computed(() => {
                                 <div>
                                     <label class="block text-2xs font-bold text-[#202124] mb-1.5">Select Subscription Plan</label>
                                     <select v-model="renewalPlan" required class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none">
-                                        <option v-for="p in saas_plans" :key="p.id" :value="p">{{ p.name }} (PKR {{ p.price_monthly.toLocaleString() }}/mo)</option>
+                                        <option v-for="p in saas_plans" :key="p.id" :value="p">{{ p.name }} ({{ p.pricing_type === 'per_student' ? ('PKR ' + p.price_per_student + '/student/mo') : 'Custom Volume' }})</option>
                                     </select>
                                 </div>
 

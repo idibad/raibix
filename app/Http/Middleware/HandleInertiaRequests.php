@@ -48,6 +48,15 @@ class HandleInertiaRequests extends Middleware
                 'secondary_color' => $t->secondary_color ?? ($dataBag['secondary_color'] ?? '#0F172A'),
                 'accent_color' => $t->accent_color ?? ($dataBag['accent_color'] ?? '#3B82F6'),
                 'domain' => $t->domains()->first()?->domain ?? null,
+                'plan' => $t->plan ? [
+                    'id' => $t->plan->id,
+                    'code' => $t->plan->code,
+                    'name' => $t->plan->name,
+                    'pricing_type' => $t->plan->pricing_type,
+                    'price_per_student' => $t->plan->price_per_student,
+                    'minimum_monthly_bill' => $t->plan->minimum_monthly_bill,
+                ] : null,
+                'modules' => $t->plan?->modules ?? ['sis', 'attendance', 'academics', 'exams', 'homework', 'portals'],
             ];
         }
 
