@@ -29,8 +29,7 @@ class PaymentController extends Controller
             if ($request->hasFile('payment_receipt')) {
                 $file = $request->file('payment_receipt');
                 $filename = 'fee_' . $challan->id . '_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('uploads/fees'), $filename);
-                $receiptPath = '/uploads/fees/' . $filename;
+                $receiptPath = $file->storeAs('fees/receipts/' . $challan->id, $filename, 'local');
             }
 
             // Create fee transaction in pending status

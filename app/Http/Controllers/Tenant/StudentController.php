@@ -390,15 +390,15 @@ class StudentController extends Controller
 
         if ($request->hasFile('document_file')) {
             $file = $request->file('document_file');
+            $tenantId = function_exists('tenant') && tenant() ? tenant()->getTenantKey() : 'school';
             $filename = 'stu_' . $student->id . '_' . time() . '_' . preg_replace('/[^a-zA-Z0-9.]/', '', $file->getClientOriginalName());
-            $path = $file->storeAs("tenants/" . tenancy()->tenant->id . "/students/{$student->id}/docs", $filename, 'public');
-            $fileUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+            $path = $file->storeAs("tenants/{$tenantId}/students/{$student->id}/docs", $filename, 'local');
 
             StudentDocument::create([
                 'student_id' => $student->id,
                 'title' => $request->title,
                 'document_type' => $request->document_type,
-                'file_url' => $fileUrl,
+                'file_url' => $path,
                 'uploaded_by_user_id' => auth()->id(),
             ]);
         }

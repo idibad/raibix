@@ -20,6 +20,7 @@
 /storage/pail
 /database/tenant*
 /database/*.sqlite*
+/storage/tenanttest*
 /vendor
 Homestead.json
 Homestead.yaml

@@ -63,6 +63,10 @@ Route::middleware([
     Route::middleware(['auth'])->group(function () {
         Route::get('/challans/{id}/print', [FeeStructureController::class, 'printChallan'])->name('tenant.challans.print');
 
+        // Protected Document and Receipt Downloads
+        Route::get('/students/{studentId}/documents/{documentId}/download', [\App\Http\Controllers\Tenant\DocumentDownloadController::class, 'downloadStudentDocument'])->name('tenant.students.documents.download');
+        Route::get('/fees/receipts/{transactionId}/download', [\App\Http\Controllers\Tenant\DocumentDownloadController::class, 'downloadFeeReceipt'])->name('tenant.fees.receipts.download');
+
         // Principal & Admin Portal
         Route::prefix('admin')->middleware(['tenant.role:admin,principal,accountant,registrar,librarian,vice_principal'])->group(function () {
             Route::get('/dashboard', [AdminPortalController::class, 'index'])->name('tenant.admin.dashboard');
