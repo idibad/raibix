@@ -1,74 +1,128 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useForm, router, Link, usePage } from '@inertiajs/vue3';
+import { useForm, router, Link, usePage, Head } from '@inertiajs/vue3';
 
 const props = defineProps({
-    tenants: Array,
-    plans: Array,
-    analytics: Object,
-    activityLogs: Array,
-    revenueTransactions: Array,
-    platformSettings: Object,
-    coupons: Array,
-    pendingApprovals: Array,
+    tenants: {
+        type: Array,
+        default: () => []
+    },
+    plans: {
+        type: Array,
+        default: () => []
+    },
+    analytics: {
+        type: Object,
+        default: () => ({})
+    },
+    activityLogs: {
+        type: Array,
+        default: () => []
+    },
+    revenueTransactions: {
+        type: Array,
+        default: () => []
+    },
+    platformSettings: {
+        type: Object,
+        default: () => ({})
+    },
+    coupons: {
+        type: Array,
+        default: () => []
+    },
+    pendingApprovals: {
+        type: Array,
+        default: () => []
+    },
+    inquiries: {
+        type: Array,
+        default: () => []
+    },
 });
 
-const selectedReceipt = ref(null);
-
-const approveSaaSCheckout = (id) => {
-    if (confirm('Are you sure you want to approve this subscription payment? This will activate the school portal.')) {
-        router.post(`/super-admin/approvals/${id}/approve`, {}, {
-            onSuccess: () => {
-                triggerAlert('School payment approved and portal activated successfully!');
-            }
-        });
-    }
-};
-
-const rejectSaaSCheckout = (id) => {
-    if (confirm('Are you sure you want to reject this subscription payment? This will keep the school portal suspended.')) {
-        router.post(`/super-admin/approvals/${id}/reject`, {}, {
-            onSuccess: () => {
-                triggerAlert('School payment rejected.');
-            }
-        });
-    }
-};
-
-// Active Dashboard Tab ('overview' | 'schools' | 'plans' | 'payments' | 'logs' | 'settings')
-
-// ===== GLOBAL DIALOG SYSTEM =====
 const page = usePage();
-const confirmDialog = ref({ show: false, title: '', message: '', icon: 'fa-circle-question', iconColor: 'text-amber-500', confirmText: 'Confirm', confirmClass: 'bg-indigo-600 hover:bg-indigo-700', onConfirm: null });
-const alertDialog = ref({ show: false, title: '', message: '', type: 'success' });
-const inputDialog = ref({ show: false, title: '', message: '', placeholder: '', value: '', onConfirm: null });
+
+// =============================================================================
+// 1. NAVIGATION & LAYOUT STATE
+// =============================================================================
+const activeTab = ref('overview');
+const isSidebarCollapsed = ref(false);
+const isMobileMenuOpen = ref(false);
+
+// =============================================================================
+// 2. GLOBAL DIALOG & TOAST SYSTEM
+// =============================================================================
+const confirmDialog = ref({
+    show: false,
+    title: '',
+    message: '',
+    icon: 'fa-circle-question',
+    iconColor: 'text-[#2F6BFF]',
+    confirmText: 'Confirm',
+    confirmClass: 'bg-[#111318] hover:bg-[#2F6BFF]',
+    onConfirm: null
+});
+
+const alertDialog = ref({
+    show: false,
+    title: '',
+    message: '',
+    type: 'success'
+});
+
+const inputDialog = ref({
+    show: false,
+    title: '',
+    message: '',
+    placeholder: '',
+    value: '',
+    onConfirm: null
+});
 
 const triggerConfirm = (title, message, callback, opts = {}) => {
     confirmDialog.value = {
-        show: true, title, message,
+        show: true,
+        title,
+        message,
         icon: opts.icon || 'fa-circle-question',
-        iconColor: opts.iconColor || 'text-amber-500',
+        iconColor: opts.iconColor || 'text-[#2F6BFF]',
         confirmText: opts.confirmText || 'Confirm',
-        confirmClass: opts.confirmClass || 'bg-indigo-600 hover:bg-indigo-700',
-        onConfirm: () => { callback(); confirmDialog.value.show = false; }
+        confirmClass: opts.confirmClass || 'bg-[#111318] hover:bg-[#2F6BFF]',
+        onConfirm: () => {
+            callback();
+            confirmDialog.value.show = false;
+        }
     };
 };
 
 const triggerAlert = (message, type = 'success') => {
     alertDialog.value = {
         show: true,
-        title: type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Information',
+        title: type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Notification',
         message,
         type
     };
-    setTimeout(() => { alertDialog.value.show = false; }, 4000);
+    setTimeout(() => {
+        alertDialog.value.show = false;
+    }, 4000);
 };
 
 const triggerInput = (title, message, placeholder, callback) => {
-    inputDialog.value = { show: true, title, message, placeholder, value: '', onConfirm: (val) => { callback(val); inputDialog.value.show = false; } };
+    inputDialog.value = {
+        show: true,
+        title,
+        message,
+        placeholder,
+        value: '',
+        onConfirm: (val) => {
+            callback(val);
+            inputDialog.value.show = false;
+        }
+    };
 };
 
-// Watch flash messages
+// Listen to Laravel flash messages
 watch(() => page.props.flash, (flash) => {
     if (flash?.success) {
         triggerAlert(flash.success, 'success');
@@ -77,26 +131,67 @@ watch(() => page.props.flash, (flash) => {
         triggerAlert(flash.error, 'error');
     }
 }, { deep: true, immediate: true });
-// ===== END DIALOG SYSTEM =====
 
-const activeTab = ref('overview');
-const isSidebarCollapsed = ref(false);
-const isMobileMenuOpen = ref(false);
-
-// Search filter for schools
+// =============================================================================
+// 3. SCHOOLS TAB FILTERS & METRICS
+// =============================================================================
 const schoolSearch = ref('');
+const schoolStatusFilter = ref('all');
+
+const activeSchoolsCount = computed(() => {
+    return props.tenants.filter(t => (t.status || t.data?.status) !== 'suspended').length;
+});
+
+const suspendedSchoolsCount = computed(() => {
+    return props.tenants.filter(t => (t.status || t.data?.status) === 'suspended').length;
+});
 
 const filteredSchools = computed(() => {
     if (!props.tenants) return [];
-    if (!schoolSearch.value.trim()) return props.tenants;
-    const q = schoolSearch.value.toLowerCase();
-    return props.tenants.filter(t => 
-        (t.name && t.name.toLowerCase().includes(q)) || 
-        (t.id && t.id.toLowerCase().includes(q))
-    );
+    return props.tenants.filter(t => {
+        const q = schoolSearch.value.trim().toLowerCase();
+        const matchesQuery = !q || 
+            (t.name && t.name.toLowerCase().includes(q)) || 
+            (t.id && t.id.toLowerCase().includes(q)) ||
+            (t.admin_email && t.admin_email.toLowerCase().includes(q)) ||
+            (t.domain && t.domain.toLowerCase().includes(q));
+
+        const isSuspended = (t.status || t.data?.status) === 'suspended';
+        const matchesStatus = schoolStatusFilter.value === 'all' ||
+            (schoolStatusFilter.value === 'active' && !isSuspended) ||
+            (schoolStatusFilter.value === 'suspended' && isSuspended);
+
+        return matchesQuery && matchesStatus;
+    });
 });
 
-// Dynamic Overview Page Computations
+const getDomainSuffix = () => {
+    const hostname = window.location.hostname;
+    const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (ipPattern.test(hostname)) {
+        return `${hostname}.nip.io`;
+    }
+    return hostname;
+};
+
+const getTenantLoginUrl = (t) => {
+    const domain = t.domains?.[0]?.domain || `${t.id}.${getDomainSuffix()}`;
+    const cleanDomain = domain.replace(':8000', '');
+    const protocol = window.location.protocol || 'http:';
+    const port = window.location.port ? `:${window.location.port}` : (window.location.hostname.includes('localhost') || domain.includes('localhost') ? ':8000' : '');
+    return `${protocol}//${cleanDomain}${port}/login`;
+};
+
+const getTenantDisplayUrl = (t) => {
+    const domain = t.domains?.[0]?.domain || `${t.id}.${getDomainSuffix()}`;
+    const cleanDomain = domain.replace(':8000', '');
+    const port = window.location.port ? `:${window.location.port}` : (window.location.hostname.includes('localhost') || domain.includes('localhost') ? ':8000' : '');
+    return `${cleanDomain}${port}`;
+};
+
+// =============================================================================
+// 4. OVERVIEW COMPUTATIONS
+// =============================================================================
 const planDistribution = computed(() => {
     const counts = {};
     if (props.tenants) {
@@ -114,12 +209,13 @@ const planSegments = computed(() => {
     let accumulatedPercent = 0;
     
     const colors = {
-        'Starter Tier': '#1A73E8', // Blue
-        'Growth Tier': '#8430CE', // Purple
-        'Enterprise Tier': '#137333', // Green
-        'Standard Tier': '#B06000', // Amber
+        'Starter Plan': '#2F6BFF',
+        'Growth Plan': '#8B5CF6',
+        'Enterprise Plan': '#10B981',
+        'Essential Plan': '#3B82F6',
+        'Signature Plan': '#6366F1',
     };
-    const defaultColors = ['#1A73E8', '#8430CE', '#137333', '#B06000', '#C5221F'];
+    const defaultColors = ['#2F6BFF', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899'];
 
     return Object.entries(counts).map(([name, count], index) => {
         const percent = (count / total) * 100;
@@ -139,10 +235,18 @@ const planSegments = computed(() => {
 });
 
 const growthPoints = computed(() => {
-    const data = [10, 22, 38, 52, 75, props.tenants?.length || 98];
+    const baseCount = Math.max(1, props.tenants?.length || 0);
+    const data = [
+        Math.max(1, Math.round(baseCount * 0.2)),
+        Math.max(2, Math.round(baseCount * 0.4)),
+        Math.max(3, Math.round(baseCount * 0.6)),
+        Math.max(4, Math.round(baseCount * 0.75)),
+        Math.max(5, Math.round(baseCount * 0.9)),
+        baseCount
+    ];
     const width = 500;
     const height = 150;
-    const maxVal = Math.max(...data) * 1.1 || 100;
+    const maxVal = Math.max(...data) * 1.2 || 10;
     const minVal = 0;
     
     const points = data.map((val, index) => {
@@ -157,31 +261,9 @@ const growthPoints = computed(() => {
     return { points, linePath, areaPath, width, height };
 });
 
-const getDomainSuffix = () => {
-    const hostname = window.location.hostname;
-    const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-    if (ipPattern.test(hostname)) {
-        return `${hostname}.nip.io`;
-    }
-    return hostname;
-};
-
-const getTenantLoginUrl = (t) => {
-    const domain = t.domains?.[0]?.domain || `${t.id}.${getDomainSuffix()}`;
-    const cleanDomain = domain.replace(':8000', '');
-    const protocol = window.location.protocol || 'http:';
-    const port = window.location.port ? `:${window.location.port}` : (window.location.hostname.includes('localhost') || domain.includes('localhost') || window.location.hostname.includes('192.168.100.7') ? ':8000' : '');
-    return `${protocol}//${cleanDomain}${port}/login`;
-};
-
-const getTenantDisplayUrl = (t) => {
-    const domain = t.domains?.[0]?.domain || `${t.id}.${getDomainSuffix()}`;
-    const cleanDomain = domain.replace(':8000', '');
-    const port = window.location.port ? `:${window.location.port}` : (window.location.hostname.includes('localhost') || domain.includes('localhost') || window.location.hostname.includes('192.168.100.7') ? ':8000' : '');
-    return `${cleanDomain}${port}/login`;
-};
-
-// School Onboarding Modal state & form
+// =============================================================================
+// 5. TENANT ACTIONS
+// =============================================================================
 const showModal = ref(false);
 const form = useForm({
     id: '',
@@ -202,6 +284,12 @@ const autoFillDomain = () => {
     }
 };
 
+const generateRandomPassword = () => {
+    const randomChars = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const num = Math.floor(Math.random() * 90 + 10);
+    form.admin_password = `Raibix@${randomChars}!${num}`;
+};
+
 const submitTenant = () => {
     form.post('/tenants', {
         preserveScroll: true,
@@ -211,9 +299,7 @@ const submitTenant = () => {
             form.plan_id = props.plans?.[1]?.id || props.plans?.[0]?.id || '';
             form.billing_cycle = 'monthly';
             form.payment_gateway = 'Direct Invoice / Manual Onboarding';
-        },
-        onError: (errors) => {
-            console.error('Onboarding validation or server errors:', errors);
+            triggerAlert('New School Tenant onboarded and database provisioned successfully!');
         },
     });
 };
@@ -241,87 +327,107 @@ const submitEditSchool = () => {
             showEditSchoolModal.value = false;
             editSchoolForm.reset();
             selectedSchoolForEdit.value = null;
+            triggerAlert('School tenant details updated successfully!');
         }
     });
 };
 
-// Tenant Actions
-const toggleTenantStatus = (tenantId) => {
-    router.post(`/tenants/${tenantId}/toggle-status`);
+const toggleTenantStatus = (tenant) => {
+    const isSuspended = (tenant.status || tenant.data?.status) === 'suspended';
+    const action = isSuspended ? 'Activate' : 'Suspend';
+    triggerConfirm(
+        `${action} Tenant?`,
+        `Are you sure you want to ${action.toLowerCase()} school tenant [${tenant.name}]? ${isSuspended ? 'All portal users will regain full access.' : 'Access for teachers, parents, and students will be immediately paused.'}`,
+        () => {
+            router.post(`/tenants/${tenant.id}/toggle-status`, {}, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert(`Tenant [${tenant.name}] status updated to ${isSuspended ? 'active' : 'suspended'}.`)
+            });
+        },
+        {
+            icon: isSuspended ? 'fa-play' : 'fa-pause',
+            iconColor: isSuspended ? 'text-emerald-500' : 'text-amber-500',
+            confirmText: `Yes, ${action}`,
+            confirmClass: isSuspended ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'
+        }
+    );
 };
 
-const backupTenant = (tenantId) => {
-    router.post(`/tenants/${tenantId}/backup`);
+const backupTenant = (tenantId, name) => {
+    router.post(`/tenants/${tenantId}/backup`, {}, {
+        preserveScroll: true,
+        onSuccess: () => triggerAlert(`Backup snapshot completed for [${name}]!`)
+    });
 };
 
-const syncTenant = (tenantId) => {
-    router.post(`/tenants/${tenantId}/sync`);
-};
-
-const impersonateTenant = (tenantId) => {
-    router.post(`/tenants/${tenantId}/impersonate`);
+const syncTenant = (tenantId, name) => {
+    router.post(`/tenants/${tenantId}/sync`, {}, {
+        preserveScroll: true,
+        onSuccess: () => triggerAlert(`RBAC hierarchy and database schema synchronized for [${name}]!`)
+    });
 };
 
 const mapCustomDomain = (tenantId) => {
-    triggerInput('Map Custom Domain', 'Enter Custom FQDN Domain for this school (e.g., school.com):', 'school.com', (d) => {
+    triggerInput('Map Custom Domain', 'Enter Custom FQDN Domain for this school (e.g. portal.myschool.edu):', 'portal.myschool.edu', (d) => {
         if (d && d.trim()) {
-            router.post(`/tenants/${tenantId}/domain`, { domain: d.trim() });
+            router.post(`/tenants/${tenantId}/domain`, { domain: d.trim() }, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert('Custom domain mapped successfully!')
+            });
         }
     });
 };
 
-const offboardTenant = (tenantId) => {
+const offboardTenant = (tenantId, name) => {
     triggerConfirm(
         'Offboard Tenant?', 
-        'Are you sure you want to offboard this tenant and export their database? All services for this school will be suspended.',
+        `Are you sure you want to offboard tenant [${name}]? The school database will be archived and all active services will be suspended.`,
         () => {
-            router.post(`/tenants/${tenantId}/offboard`);
-        },
-        { icon: 'fa-triangle-exclamation', iconColor: 'text-red-500', confirmText: 'Yes, Offboard', confirmClass: 'bg-red-600 hover:bg-red-700' }
-    );
-};
-
-// Coupon Management Modal state & form
-const showCouponModal = ref(false);
-const couponForm = useForm({
-    code: '',
-    discount_percentage: 20,
-    max_uses: '',
-});
-
-const createCoupon = () => {
-    couponForm.reset();
-    showCouponModal.value = true;
-};
-
-const submitCoupon = () => {
-    couponForm.post(route('central.coupons.store'), {
-        preserveScroll: true,
-        onSuccess: () => {
-            showCouponModal.value = false;
-            couponForm.reset();
-            triggerAlert('Coupon created successfully!', 'success');
-        }
-    });
-};
-
-const deleteCoupon = (id, code) => {
-    triggerConfirm(
-        'Delete Coupon?',
-        `Are you sure you want to permanently delete coupon [${code}]?`,
-        () => {
-            router.delete(`/super-admin/coupons/${id}`, {
+            router.post(`/tenants/${tenantId}/offboard`, {}, {
                 preserveScroll: true,
-                onSuccess: () => {
-                    triggerAlert('Coupon deleted successfully.', 'success');
-                }
+                onSuccess: () => triggerAlert(`Tenant [${name}] offboarded successfully.`)
             });
         },
-        { icon: 'fa-trash-can', iconColor: 'text-red-500', confirmText: 'Yes, Delete', confirmClass: 'bg-red-600 hover:bg-red-700' }
+        { icon: 'fa-triangle-exclamation', iconColor: 'text-red-500', confirmText: 'Yes, Offboard Tenant', confirmClass: 'bg-red-600 hover:bg-red-700' }
     );
 };
 
-// Subscription Plan Add / Edit Modal state & form
+// =============================================================================
+// 6. PAYMENT APPROVALS
+// =============================================================================
+const selectedReceipt = ref(null);
+
+const approveSaaSCheckout = (id, schoolName) => {
+    triggerConfirm(
+        'Approve Payment Receipt?',
+        `Confirm that you have verified the payment proof for [${schoolName || 'this school'}]. This will immediately activate their tenant portal.`,
+        () => {
+            router.post(`/super-admin/approvals/${id}/approve`, {}, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert('School payment approved and portal activated successfully!')
+            });
+        },
+        { icon: 'fa-circle-check', iconColor: 'text-emerald-500', confirmText: 'Yes, Approve Payment', confirmClass: 'bg-emerald-600 hover:bg-emerald-700' }
+    );
+};
+
+const rejectSaaSCheckout = (id, schoolName) => {
+    triggerConfirm(
+        'Reject Payment Receipt?',
+        `Reject the payment slip for [${schoolName || 'this school'}]? The portal will remain in suspended status until valid proof is submitted.`,
+        () => {
+            router.post(`/super-admin/approvals/${id}/reject`, {}, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert('Payment receipt was rejected.', 'error')
+            });
+        },
+        { icon: 'fa-circle-xmark', iconColor: 'text-red-500', confirmText: 'Yes, Reject Payment', confirmClass: 'bg-red-600 hover:bg-red-700' }
+    );
+};
+
+// =============================================================================
+// 7. PLANS & PACKAGES
+// =============================================================================
 const showPlanModal = ref(false);
 const isEditingPlan = ref(false);
 const selectedPlan = ref(null);
@@ -370,194 +476,60 @@ const removeFeatureFromPlan = (index) => {
 const submitPlan = () => {
     if (isEditingPlan.value && selectedPlan.value) {
         planForm.put(`/plans/${selectedPlan.value.id}`, {
+            preserveScroll: true,
             onSuccess: () => {
                 showPlanModal.value = false;
+                triggerAlert(`Subscription Plan [${planForm.name}] updated successfully!`);
             },
         });
     } else {
         planForm.post('/plans', {
+            preserveScroll: true,
             onSuccess: () => {
                 showPlanModal.value = false;
+                triggerAlert(`Subscription Plan [${planForm.name}] created successfully!`);
             },
         });
     }
 };
-
-const showDeletePlanModal = ref(false);
-const planToDelete = ref(null);
 
 const confirmDeletePlan = (plan) => {
-    planToDelete.value = plan;
-    showDeletePlanModal.value = true;
+    triggerConfirm(
+        'Delete Subscription Plan?',
+        `Are you sure you want to remove package [${plan.name}]? Existing tenants on this plan will remain intact, but new schools will no longer be able to select it.`,
+        () => {
+            router.delete(`/plans/${plan.id}`, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert(`Plan [${plan.name}] removed successfully.`)
+            });
+        },
+        { icon: 'fa-trash-can', iconColor: 'text-red-500', confirmText: 'Yes, Delete Plan', confirmClass: 'bg-red-600 hover:bg-red-700' }
+    );
 };
 
-const deletePlan = () => {
-    if (planToDelete.value) {
-        router.delete(`/plans/${planToDelete.value.id}`, {
-            onSuccess: () => {
-                showDeletePlanModal.value = false;
-                planToDelete.value = null;
-            },
-        });
-    }
-};
-
-// Platform Settings Form
-const settingsForm = useForm({
-    platform_name: props.platformSettings?.platform_name || 'Excellence Cloud OS',
-    contact_email: props.platformSettings?.contact_email || 'support@excellence.com',
-    support_phone: props.platformSettings?.support_phone || '+92 300 1234567',
-    maintenance_mode: props.platformSettings?.maintenance_mode || false,
-});
-
-watch(() => props.platformSettings, (newSettings) => {
-    if (newSettings) {
-        settingsForm.platform_name = newSettings.platform_name || '';
-        settingsForm.contact_email = newSettings.contact_email || '';
-        settingsForm.support_phone = newSettings.support_phone || '';
-        settingsForm.maintenance_mode = newSettings.maintenance_mode || false;
-    }
-}, { deep: true });
-
-const submitSettings = () => {
-    settingsForm.post('/super-admin/settings', {
-        preserveScroll: true,
-        onSuccess: () => {
-            alert('Platform Settings saved and updated across all edge servers!');
-        }
-    });
-};
-
-// Payments Tab Search, Filters, & Inspection
+// =============================================================================
+// 8. PAYMENTS TAB & INVOICE GENERATOR
+// =============================================================================
 const paymentSearch = ref('');
 const paymentStatusFilter = ref('all');
 const selectedTransaction = ref(null);
 
-const downloadInvoicePDF = (txn) => {
-    if (!txn) return;
-    const invoiceHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Tax Invoice - ${txn.reference_no || txn.id || 'INV'}</title>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-            body { font-family: 'Inter', -apple-system, sans-serif; color: #202124; margin: 0; padding: 40px; background: #fff; }
-            .invoice-box { max-width: 800px; margin: auto; border: 1px solid #DADCE0; padding: 40px; border-radius: 12px; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #202124; padding-bottom: 24px; margin-bottom: 32px; }
-            .logo { font-size: 24px; font-weight: 800; color: #1A73E8; text-transform: uppercase; letter-spacing: -0.5px; }
-            .invoice-title { text-align: right; }
-            .invoice-title h1 { margin: 0; font-size: 28px; font-weight: 800; color: #202124; text-transform: uppercase; }
-            .invoice-title p { margin: 4px 0 0; font-size: 13px; color: #5F6368; font-weight: 600; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px; }
-            .box { background: #F8F9FA; padding: 20px; border-radius: 8px; border: 1px solid #DADCE0; font-size: 13px; }
-            .box h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #5F6368; }
-            .box p { margin: 4px 0; font-size: 14px; font-weight: 600; color: #202124; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 14px; }
-            th { background: #F8F9FA; padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: #5F6368; border-bottom: 1px solid #DADCE0; }
-            td { padding: 16px; border-bottom: 1px solid #DADCE0; font-weight: 600; }
-            .total-section { display: flex; justify-content: flex-end; margin-bottom: 32px; }
-            .total-box { width: 280px; background: #E8F0FE; padding: 20px; border-radius: 8px; border: 1px solid #D2E3FC; }
-            .total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 800; color: #1A73E8; }
-            .hash-box { background: #202124; color: #34A853; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 11px; word-break: break-all; margin-top: 24px; }
-            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #5F6368; border-top: 1px solid #DADCE0; padding-top: 20px; }
-            @media print {
-                body { padding: 0; }
-                .invoice-box { border: none; padding: 0; }
-            }
-        <\/style>
-    <\/head>
-    <body>
-        <div class="invoice-box">
-            <div class="header">
-                <div>
-                    <div class="logo">Excellence LMS</div>
-                    <div style="font-size: 13px; color: #5F6368; margin-top: 4px;">Super Admin & Edge Infrastructure Node</div>
-                </div>
-                <div class="invoice-title">
-                    <h1>OFFICIAL TAX INVOICE</h1>
-                    <p>Reference: ${txn.reference_no || txn.id || 'INV-0000'}</p>
-                </div>
-            </div>
-            <div class="grid">
-                <div class="box">
-                    <h3>Billed To (Tenant Institution)</h3>
-                    <p>${txn.tenant_name || txn.school_name || 'Educational Institution'}</p>
-                    <p style="font-size: 12px; color: #5F6368; font-weight: 400;">Subscription Plan: ${txn.plan_name || txn.plan?.name || 'Pro Tier'}</p>
-                </div>
-                <div class="box">
-                    <h3>Payment Details</h3>
-                    <p>Status: <span style="color: #137333; text-transform: uppercase;">${txn.status || 'PAID'}</span></p>
-                    <p style="font-size: 12px; color: #5F6368; font-weight: 400;">Gateway: ${txn.gateway || 'Stripe / Bank'}</p>
-                    <p style="font-size: 12px; color: #5F6368; font-weight: 400;">Date: ${txn.date || txn.created_at || new Date().toLocaleDateString()}</p>
-                </div>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Description</th>
-                        <th>Billing Period</th>
-                        <th>Gateway Ref</th>
-                        <th style="text-align: right;">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>${txn.plan_name || txn.plan?.name || 'Excellence LMS SaaS Subscription'}</td>
-                        <td>Annual / Monthly Renewal</td>
-                        <td style="font-family: monospace; font-size: 12px;">${txn.transaction_id || txn.reference_no || 'TXN-REF'}</td>
-                        <td style="text-align: right;">PKR ${(Number(txn.amount) || 0).toLocaleString()}</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total-section">
-                <div class="total-box">
-                    <div class="total-row">
-                        <span>Total Paid:</span>
-                        <span>PKR ${(Number(txn.amount) || 0).toLocaleString()}</span>
-                    </div>
-                </div>
-            </div>
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #5F6368; margin-bottom: 4px;">Cryptographic Hash (HMAC Verification)</div>
-            <div class="hash-box">
-                ${txn.secure_hash || 'SHA256-VERIFIED-INTEGRITY-OK'}
-            </div>
-            <div class="footer">
-                This is a computer-generated official tax invoice from Excellence LMS Cloud Infrastructure. No physical signature is required.
-            </div>
-        </div>
-        <script>
-            window.onload = function() {
-                setTimeout(function() {
-                    window.print();
-                }, 400);
-            };
-        <\/script>
-    <\/body>
-    <\/html>
-    `;
-    const win = window.open('', '_blank', 'width=900,height=800');
-    if (win) {
-        win.document.open();
-        win.document.write(invoiceHtml);
-        win.document.close();
-    }
-};
-
-
 const filteredTransactions = computed(() => {
     if (!props.revenueTransactions) return [];
     return props.revenueTransactions.filter(trx => {
-        const matchesSearch = !paymentSearch.value.trim() || 
-            ((trx.transaction_id || trx.transaction_code || '').toLowerCase().includes(paymentSearch.value.toLowerCase())) ||
-            ((trx.school_name || '').toLowerCase().includes(paymentSearch.value.toLowerCase())) ||
-            ((trx.gateway || '').toLowerCase().includes(paymentSearch.value.toLowerCase()));
+        const q = paymentSearch.value.trim().toLowerCase();
+        const matchesSearch = !q || 
+            ((trx.transaction_id || trx.transaction_code || '').toLowerCase().includes(q)) ||
+            ((trx.school_name || '').toLowerCase().includes(q)) ||
+            ((trx.gateway || '').toLowerCase().includes(q)) ||
+            ((trx.reference_no || '').toLowerCase().includes(q));
+
         const status = (trx.status || 'paid').toLowerCase();
         const filter = paymentStatusFilter.value.toLowerCase();
         const matchesStatus = filter === 'all' || 
             status === filter ||
             (filter === 'pending' && ['pending', 'failed', 'unpaid'].includes(status));
+
         return matchesSearch && matchesStatus;
     });
 });
@@ -581,7 +553,121 @@ const overdueCount = computed(() => {
     ).length;
 });
 
-// Activity Logs Tab Search, Filters, & Inspection
+const downloadInvoicePDF = (txn) => {
+    if (!txn) return;
+    const invoiceHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Tax Invoice - ${txn.reference_no || txn.transaction_code || 'INV'}</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+            body { font-family: 'Poppins', -apple-system, sans-serif; color: #111318; margin: 0; padding: 40px; background: #fff; }
+            .invoice-box { max-width: 800px; margin: auto; border: 1px solid #E6E8EE; padding: 40px; border-radius: 16px; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111318; padding-bottom: 24px; margin-bottom: 32px; }
+            .logo { font-size: 26px; font-weight: 800; color: #111318; letter-spacing: -0.5px; }
+            .logo span { color: #2F6BFF; }
+            .invoice-title { text-align: right; }
+            .invoice-title h1 { margin: 0; font-size: 24px; font-weight: 800; color: #111318; text-transform: uppercase; }
+            .invoice-title p { margin: 4px 0 0; font-size: 13px; color: #5B6270; font-weight: 600; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+            .box { background: #F8F9FA; padding: 20px; border-radius: 12px; border: 1px solid #E6E8EE; font-size: 13px; }
+            .box h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #5B6270; font-weight: 700; }
+            .box p { margin: 4px 0; font-size: 14px; font-weight: 600; color: #111318; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 14px; }
+            th { background: #F8F9FA; padding: 12px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: #5B6270; border-bottom: 1px solid #E6E8EE; font-weight: 700; }
+            td { padding: 16px; border-bottom: 1px solid #E6E8EE; font-weight: 600; }
+            .total-section { display: flex; justify-content: flex-end; margin-bottom: 32px; }
+            .total-box { width: 300px; background: #EEF3FF; padding: 20px; border-radius: 12px; border: 1px solid #D6E4FF; }
+            .total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 800; color: #2F6BFF; }
+            .hash-box { background: #111318; color: #10B981; padding: 16px; border-radius: 10px; font-family: monospace; font-size: 11px; word-break: break-all; margin-top: 20px; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #5B6270; border-top: 1px solid #E6E8EE; padding-top: 20px; }
+            @media print {
+                body { padding: 0; }
+                .invoice-box { border: none; padding: 0; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="invoice-box">
+            <div class="header">
+                <div>
+                    <div class="logo">Raibix<span>.</span></div>
+                    <div style="font-size: 13px; color: #5B6270; margin-top: 4px;">Cloud Infrastructure & Tenant Services</div>
+                </div>
+                <div class="invoice-title">
+                    <h1>OFFICIAL TAX INVOICE</h1>
+                    <p>Reference: ${txn.reference_no || txn.transaction_code || 'INV-0000'}</p>
+                </div>
+            </div>
+            <div class="grid">
+                <div class="box">
+                    <h3>Billed To (Tenant Institution)</h3>
+                    <p>${txn.school_name || txn.tenant_name || 'Educational Institution'}</p>
+                    <p style="font-size: 12px; color: #5B6270; font-weight: 400;">Tenant ID: ${txn.tenant_id || 'N/A'}</p>
+                    <p style="font-size: 12px; color: #5B6270; font-weight: 400;">Subscription Tier: ${txn.plan_name || 'SaaS Subscription'}</p>
+                </div>
+                <div class="box">
+                    <h3>Payment Details</h3>
+                    <p>Status: <span style="color: #15803D; text-transform: uppercase;">${txn.status || 'PAID'}</span></p>
+                    <p style="font-size: 12px; color: #5B6270; font-weight: 400;">Gateway / Route: ${txn.gateway || 'Bank Transfer'}</p>
+                    <p style="font-size: 12px; color: #5B6270; font-weight: 400;">Processed Date: ${txn.date || txn.created_at || new Date().toLocaleDateString()}</p>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Billing Cycle</th>
+                        <th>Gateway Reference</th>
+                        <th style="text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Raibix Multi-Tenant SaaS Portal License</td>
+                        <td>${txn.plan_name || 'Annual / Monthly Subscription'}</td>
+                        <td style="font-family: monospace; font-size: 12px;">${txn.transaction_code || txn.reference_no || 'TXN-REF'}</td>
+                        <td style="text-align: right; color: #111318;">PKR ${(Number(txn.amount) || 0).toLocaleString()}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="total-section">
+                <div class="total-box">
+                    <div class="total-row">
+                        <span>Total Amount Paid:</span>
+                        <span>PKR ${(Number(txn.amount) || 0).toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #5B6270; margin-bottom: 4px;">Cryptographic Proof (HMAC Signature)</div>
+            <div class="hash-box">
+                ${txn.secure_hash || 'SHA256:VERIFIED:CLUSTER:RAIBIX:NODE01'}
+            </div>
+            <div class="footer">
+                This is a verified computer-generated tax invoice issued by Raibix Cloud Engine. Authenticated via central HMAC node.
+            </div>
+        </div>
+        <script>
+            window.onload = function() {
+                setTimeout(function() { window.print(); }, 400);
+            };
+        <\/script>
+    </body>
+    </html>
+    `;
+    const win = window.open('', '_blank', 'width=900,height=800');
+    if (win) {
+        win.document.open();
+        win.document.write(invoiceHtml);
+        win.document.close();
+    }
+};
+
+// =============================================================================
+// 9. ACTIVITY LOGS TAB
+// =============================================================================
 const logSearch = ref('');
 const logTypeFilter = ref('all');
 const selectedLog = ref(null);
@@ -589,23 +675,171 @@ const selectedLog = ref(null);
 const filteredLogs = computed(() => {
     if (!props.activityLogs) return [];
     return props.activityLogs.filter(log => {
-        const matchesSearch = !logSearch.value.trim() ||
-            ((log.action || log.event || log.event_title || '').toLowerCase().includes(logSearch.value.toLowerCase())) ||
-            ((log.details || log.description || '').toLowerCase().includes(logSearch.value.toLowerCase())) ||
-            ((log.user || log.actor_name || '').toLowerCase().includes(logSearch.value.toLowerCase()));
+        const q = logSearch.value.trim().toLowerCase();
+        const matchesSearch = !q ||
+            ((log.action || log.event || log.event_title || '').toLowerCase().includes(q)) ||
+            ((log.details || log.description || '').toLowerCase().includes(q)) ||
+            ((log.user || log.actor_name || '').toLowerCase().includes(q));
+
         const matchesType = logTypeFilter.value === 'all' ||
             ((log.type || log.event_type || 'info').toLowerCase() === logTypeFilter.value.toLowerCase());
+
         return matchesSearch && matchesType;
     });
 });
 
+// =============================================================================
+// 10. MARKETING & COUPONS
+// =============================================================================
+const showCouponModal = ref(false);
+const couponForm = useForm({
+    code: '',
+    discount_percentage: 20,
+    max_uses: '',
+});
+
+const createCoupon = () => {
+    couponForm.reset();
+    showCouponModal.value = true;
+};
+
+const submitCoupon = () => {
+    couponForm.post('/super-admin/coupons', {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCouponModal.value = false;
+            couponForm.reset();
+            triggerAlert('Subscription coupon created successfully!');
+        }
+    });
+};
+
+const deleteCoupon = (id, code) => {
+    triggerConfirm(
+        'Delete Coupon?',
+        `Are you sure you want to delete coupon code [${code}]?`,
+        () => {
+            router.delete(`/super-admin/coupons/${id}`, {
+                preserveScroll: true,
+                onSuccess: () => triggerAlert('Coupon code deleted.')
+            });
+        },
+        { icon: 'fa-trash-can', iconColor: 'text-red-500', confirmText: 'Yes, Delete', confirmClass: 'bg-red-600 hover:bg-red-700' }
+    );
+};
+
+// =============================================================================
+// 11. PLATFORM SETTINGS (STATIC NAME - NO DYNAMIC TITLE)
+// =============================================================================
+const settingsForm = useForm({
+    contact_email: props.platformSettings?.contact_email || 'admin@raibix.com',
+    support_phone: props.platformSettings?.support_phone || '+1 (555) 019-2834',
+    maintenance_mode: props.platformSettings?.maintenance_mode || false,
+    public_onboarding: props.platformSettings?.public_onboarding ?? true,
+    require_email_verification: props.platformSettings?.require_email_verification ?? false,
+    default_trial_days: props.platformSettings?.default_trial_days || 14,
+    tax_exemption_enabled: props.platformSettings?.tax_exemption_enabled ?? true,
+});
+
+watch(() => props.platformSettings, (newSettings) => {
+    if (newSettings) {
+        settingsForm.contact_email = newSettings.contact_email || 'admin@raibix.com';
+        settingsForm.support_phone = newSettings.support_phone || '+1 (555) 019-2834';
+        settingsForm.maintenance_mode = !!newSettings.maintenance_mode;
+        settingsForm.public_onboarding = newSettings.public_onboarding ?? true;
+        settingsForm.require_email_verification = newSettings.require_email_verification ?? false;
+        settingsForm.default_trial_days = newSettings.default_trial_days || 14;
+        settingsForm.tax_exemption_enabled = newSettings.tax_exemption_enabled ?? true;
+    }
+}, { deep: true });
+
+const submitSettings = () => {
+    settingsForm.post('/super-admin/settings', {
+        preserveScroll: true,
+        onSuccess: () => {
+            triggerAlert('Global platform configuration saved and synchronized!');
+        }
+    });
+};
+
+// =============================================================================
+// 12. INQUIRIES & LEADS MANAGEMENT
+// =============================================================================
+const inquirySearch = ref('');
+const inquiryStatusFilter = ref('all');
+const inquiryTypeFilter = ref('all');
+const selectedInquiry = ref(null);
+
+const newInquiriesCount = computed(() => {
+    return (props.inquiries || []).filter(i => i.status === 'new').length;
+});
+
+const filteredInquiries = computed(() => {
+    if (!props.inquiries) return [];
+    return props.inquiries.filter(inq => {
+        const q = inquirySearch.value.trim().toLowerCase();
+        const matchesQuery = !q || 
+            (inq.name && inq.name.toLowerCase().includes(q)) ||
+            (inq.email && inq.email.toLowerCase().includes(q)) ||
+            (inq.phone && inq.phone.toLowerCase().includes(q)) ||
+            (inq.institution && inq.institution.toLowerCase().includes(q)) ||
+            (inq.message && inq.message.toLowerCase().includes(q));
+
+        const matchesStatus = inquiryStatusFilter.value === 'all' || inq.status === inquiryStatusFilter.value;
+        const matchesType = inquiryTypeFilter.value === 'all' || inq.type === inquiryTypeFilter.value;
+
+        return matchesQuery && matchesStatus && matchesType;
+    });
+});
+
+const updateInquiryStatus = (inquiry, status) => {
+    router.post(`/super-admin/inquiries/${inquiry.id}/status`, { status }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            if (selectedInquiry.value && selectedInquiry.value.id === inquiry.id) {
+                selectedInquiry.value.status = status;
+            }
+            triggerAlert(`Inquiry marked as ${status}.`);
+        }
+    });
+};
+
+const deleteInquiry = (inquiry) => {
+    triggerConfirm(
+        'Delete Public Inquiry',
+        `Are you sure you want to delete the inquiry from "${inquiry.name}"? This record will be permanently purged.`,
+        () => {
+            router.delete(`/super-admin/inquiries/${inquiry.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (selectedInquiry.value && selectedInquiry.value.id === inquiry.id) {
+                        selectedInquiry.value = null;
+                    }
+                    triggerAlert('Inquiry record deleted successfully.');
+                }
+            });
+        },
+        { icon: 'fa-trash-can', iconColor: 'text-red-500', confirmText: 'Yes, Delete', confirmClass: 'bg-red-600 hover:bg-red-700' }
+    );
+};
+
+const viewInquiry = (inquiry) => {
+    selectedInquiry.value = { ...inquiry };
+};
+
+// =============================================================================
+// 13. AUTH & LOGOUT
+// =============================================================================
 const logout = () => {
     useForm({}).post('/super-admin/logout');
 };
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-[#F8F9FA] text-[#202124] selection:bg-[#E8F0FE] selection:text-[#1A73E8] font-sans">
+    <Head title="Super Admin Dashboard" />
+
+    <div class="flex min-h-screen bg-[#FAFAFC] text-[#111318] selection:bg-[#EEF3FF] selection:text-[#2F6BFF] font-sans">
+        
         <!-- Mobile Sidebar Backdrop -->
         <div 
             v-if="isMobileMenuOpen" 
@@ -618,180 +852,217 @@ const logout = () => {
             :class="[
                 isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
                 isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0',
-                'fixed lg:sticky top-0 z-50 h-screen border-r border-[#DADCE0] bg-white flex flex-col justify-between flex-shrink-0 transition-all duration-300 shadow-xl lg:shadow-none'
+                'fixed lg:sticky top-0 z-50 h-screen border-r border-[#E6E8EE] bg-white flex flex-col justify-between flex-shrink-0 transition-all duration-300 shadow-xl lg:shadow-none'
             ]"
         >
             <div class="flex flex-col min-h-0 flex-1">
                 <!-- Brand Header -->
-                <div class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-[#DADCE0] min-h-[73px]">
+                <div class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-[#E6E8EE] min-h-[73px]">
                     <div class="flex items-center space-x-3 min-w-0 overflow-hidden">
-                        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F0FE] font-bold text-[#1A73E8] text-lg border border-[#D2E3FC] shadow-sm">
-                            <i class="fa-solid fa-bolt"></i>
-                        </div>
+                        <Link href="/" class="flex items-center shrink-0">
+                            <img 
+                                src="/images/raibix.png" 
+                                alt="Raibix" 
+                                class="h-6 w-auto object-contain"
+                            />
+                        </Link>
                         <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 transition-all duration-200">
-                            <h1 class="font-bold text-base tracking-tight text-[#202124] truncate">Super Admin</h1>
-                            <p class="text-xs text-[#5F6368] truncate">Excellence LMS Cloud</p>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-sm tracking-tight text-[#111318] truncate">Control Panel</span>
+                                <span class="raibix-dot h-1.5 w-1.5"></span>
+                            </div>
+                            <p class="text-2xs font-semibold text-[#5B6270] truncate">Infrastructure Core</p>
                         </div>
                     </div>
-                    <!-- Collapse / Close Button -->
+                    
+                    <!-- Collapse Toggle Button -->
                     <button 
                         @click="isMobileMenuOpen ? (isMobileMenuOpen = false) : (isSidebarCollapsed = !isSidebarCollapsed)"
-                        class="h-8 w-8 rounded-lg flex items-center justify-center text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors flex-shrink-0"
+                        class="h-7 w-7 rounded-lg flex items-center justify-center text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] transition-colors flex-shrink-0 cursor-pointer"
                         :title="isMobileMenuOpen ? 'Close Menu' : (isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar')"
                     >
-                        <span class="text-base font-bold"><i :class="isSidebarCollapsed ? 'fa-solid fa-arrow-right' : 'fa-solid fa-arrow-left'"></i></span>
+                        <i :class="isSidebarCollapsed ? 'fa-solid fa-chevron-right text-xs' : 'fa-solid fa-chevron-left text-xs'"></i>
                     </button>
                 </div>
 
                 <!-- Side Menu Links -->
                 <nav class="p-3 sm:p-4 space-y-1 overflow-y-auto flex-1">
+                    <!-- Overview -->
                     <button 
                         @click="activeTab = 'overview'; isMobileMenuOpen = false"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Overview' : ''"
                         :class="[
-                            activeTab === 'overview' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'overview' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-chart-pie text-lg flex-shrink-0"></i>
+                            <i class="fa-solid fa-chart-pie text-base flex-shrink-0"></i>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Overview</span>
                         </div>
                     </button>
 
+                    <!-- Registered Schools -->
                     <button 
                         @click="activeTab = 'schools'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Schools' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Registered Schools' : ''"
                         :class="[
-                            activeTab === 'schools' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'schools' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
+                        class="w-full flex items-center rounded-xl text-xs transition-all relative cursor-pointer"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-school text-lg flex-shrink-0"></i>
+                            <i class="fa-solid fa-school text-base flex-shrink-0"></i>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Schools</span>
                         </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F1F3F4] text-[#3C4043] text-xs font-semibold px-2 py-0.5 rounded-full">{{ tenants?.length || 0 }}</span>
-                        <span v-else-if="tenants?.length" class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#1A73E8]"></span>
+                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F0F2F6] text-[#5B6270] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            {{ tenants?.length || 0 }}
+                        </span>
+                        <span v-else-if="tenants?.length" class="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2F6BFF]"></span>
                     </button>
 
+                    <!-- Inquiries & Leads -->
                     <button 
-                        @click="activeTab = 'plans'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Plans & Packages' : ''"
+                        @click="activeTab = 'inquiries'; isMobileMenuOpen = false"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Inquiries & Leads' : ''"
                         :class="[
-                            activeTab === 'plans' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'inquiries' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer relative"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-box text-lg flex-shrink-0"></i>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Plans & Packages</span>
+                            <i class="fa-solid fa-headset text-base flex-shrink-0"></i>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Inquiries</span>
                         </div>
+                        <span v-if="(!isSidebarCollapsed || isMobileMenuOpen) && newInquiriesCount" class="bg-[#2F6BFF] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                            {{ newInquiriesCount }}
+                        </span>
+                        <span v-else-if="newInquiriesCount" class="absolute top-2 right-2 h-2 w-2 rounded-full bg-[#2F6BFF]"></span>
                     </button>
 
-                    <button 
-                        @click="activeTab = 'payments'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Payments' : ''"
-                        :class="[
-                            activeTab === 'payments' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-credit-card text-lg flex-shrink-0"></i>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Payments</span>
-                        </div>
-                    </button>
-
+                    <!-- Payment Approvals (with dynamic badge) -->
                     <button 
                         @click="activeTab = 'approvals'; isMobileMenuOpen = false"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Payment Approvals' : ''"
                         :class="[
-                            activeTab === 'approvals' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'approvals' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer relative"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-check-double text-lg flex-shrink-0"></i>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate flex items-center gap-1.5">
-                                <span>Approvals</span>
-                                <span v-if="pendingApprovals && pendingApprovals.length > 0" class="bg-[#C5221F] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                                    {{ pendingApprovals.length }}
-                                </span>
-                            </span>
+                            <i class="fa-solid fa-check-double text-base flex-shrink-0"></i>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Approvals</span>
+                        </div>
+                        <span v-if="(!isSidebarCollapsed || isMobileMenuOpen) && pendingApprovals?.length" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                            {{ pendingApprovals.length }}
+                        </span>
+                        <span v-else-if="pendingApprovals?.length" class="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                    </button>
+
+                    <!-- Subscription Plans -->
+                    <button 
+                        @click="activeTab = 'plans'; isMobileMenuOpen = false"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Plans & Packages' : ''"
+                        :class="[
+                            activeTab === 'plans' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                        ]"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
+                            <i class="fa-solid fa-box text-base flex-shrink-0"></i>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Plans</span>
                         </div>
                     </button>
 
+                    <!-- Payments & Invoices -->
+                    <button 
+                        @click="activeTab = 'payments'; isMobileMenuOpen = false"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Payments & Ledger' : ''"
+                        :class="[
+                            activeTab === 'payments' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                        ]"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer"
+                    >
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
+                            <i class="fa-solid fa-credit-card text-base flex-shrink-0"></i>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Payments</span>
+                        </div>
+                    </button>
+
+                    <!-- Activity Logs -->
                     <button 
                         @click="activeTab = 'logs'; isMobileMenuOpen = false"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Activity Logs' : ''"
                         :class="[
-                            activeTab === 'logs' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'logs' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-scroll text-lg flex-shrink-0"></i>
+                            <i class="fa-solid fa-scroll text-base flex-shrink-0"></i>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Activity Logs</span>
                         </div>
                     </button>
 
+                    <!-- Marketing & Coupons -->
                     <button 
                         @click="activeTab = 'marketing'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Marketing & Referrals' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Marketing & Coupons' : ''"
                         :class="[
-                            activeTab === 'marketing' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'marketing' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-bullhorn text-lg flex-shrink-0"></i>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Marketing</span>
+                            <i class="fa-solid fa-ticket text-base flex-shrink-0"></i>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Coupons</span>
                         </div>
                     </button>
 
+                    <!-- System Settings -->
                     <button 
                         @click="activeTab = 'settings'; isMobileMenuOpen = false"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Settings' : ''"
                         :class="[
-                            activeTab === 'settings' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            activeTab === 'settings' ? 'bg-[#EEF3FF] text-[#2F6BFF] font-bold shadow-2xs' : 'text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] font-medium',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-all cursor-pointer"
                     >
                         <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <i class="fa-solid fa-gear text-lg flex-shrink-0"></i>
+                            <i class="fa-solid fa-gear text-base flex-shrink-0"></i>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Settings</span>
                         </div>
                     </button>
                 </nav>
             </div>
 
-            <!-- Sidebar Footer / User Profile -->
-            <div class="p-3 sm:p-4 border-t border-[#DADCE0] bg-[#F8F9FA] space-y-3">
+            <!-- Sidebar User Section -->
+            <div class="p-3 sm:p-4 border-t border-[#E6E8EE] bg-[#F8F9FA] space-y-3">
                 <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3 px-2'">
-                    <div class="h-9 w-9 rounded-full bg-[#1A73E8] text-white flex-shrink-0 flex items-center justify-center font-bold text-sm shadow-sm">
-                        SA
+                    <div class="h-9 w-9 rounded-full bg-gradient-to-tr from-[#8B5CF6] to-[#2F6BFF] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs shadow-2xs">
+                        {{ ($page.props.auth?.user?.name || 'SA').substring(0, 2).toUpperCase() }}
                     </div>
                     <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-[#202124] truncate">Platform Admin</p>
-                        <p class="text-2xs text-[#5F6368] truncate">superadmin@excellence.com</p>
+                        <p class="text-xs font-bold text-[#111318] truncate">{{ $page.props.auth?.user?.name || 'Super Admin' }}</p>
+                        <p class="text-2xs text-[#5B6270] truncate font-medium">{{ $page.props.auth?.user?.email || 'admin@raibix.com' }}</p>
                     </div>
                 </div>
                 <button 
                     @click="logout"
                     :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Sign Out' : ''"
-                    :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'py-2.5 px-2' : 'py-2 space-x-1.5'"
-                    class="w-full rounded-xl bg-white border border-[#DADCE0] text-xs font-semibold text-[#C5221F] hover:bg-[#FCE8E6]/50 transition-colors shadow-2xs flex items-center justify-center"
+                    :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'py-2 px-1' : 'py-2 px-3 space-x-2'"
+                    class="w-full rounded-xl bg-white border border-[#E6E8EE] text-xs font-semibold text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors shadow-2xs flex items-center justify-center cursor-pointer"
                 >
-                    <i class="fa-solid fa-right-from-bracket text-sm"></i>
+                    <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
                     <span v-if="!isSidebarCollapsed || isMobileMenuOpen">Sign Out</span>
                 </button>
             </div>
@@ -799,160 +1070,200 @@ const logout = () => {
 
         <!-- Main Workspace -->
         <main class="flex-1 overflow-x-hidden min-h-screen flex flex-col min-w-0">
-            <!-- Top Bar Header -->
-            <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DADCE0] px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            
+            <!-- Sticky Top Bar -->
+            <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E6E8EE] px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center min-w-0">
                     <button 
                         @click="isMobileMenuOpen = true"
-                        class="lg:hidden mr-3 p-2 rounded-xl text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors border border-[#DADCE0] shadow-2xs flex items-center justify-center"
+                        class="lg:hidden mr-3 p-2 rounded-xl text-[#5B6270] hover:bg-[#F6F7F9] hover:text-[#111318] transition-colors border border-[#E6E8EE] shadow-2xs flex items-center justify-center"
                         aria-label="Open Sidebar Menu"
                     >
-                        <i class="fa-solid fa-bars text-lg"></i>
+                        <i class="fa-solid fa-bars text-base"></i>
                     </button>
                     <div class="min-w-0">
-                        <h2 class="text-lg sm:text-xl font-bold text-[#202124] capitalize truncate">
-                            {{ activeTab === 'overview' ? 'Platform Overview' : activeTab === 'schools' ? 'Registered Schools' : activeTab === 'approvals' ? 'Payment Approvals' : activeTab === 'plans' ? 'Plans & Packages' : activeTab === 'payments' ? 'Payment History' : activeTab === 'logs' ? 'Activity Logs' : activeTab === 'marketing' ? 'Marketing & Referrals' : 'System Settings' }}
+                        <h2 class="text-lg sm:text-xl font-extrabold text-[#111318] capitalize truncate">
+                            {{ 
+                                activeTab === 'overview' ? 'Platform Overview' : 
+                                activeTab === 'schools' ? 'Registered School Tenants' : 
+                                activeTab === 'inquiries' ? 'Public Inquiries & Leads' :
+                                activeTab === 'approvals' ? 'Payment Approvals Queue' : 
+                                activeTab === 'plans' ? 'Subscription Plans & Tiers' : 
+                                activeTab === 'payments' ? 'Subscription Revenue Ledger' : 
+                                activeTab === 'logs' ? 'System Audit Logs' : 
+                                activeTab === 'marketing' ? 'Coupons & Referrals' : 
+                                'Platform Settings' 
+                            }}
                         </h2>
-                        <p class="text-xs text-[#5F6368] hidden sm:block">
-                            {{ activeTab === 'overview' ? 'Summary of onboarded schools, revenue, and system health.' : activeTab === 'schools' ? 'Manage and monitor all school tenants using the cloud portal.' : activeTab === 'approvals' ? 'Verify and approve school onboarding and subscription renewals.' : activeTab === 'plans' ? 'Configure pricing packages and feature limits.' : activeTab === 'payments' ? 'Track incoming subscription payments and invoices.' : activeTab === 'logs' ? 'Recent administrator and system actions.' : activeTab === 'marketing' ? 'Manage SaaS coupons, referral programs, and trials.' : 'Update global cloud platform preferences.' }}
+                        <p class="text-xs text-[#5B6270] hidden sm:block font-medium">
+                            {{ 
+                                activeTab === 'overview' ? 'Real-time telemetry on tenant clusters, MRR growth, and system health.' : 
+                                activeTab === 'schools' ? 'Monitor, configure, backup, and manage isolated school databases.' : 
+                                activeTab === 'inquiries' ? 'Review questions, demo calls, and partnership requests submitted from the portal.' :
+                                activeTab === 'approvals' ? 'Verify payment slips submitted by schools to unlock full portal access.' : 
+                                activeTab === 'plans' ? 'Configure pricing models, feature tiers, and student enrollment limits.' : 
+                                activeTab === 'payments' ? 'Audit incoming payments, gateway receipts, and tax invoices.' : 
+                                activeTab === 'logs' ? 'Immutable central audit log recording all root administrative actions.' : 
+                                activeTab === 'marketing' ? 'Create promo discount vouchers and manage tenant referral programs.' : 
+                                'Global platform environment controls and maintenance configurations.' 
+                            }}
                         </p>
                     </div>
                 </div>
 
+                <!-- Header Actions -->
                 <div class="flex items-center space-x-3 self-end sm:self-auto flex-shrink-0">
+                    <a 
+                        href="/" 
+                        target="_blank"
+                        class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-[#E6E8EE] bg-white text-xs font-semibold text-[#5B6270] hover:text-[#111318] hover:border-[#111318] transition-colors shadow-2xs"
+                    >
+                        <span>View Portal</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+
                     <button 
                         @click="showModal = true"
-                        class="rounded-full bg-[#1A73E8] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#1557B0] transition-all flex items-center space-x-2"
+                        class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-all duration-200 flex items-center space-x-2 cursor-pointer"
                     >
-                        <span>+</span>
-                        <span>Onboard New School</span>
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Onboard School</span>
                     </button>
                 </div>
             </header>
 
-            <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 flex-1">
-                <!-- ================= GLOBAL FLASH MESSAGES ================= -->
-                <div v-if="$page.props.flash?.success" class="rounded-2xl border border-[#CEEAD6] bg-[#E6F4EA] p-4 text-[#137333] shadow-sm flex items-center justify-between gap-4 animate-fadeIn">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-circle-check text-xl"></i>
-                        <span class="text-sm font-bold">{{ $page.props.flash.success }}</span>
-                    </div>
-                    <button @click="$page.props.flash.success = null" class="text-xs font-bold text-[#137333] hover:opacity-75 cursor-pointer">
-                        <i class="fa-solid fa-xmark text-base"></i>
-                    </button>
-                </div>
-                <div v-if="$page.props.flash?.error || $page.props.flash?.message" class="rounded-2xl border border-[#FAD2CF] bg-[#FCE8E6] p-4 text-[#C5221F] shadow-sm flex items-center justify-between gap-4 animate-fadeIn">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-circle-exclamation text-xl"></i>
-                        <span class="text-sm font-bold">{{ $page.props.flash.error || $page.props.flash.message }}</span>
-                    </div>
-                    <button @click="$page.props.flash.error = null; $page.props.flash.message = null" class="text-xs font-bold text-[#C5221F] hover:opacity-75 cursor-pointer">
-                        <i class="fa-solid fa-xmark text-base"></i>
-                    </button>
-                </div>
-
+            <!-- Main Workspace Container -->
+            <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 flex-1 max-w-[1440px] w-full mx-auto">
+                
                 <!-- ================= TAB 1: OVERVIEW ================= -->
-                <div v-if="activeTab === 'overview'" class="space-y-8 animate-fadeIn">
+                <div v-if="activeTab === 'overview'" class="space-y-8">
+                    
                     <!-- KPI Cards Grid -->
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                        <div class="google-card rounded-2xl p-6 bg-gradient-to-br from-white to-blue-50/20 border border-[#DADCE0] shadow-2xs flex flex-col justify-between transition-all hover:scale-[1.01] hover:shadow-xs">
+                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        
+                        <!-- Total Schools -->
+                        <div class="rounded-2xl p-6 bg-white border border-[#E6E8EE] shadow-2xs flex flex-col justify-between transition-all hover:border-[#2F6BFF]/40">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Total Schools</span>
-                                <span class="h-8 w-8 rounded-lg bg-[#E8F0FE] text-[#1A73E8] flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-school"></i></span>
+                                <span class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Total Schools</span>
+                                <span class="h-9 w-9 rounded-xl bg-[#EEF3FF] text-[#2F6BFF] flex items-center justify-center text-sm font-bold shadow-2xs">
+                                    <i class="fa-solid fa-school"></i>
+                                </span>
                             </div>
                             <div class="mt-4 flex items-baseline justify-between">
-                                <span class="text-3xl font-extrabold text-[#202124]">{{ analytics?.total_tenants || tenants?.length || 0 }}</span>
-                                <span class="text-xs font-bold text-[#137333] bg-[#E6F4EA] px-2.5 py-0.5 rounded-full border border-[#CEEAD6] flex items-center gap-1">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-[#137333] animate-pulse"></span>
-                                    {{ analytics?.active_tenants || tenants?.length || 0 }} Active
+                                <span class="text-3xl font-extrabold text-[#111318]">{{ analytics?.total_tenants || tenants?.length || 0 }}</span>
+                                <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1.5">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {{ activeSchoolsCount }} Active
                                 </span>
                             </div>
                         </div>
 
-                        <div class="google-card rounded-2xl p-6 bg-gradient-to-br from-white to-green-50/20 border border-[#DADCE0] shadow-2xs flex flex-col justify-between transition-all hover:scale-[1.01] hover:shadow-xs">
+                        <!-- Monthly Revenue -->
+                        <div class="rounded-2xl p-6 bg-white border border-[#E6E8EE] shadow-2xs flex flex-col justify-between transition-all hover:border-[#2F6BFF]/40">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Monthly Revenue</span>
-                                <span class="h-8 w-8 rounded-lg bg-[#E6F4EA] text-[#137333] flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-money-bill-wave"></i></span>
-                            </div>
-                            <div class="mt-4 flex items-baseline justify-between">
-                                <span class="text-3xl font-extrabold text-[#202124]">PKR {{ (analytics?.total_revenue || 0).toLocaleString() }}</span>
-                                <span class="text-xs font-bold text-[#1A73E8] bg-[#E8F0FE] px-2.5 py-0.5 rounded-full border border-[#D2E3FC]">This Month</span>
-                            </div>
-                        </div>
-
-                        <div class="google-card rounded-2xl p-6 bg-gradient-to-br from-white to-amber-50/20 border border-[#DADCE0] shadow-2xs flex flex-col justify-between transition-all hover:scale-[1.01] hover:shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Enrolled Students</span>
-                                <span class="h-8 w-8 rounded-lg bg-[#FEF7E0] text-[#B06000] flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-graduation-cap"></i></span>
-                            </div>
-                            <div class="mt-4 flex items-baseline justify-between">
-                                <span class="text-3xl font-extrabold text-[#202124]">{{ (analytics?.total_students || 0).toLocaleString() }}</span>
-                                <span class="text-xs font-semibold text-[#5F6368]">Across all schools</span>
-                            </div>
-                        </div>
-
-                        <div class="google-card rounded-2xl p-6 bg-gradient-to-br from-white to-indigo-50/20 border border-[#DADCE0] shadow-2xs flex flex-col justify-between transition-all hover:scale-[1.01] hover:shadow-xs">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">System Status</span>
-                                <span class="h-8 w-8 rounded-lg bg-[#E8F0FE] text-[#1A73E8] flex items-center justify-center text-sm font-bold"><i class="fa-solid fa-shield-halved"></i></span>
-                            </div>
-                            <div class="mt-4 flex items-baseline justify-between">
-                                <span class="text-lg font-extrabold text-[#137333] flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-[#137333] animate-ping"></span>
-                                    All Systems Normal
+                                <span class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Monthly Inflows</span>
+                                <span class="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm font-bold shadow-2xs">
+                                    <i class="fa-solid fa-money-bill-wave"></i>
                                 </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-2xl sm:text-3xl font-extrabold text-[#111318]">PKR {{ (analytics?.total_revenue || 0).toLocaleString() }}</span>
+                                <span class="text-xs font-bold text-[#2F6BFF] bg-[#EEF3FF] px-2.5 py-0.5 rounded-full border border-[#D6E4FF]">
+                                    Verified
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Enrolled Students -->
+                        <div class="rounded-2xl p-6 bg-white border border-[#E6E8EE] shadow-2xs flex flex-col justify-between transition-all hover:border-[#2F6BFF]/40">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Enrolled Students</span>
+                                <span class="h-9 w-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm font-bold shadow-2xs">
+                                    <i class="fa-solid fa-graduation-cap"></i>
+                                </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-3xl font-extrabold text-[#111318]">{{ (analytics?.total_students || 0).toLocaleString() }}</span>
+                                <span class="text-xs font-semibold text-[#5B6270]">Active records</span>
+                            </div>
+                        </div>
+
+                        <!-- Platform Engine Status -->
+                        <div class="rounded-2xl p-6 bg-white border border-[#E6E8EE] shadow-2xs flex flex-col justify-between transition-all hover:border-[#2F6BFF]/40">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Platform Core</span>
+                                <span class="h-9 w-9 rounded-xl bg-[#EEF3FF] text-[#2F6BFF] flex items-center justify-center text-sm font-bold shadow-2xs">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
+                                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                    100% Isolated
+                                </span>
+                                <span class="text-xs font-semibold text-[#5B6270]">Node 01</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Row 2: Charts -->
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                        <!-- Left Panel: Line/Area Growth Chart -->
-                        <div class="google-card lg:col-span-2 rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        
+                        <!-- Growth Trajectory -->
+                        <div class="lg:col-span-2 rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
+                            <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
                                 <div>
-                                    <h3 class="text-base font-bold text-[#202124]">SaaS Growth & Expansion</h3>
-                                    <p class="text-xs text-[#5F6368]">Onboarded school campuses trend (6-Month history)</p>
+                                    <h3 class="text-base font-bold text-[#111318]">Tenant Growth Trajectory</h3>
+                                    <p class="text-xs text-[#5B6270]">Cumulative onboarded school campuses</p>
                                 </div>
-                                <span class="text-xs font-bold text-[#1A73E8] bg-[#E8F0FE] px-3 py-1 rounded-full border border-[#D2E3FC]">MoM Growth</span>
+                                <span class="text-xs font-bold text-[#2F6BFF] bg-[#EEF3FF] px-3 py-1 rounded-full border border-[#D6E4FF]">
+                                    Expansion
+                                </span>
                             </div>
+                            
                             <div class="relative pt-4 flex flex-col items-center">
-                                <svg :viewBox="`0 0 ${growthPoints.width} ${growthPoints.height}`" class="w-full h-48">
+                                <svg :viewBox="`0 0 ${growthPoints.width} ${growthPoints.height}`" class="w-full h-44 sm:h-52">
                                     <defs>
                                         <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stop-color="#1A73E8" stop-opacity="0.15" />
-                                            <stop offset="100%" stop-color="#1A73E8" stop-opacity="0.0" />
+                                            <stop offset="0%" stop-color="#2F6BFF" stop-opacity="0.2" />
+                                            <stop offset="100%" stop-color="#2F6BFF" stop-opacity="0.0" />
                                         </linearGradient>
                                     </defs>
-                                    <!-- Horizontal Grid Lines -->
                                     <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F3F4" stroke-dasharray="4" />
                                     <line x1="20" y1="65" x2="480" y2="65" stroke="#F1F3F4" stroke-dasharray="4" />
                                     <line x1="20" y1="110" x2="480" y2="110" stroke="#F1F3F4" stroke-dasharray="4" />
-                                    <!-- Area Fill -->
                                     <path :d="growthPoints.areaPath" fill="url(#chartGrad)" />
-                                    <!-- Line Path -->
-                                    <path :d="growthPoints.linePath" fill="none" stroke="#1A73E8" stroke-width="3" stroke-linecap="round" />
-                                    <!-- Data Dots -->
-                                    <circle v-for="(p, i) in growthPoints.points" :key="i" :cx="p.x" :cy="p.y" r="5" fill="#FFFFFF" stroke="#1A73E8" stroke-width="3" class="hover:r-7 transition-all duration-200 cursor-pointer" />
+                                    <path :d="growthPoints.linePath" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linecap="round" />
+                                    <circle 
+                                        v-for="(p, i) in growthPoints.points" 
+                                        :key="i" 
+                                        :cx="p.x" 
+                                        :cy="p.y" 
+                                        r="5" 
+                                        fill="#FFFFFF" 
+                                        stroke="#2F6BFF" 
+                                        stroke-width="3" 
+                                        class="hover:r-7 transition-all duration-200 cursor-pointer" 
+                                    />
                                 </svg>
-                                <!-- Labels -->
-                                <div class="w-full flex justify-between px-6 text-3xs font-bold uppercase tracking-wider text-[#5F6368] pt-2">
-                                    <span>Feb</span>
-                                    <span>Mar</span>
-                                    <span>Apr</span>
-                                    <span>May</span>
-                                    <span>Jun</span>
-                                    <span>Jul</span>
+                                <div class="w-full flex justify-between px-6 text-3xs font-bold uppercase tracking-wider text-[#8F94A0] pt-2">
+                                    <span>Phase 1</span>
+                                    <span>Phase 2</span>
+                                    <span>Phase 3</span>
+                                    <span>Phase 4</span>
+                                    <span>Phase 5</span>
+                                    <span>Current</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right Panel: Donut Chart -->
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <div class="border-b border-[#DADCE0] pb-4">
-                                <h3 class="text-base font-bold text-[#202124]">Subscription Tiers</h3>
-                                <p class="text-xs text-[#5F6368]">Active plan share across tenants</p>
+                        <!-- Subscription Tiers Share -->
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4 flex flex-col justify-between">
+                            <div class="border-b border-[#E6E8EE] pb-4">
+                                <h3 class="text-base font-bold text-[#111318]">Subscription Tiers</h3>
+                                <p class="text-xs text-[#5F6368]">Active plan distribution across schools</p>
                             </div>
+                            
                             <div class="flex flex-col items-center justify-center py-2 space-y-4">
                                 <div class="relative flex items-center justify-center">
                                     <svg viewBox="0 0 100 100" class="h-36 w-36">
@@ -973,381 +1284,806 @@ const logout = () => {
                                         />
                                     </svg>
                                     <div class="absolute flex flex-col items-center text-center">
-                                        <span class="text-2xl font-extrabold text-[#202124]">{{ tenants?.length || 0 }}</span>
-                                        <span class="text-4xs font-bold uppercase tracking-wider text-[#5F6368]">Total</span>
+                                        <span class="text-2xl font-black text-[#111318]">{{ tenants?.length || 0 }}</span>
+                                        <span class="text-4xs font-bold uppercase tracking-wider text-[#5B6270]">Schools</span>
                                     </div>
                                 </div>
-                                <!-- Legend Grid -->
-                                <div class="w-full grid grid-cols-2 gap-2 text-xs pt-2">
-                                    <div v-for="seg in planSegments" :key="seg.name" class="flex items-center space-x-1.5 p-1.5 bg-[#F8F9FA] rounded-lg border border-[#DADCE0]">
-                                        <span class="h-2 w-2 rounded-full shrink-0" :style="{ backgroundColor: seg.color }"></span>
-                                        <span class="truncate font-semibold text-[#202124]">{{ seg.name }}</span>
-                                        <span class="ml-auto font-bold text-[#5F6368]">{{ seg.percent }}%</span>
+
+                                <div class="w-full space-y-1.5 pt-2">
+                                    <div v-for="seg in planSegments" :key="seg.name" class="flex items-center justify-between text-xs p-2 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="h-2.5 w-2.5 rounded-full shrink-0" :style="{ backgroundColor: seg.color }"></span>
+                                            <span class="font-semibold text-[#111318] truncate max-w-[130px]">{{ seg.name }}</span>
+                                        </div>
+                                        <span class="font-bold text-[#5B6270]">{{ seg.count }} ({{ seg.percent }}%)</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Row 3: Operations health, Recent ledger, activity logs -->
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                        <!-- Health Panel -->
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <h3 class="text-base font-bold text-[#202124] border-b border-[#DADCE0] pb-4 flex items-center gap-1.5">
-                                <i class="fa-solid fa-server text-[#1A73E8]"></i>
-                                <span>Platform Gateways</span>
+                    <!-- Operations & Live Feeds -->
+                    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        
+                        <!-- System Infrastructure Telemetry -->
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
+                            <h3 class="text-base font-bold text-[#111318] border-b border-[#E6E8EE] pb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-server text-[#2F6BFF]"></i>
+                                <span>Infrastructure Telemetry</span>
                             </h3>
-                            <div class="space-y-4">
-                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0]">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-brain text-purple-600 text-sm"></i>
-                                        <span class="text-xs font-bold text-[#202124]">AI Vision API</span>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
+                                    <div class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-database text-[#2F6BFF] text-sm"></i>
+                                        <span class="text-xs font-semibold text-[#111318]">Tenant Schemas</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-[#137333] bg-[#E6F4EA] border border-[#CEEAD6] px-2 py-0.5 rounded-full">Operational</span>
+                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                        Online & Isolated
+                                    </span>
                                 </div>
-                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0]">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-message text-[#137333] text-sm"></i>
-                                        <span class="text-xs font-bold text-[#202124]">WhatsApp SMS Gateway</span>
+                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
+                                    <div class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-network-wired text-purple-600 text-sm"></i>
+                                        <span class="text-xs font-semibold text-[#111318]">Multi-Tenant Router</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-[#137333] bg-[#E6F4EA] border border-[#CEEAD6] px-2 py-0.5 rounded-full">Online</span>
+                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                        Domain Resolved
+                                    </span>
                                 </div>
-                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0]">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-envelope text-[#1A73E8] text-sm"></i>
-                                        <span class="text-xs font-bold text-[#202124]">SMTP Mail Server</span>
+                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
+                                    <div class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-credit-card text-emerald-600 text-sm"></i>
+                                        <span class="text-xs font-semibold text-[#111318]">Payment Gateways</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-[#137333] bg-[#E6F4EA] border border-[#CEEAD6] px-2 py-0.5 rounded-full">Connected</span>
+                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                        IPN Listening
+                                    </span>
                                 </div>
-                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0]">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-database text-amber-600 text-sm"></i>
-                                        <span class="text-xs font-bold text-[#202124]">Database Backups</span>
+                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
+                                    <div class="flex items-center gap-2.5">
+                                        <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
+                                        <span class="text-xs font-semibold text-[#111318]">Automated Backup Engine</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-[#137333] bg-[#E6F4EA] border border-[#CEEAD6] px-2 py-0.5 rounded-full">Healthy</span>
+                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                        Scheduled
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Mini Ledger Panel -->
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
-                                <h3 class="text-base font-bold text-[#202124] flex items-center gap-1.5">
-                                    <i class="fa-solid fa-cash-register text-[#137333]"></i>
-                                    <span>Recent Ledger</span>
+                        <!-- Recent Inflow Ledger -->
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
+                            <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
+                                <h3 class="text-base font-bold text-[#111318] flex items-center gap-2">
+                                    <i class="fa-solid fa-receipt text-emerald-600"></i>
+                                    <span>Recent Inflows</span>
                                 </h3>
-                                <button @click="activeTab = 'payments'" class="text-xs font-bold text-[#1A73E8] hover:underline">View All</button>
+                                <button @click="activeTab = 'payments'" class="text-xs font-bold text-[#2F6BFF] hover:underline cursor-pointer">
+                                    View All
+                                </button>
                             </div>
                             <div class="space-y-3">
-                                <div v-if="!revenueTransactions || revenueTransactions.length === 0" class="py-6 text-center text-xs text-[#5F6368]">
-                                    No ledger entries recorded.
+                                <div v-if="!revenueTransactions || revenueTransactions.length === 0" class="py-6 text-center text-xs text-[#5B6270]">
+                                    No transaction records recorded yet.
                                 </div>
-                                <div v-for="trx in revenueTransactions.slice(0, 3)" :key="trx.id" class="p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0] flex items-center justify-between">
+                                <div v-for="trx in revenueTransactions.slice(0, 3)" :key="trx.id" class="p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE] flex items-center justify-between">
                                     <div>
-                                        <p class="text-xs font-extrabold text-[#202124]">{{ trx.school_name }}</p>
-                                        <p class="text-3xs text-[#5F6368] font-mono">{{ trx.transaction_code }} • {{ trx.gateway }}</p>
+                                        <p class="text-xs font-bold text-[#111318]">{{ trx.school_name }}</p>
+                                        <p class="text-3xs text-[#5B6270] font-mono mt-0.5">{{ trx.transaction_code }} • {{ trx.gateway }}</p>
                                     </div>
-                                    <span class="text-xs font-bold text-[#137333]">PKR {{ trx.amount.toLocaleString() }}</span>
+                                    <span class="text-xs font-extrabold text-emerald-600">PKR {{ (Number(trx.amount) || 0).toLocaleString() }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Ticker Panel -->
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
-                                <h3 class="text-base font-bold text-[#202124] flex items-center gap-1.5">
-                                    <i class="fa-solid fa-clock-rotate-left text-amber-600"></i>
-                                    <span>Live Platform Activity</span>
+                        <!-- Live Audit Events -->
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
+                            <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
+                                <h3 class="text-base font-bold text-[#111318] flex items-center gap-2">
+                                    <i class="fa-solid fa-scroll text-purple-600"></i>
+                                    <span>Platform Audit Trail</span>
                                 </h3>
-                                <button @click="activeTab = 'logs'" class="text-xs font-bold text-[#1A73E8] hover:underline">View Logs</button>
+                                <button @click="activeTab = 'logs'" class="text-xs font-bold text-[#2F6BFF] hover:underline cursor-pointer">
+                                    View Logs
+                                </button>
                             </div>
                             <div class="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                                <div v-if="!activityLogs || activityLogs.length === 0" class="py-6 text-center text-xs text-[#5F6368]">
-                                    No events recorded.
+                                <div v-if="!activityLogs || activityLogs.length === 0" class="py-6 text-center text-xs text-[#5B6270]">
+                                    No system actions logged.
                                 </div>
-                                <div v-for="log in activityLogs.slice(0, 4)" :key="log.id" class="p-2.5 bg-[#F8F9FA] rounded-lg border border-[#DADCE0] flex gap-2">
-                                    <span class="mt-0.5 shrink-0 text-amber-600"><i class="fa-solid fa-circle-info text-2xs"></i></span>
-                                    <div>
-                                        <p class="text-xs font-semibold text-[#202124] leading-normal">{{ log.event_title }}</p>
-                                        <p class="text-4xs font-bold text-[#5F6368] uppercase tracking-wider mt-0.5">{{ log.created_at }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 4: Shortcuts -->
-                    <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                        <div class="google-card lg:col-span-2 rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
-                                <h3 class="text-base font-bold text-[#202124]">Recently Registered Schools</h3>
-                                <button @click="activeTab = 'schools'" class="text-xs font-bold text-[#1A73E8] hover:underline flex items-center gap-1"><span>View All</span> <i class="fa-solid fa-arrow-right text-[10px]"></i></button>
-                            </div>
-                            <div class="space-y-3">
-                                <div v-if="!tenants || tenants.length === 0" class="py-8 text-center text-sm text-[#5F6368]">
-                                    No schools onboarded yet. Click "+ Onboard New School" to get started!
-                                </div>
-                                <div v-for="t in tenants.slice(0, 3)" :key="t.id" class="flex items-center justify-between p-4 rounded-xl bg-[#F8F9FA] border border-[#DADCE0] hover:border-[#1A73E8] transition-all">
-                                    <div class="flex items-center space-x-3.5">
-                                        <div class="h-10 w-10 rounded-xl bg-white border border-[#DADCE0] flex items-center justify-center font-bold text-[#1A73E8]">
-                                            <i class="fa-solid fa-school"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-bold text-[#202124]">{{ t.name }}</p>
-                                            <a :href="getTenantLoginUrl(t)" target="_blank" class="text-xs text-[#1A73E8] hover:underline flex items-center gap-1">
-                                                <span>{{ getTenantDisplayUrl(t) }}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                                            </a>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center space-x-3">
-                                        <span :class="(t.status || t.data?.status) === 'suspended' ? 'bg-[#FCE8E6] text-[#C5221F] border-[#FAD2CF]' : 'bg-[#E6F4EA] text-[#137333] border-[#CEEAD6]'" class="px-3 py-1 rounded-full text-xs font-bold border">
-                                            {{ (t.status || t.data?.status) === 'suspended' ? 'Suspended' : 'Active' }}
-                                        </span>
+                                <div v-for="log in activityLogs.slice(0, 4)" :key="log.id" class="p-2.5 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE] flex gap-2.5">
+                                    <span class="mt-0.5 shrink-0 text-[#2F6BFF]"><i class="fa-solid fa-circle-info text-2xs"></i></span>
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-[#111318] truncate">{{ log.event_title }}</p>
+                                        <p class="text-3xs font-semibold text-[#8F94A0] uppercase tracking-wider mt-0.5">{{ log.created_at }}</p>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
-                            <h3 class="text-base font-bold text-[#202124] border-b border-[#DADCE0] pb-4">Shortcuts & Tools</h3>
-                            <div class="space-y-3">
-                                <button @click="showModal = true" class="w-full flex items-center space-x-3 p-3.5 rounded-xl bg-[#F8F9FA] hover:bg-[#E8F0FE] text-left border border-[#DADCE0] transition-colors group cursor-pointer">
-                                    <i class="fa-solid fa-bolt text-lg text-[#1A73E8]"></i>
-                                    <div>
-                                        <p class="text-sm font-bold text-[#202124] group-hover:text-[#1A73E8]">Onboard New School</p>
-                                        <p class="text-xs text-[#5F6368]">Provision cloud database & domain</p>
-                                    </div>
-                                </button>
-                                <button @click="openAddPlanModal" class="w-full flex items-center space-x-3 p-3.5 rounded-xl bg-[#F8F9FA] hover:bg-[#E8F0FE] text-left border border-[#DADCE0] transition-colors group cursor-pointer">
-                                    <i class="fa-solid fa-box text-lg text-[#1A73E8]"></i>
-                                    <div>
-                                        <p class="text-sm font-bold text-[#202124] group-hover:text-[#1A73E8]">Create Subscription Plan</p>
-                                        <p class="text-xs text-[#5F6368]">Add pricing & feature tier</p>
-                                    </div>
-                                </button>
-                                <button @click="activeTab = 'settings'" class="w-full flex items-center space-x-3 p-3.5 rounded-xl bg-[#F8F9FA] hover:bg-[#E8F0FE] text-left border border-[#DADCE0] transition-colors group cursor-pointer">
-                                    <i class="fa-solid fa-gear text-lg text-[#1A73E8]"></i>
-                                    <div>
-                                        <p class="text-sm font-bold text-[#202124] group-hover:text-[#1A73E8]">Platform Settings</p>
-                                        <p class="text-xs text-[#5F6368]">Configure contact & maintenance</p>
-                                    </div>
-                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ================= TAB 2: SCHOOLS ================= -->
-                <div v-if="activeTab === 'schools'" class="space-y-6 animate-fadeIn">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#DADCE0] shadow-2xs">
+                <!-- ================= TAB 2: REGISTERED SCHOOLS ================= -->
+                <div v-if="activeTab === 'schools'" class="space-y-6">
+                    
+                    <!-- Search & Filter Controls -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E6E8EE] shadow-2xs">
                         <div class="relative flex-1 max-w-md">
+                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6270]"></i>
                             <input 
                                 v-model="schoolSearch" 
                                 type="text" 
-                                placeholder="Search by school name or code..."
-                                class="w-full rounded-xl border border-[#DADCE0] bg-[#F8F9FA] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:bg-white focus:outline-none transition-all"
+                                placeholder="Search by school name, subdomain, or admin email..."
+                                class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] pl-9 pr-4 py-2.5 text-xs text-[#111318] placeholder-[#8F94A0] focus:border-[#2F6BFF] focus:bg-white focus:outline-none transition-all font-medium"
                             />
                         </div>
-                        <span class="text-xs font-semibold text-[#5F6368]">Showing {{ filteredSchools.length }} of {{ tenants.length }} schools</span>
+
+                        <!-- Status Filter Tabs -->
+                        <div class="flex items-center gap-1.5 overflow-x-auto">
+                            <button 
+                                @click="schoolStatusFilter = 'all'"
+                                :class="schoolStatusFilter === 'all' ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                                All ({{ tenants.length }})
+                            </button>
+                            <button 
+                                @click="schoolStatusFilter = 'active'"
+                                :class="schoolStatusFilter === 'active' ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                                Active ({{ activeSchoolsCount }})
+                            </button>
+                            <button 
+                                @click="schoolStatusFilter = 'suspended'"
+                                :class="schoolStatusFilter === 'suspended' ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                                Suspended ({{ suspendedSchoolsCount }})
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="google-card overflow-hidden rounded-2xl border border-[#DADCE0] bg-white shadow-2xs">
+                    <!-- Schools Data Table -->
+                    <div class="overflow-hidden rounded-2xl border border-[#E6E8EE] bg-white shadow-2xs">
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm min-w-[1000px]">
-                            <thead>
-                                <tr class="border-b border-[#DADCE0] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5F6368]">
-                                    <th class="py-4 px-6">School Name</th>
-                                    <th class="py-4 px-6">Portal Domain</th>
-                                    <th class="py-4 px-6">Admin Contact</th>
-                                    <th class="py-4 px-6">Assigned Plan</th>
-                                    <th class="py-4 px-6">Usage Metrics</th>
-                                    <th class="py-4 px-6">Status</th>
-                                    <th class="py-4 px-6 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-[#E8EAED]">
-                                <tr v-if="filteredSchools.length === 0">
-                                    <td colspan="6" class="py-12 text-center text-sm text-[#5F6368]">No schools matched your search query.</td>
-                                </tr>
-                                <tr v-for="t in filteredSchools" :key="t.id" class="hover:bg-[#F8F9FA]/80 transition-colors">
-                                    <td class="py-4 px-6">
-                                        <div class="font-bold text-[#202124]">{{ t.name }}</div>
-                                        <div class="text-xs text-[#5F6368]">Code: {{ t.id }}</div>
-                                    </td>
-                                    <td class="py-4 px-6">
-                                        <a :href="getTenantLoginUrl(t)" target="_blank" class="font-medium text-[#1A73E8] hover:underline flex items-center space-x-1">
-                                            <span>{{ getTenantDisplayUrl(t) }}</span>
-                                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-                                        </a>
-                                    </td>
-                                    <td class="py-4 px-6">
-                                        <div class="font-semibold text-[#202124]">{{ t.admin_name || t.data?.admin_name || 'Principal' }}</div>
-                                        <div class="text-xs text-[#5F6368]">{{ t.admin_email || t.data?.admin_email || 'admin@school.test' }}</div>
-                                    </td>
-                                    <td class="py-4 px-6">
-                                        <span class="rounded-lg bg-[#F1F3F4] px-3 py-1 text-xs font-bold text-[#3C4043]">
-                                            {{ t.plan?.name || t.plan_name || 'Standard Tier' }}
-                                        </span>
-                                    </td>
-                                    <td class="py-4 px-6">
-                                        <div class="flex flex-col gap-1 text-xs">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-[#5F6368]">Storage:</span>
-                                                <span class="font-bold text-[#202124]">45%</span>
+                            <table class="w-full text-left border-collapse text-sm min-w-[1050px]">
+                                <thead>
+                                    <tr class="border-b border-[#E6E8EE] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5B6270]">
+                                        <th class="py-4 px-6">School Tenant</th>
+                                        <th class="py-4 px-6">Portal Endpoint</th>
+                                        <th class="py-4 px-6">Principal / Contact</th>
+                                        <th class="py-4 px-6">Assigned Plan</th>
+                                        <th class="py-4 px-6">Enrollment & Metrics</th>
+                                        <th class="py-4 px-6">Status</th>
+                                        <th class="py-4 px-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#E6E8EE]">
+                                    <tr v-if="filteredSchools.length === 0">
+                                        <td colspan="7" class="py-12 text-center text-sm text-[#5B6270]">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <i class="fa-solid fa-school text-3xl text-[#D6E4FF]"></i>
+                                                <span class="font-semibold text-[#111318]">No schools found matching your search.</span>
+                                                <span class="text-xs text-[#5B6270]">Try altering your search keywords or status filter.</span>
                                             </div>
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-[#5F6368]">Students:</span>
-                                                <span class="font-bold text-[#202124]">{{ t.student_count || 320 }} / 500</span>
-                                            </div>
-                                            <div class="w-full bg-[#E8EAED] rounded-full h-1.5 mt-1">
-                                                <div class="bg-[#1A73E8] h-1.5 rounded-full" style="width: 45%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="py-4 px-6">
-                                        <span :class="(t.status || t.data?.status) === 'suspended' ? 'bg-[#FCE8E6] text-[#C5221F] border-[#FAD2CF]' : 'bg-[#E6F4EA] text-[#137333] border-[#CEEAD6]'" class="px-3 py-1 rounded-full text-xs font-bold border">
-                                            {{ (t.status || t.data?.status) === 'suspended' ? 'Suspended' : 'Active' }}
-                                        </span>
-                                    </td>
-                                    <td class="py-4 px-6 text-right">
-                                        <div class="flex items-center justify-end gap-2 flex-wrap">
-                                            <button 
-                                                @click="openEditSchoolModal(t)"
-                                                title="Edit School Details"
-                                                class="rounded-lg border border-[#DADCE0] bg-white px-3 py-1.5 text-xs font-semibold text-[#3C4043] hover:bg-[#F8F9FA] hover:text-[#1A73E8] hover:border-[#1A73E8]/30 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
-                                            >
-                                                <i class="fa-solid fa-pen-to-square"></i>
-                                                <span>Edit</span>
-                                            </button>
-                                            <button 
-                                                @click="toggleTenantStatus(t.id)"
-                                                :title="(t.status || t.data?.status) === 'suspended' ? 'Activate School' : 'Suspend School'"
-                                                :class="(t.status || t.data?.status) === 'suspended' ? 'bg-[#E6F4EA] text-[#137333] border-[#CEEAD6] hover:bg-[#D2E3D8]' : 'border-[#DADCE0] text-[#3C4043] hover:bg-[#FCE8E6] hover:text-[#C5221F] hover:border-[#FAD2CF]'"
-                                                class="rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
-                                            >
-                                                <i :class="(t.status || t.data?.status) === 'suspended' ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
-                                                <span>{{ (t.status || t.data?.status) === 'suspended' ? 'Activate' : 'Suspend' }}</span>
-                                            </button>
-                                            <button 
-                                                @click="backupTenant(t.id)"
-                                                title="Backup Database"
-                                                class="rounded-lg border border-[#DADCE0] bg-white px-3 py-1.5 text-xs font-semibold text-[#3C4043] hover:bg-[#F8F9FA] hover:text-[#1A73E8] hover:border-[#1A73E8]/30 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
-                                            >
-                                                <i class="fa-solid fa-floppy-disk"></i>
-                                                <span>Backup</span>
-                                            </button>
-                                            <button 
-                                                @click="syncTenant(t.id)"
-                                                title="Sync Database Schema"
-                                                class="rounded-lg border border-[#DADCE0] bg-white px-3 py-1.5 text-xs font-semibold text-[#3C4043] hover:bg-[#F8F9FA] hover:text-[#137333] hover:border-[#137333]/30 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
-                                            >
-                                                <i class="fa-solid fa-rotate"></i>
-                                                <span>Sync</span>
-                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <tr v-for="t in filteredSchools" :key="t.id" class="hover:bg-[#F8F9FA]/80 transition-colors">
+                                        <!-- School Name -->
+                                        <td class="py-4 px-6">
+                                            <div class="font-extrabold text-[#111318]">{{ t.name }}</div>
+                                            <div class="text-xs text-[#5B6270] font-mono mt-0.5">ID: {{ t.id }}</div>
+                                        </td>
+
+                                        <!-- Domain -->
+                                        <td class="py-4 px-6">
                                             <a 
-                                                :href="`/tenants/${t.id}/impersonate`"
-                                                target="_blank"
-                                                title="Login as Tenant Admin (Impersonate)"
-                                                class="rounded-lg border border-[#DADCE0] bg-[#F8F9FA] px-3 py-1.5 text-xs font-semibold text-[#1A73E8] hover:bg-[#E8F0FE] hover:border-[#1A73E8]/30 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
+                                                :href="getTenantLoginUrl(t)" 
+                                                target="_blank" 
+                                                class="font-semibold text-[#2F6BFF] hover:underline flex items-center space-x-1.5"
                                             >
-                                                <i class="fa-solid fa-user-secret"></i>
-                                                <span>Impersonate</span>
+                                                <span class="truncate max-w-[200px]">{{ getTenantDisplayUrl(t) }}</span>
+                                                <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
                                             </a>
-                                            <button 
-                                                @click="mapCustomDomain(t.id)"
-                                                title="Map Custom FQDN Domain"
-                                                class="rounded-lg border border-[#DADCE0] bg-white px-3 py-1.5 text-xs font-semibold text-[#3C4043] hover:bg-[#F8F9FA] hover:text-[#B06000] hover:border-[#B06000]/30 transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
+                                        </td>
+
+                                        <!-- Admin Contact -->
+                                        <td class="py-4 px-6">
+                                            <div class="font-semibold text-[#111318]">{{ t.admin_name || t.data?.admin_name || 'Principal' }}</div>
+                                            <div class="text-xs text-[#5B6270]">{{ t.admin_email || t.data?.admin_email || 'admin@school.test' }}</div>
+                                        </td>
+
+                                        <!-- Assigned Plan -->
+                                        <td class="py-4 px-6">
+                                            <span class="rounded-lg bg-[#EEF3FF] text-[#2F6BFF] border border-[#D6E4FF] px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1">
+                                                <i class="fa-solid fa-box text-2xs"></i>
+                                                <span>{{ t.plan?.name || t.plan_name || 'Growth Plan' }}</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Real Metrics (No Fake 320/45% Hardcodes) -->
+                                        <td class="py-4 px-6">
+                                            <div class="flex flex-col gap-1 text-xs">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-[#5B6270]">Students:</span>
+                                                    <span class="font-bold text-[#111318]">
+                                                        {{ t.student_count || 0 }}
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-[#5B6270]">Staff:</span>
+                                                    <span class="font-bold text-[#111318]">{{ t.staff_count || 0 }}</span>
+                                                </div>
+                                                <div class="flex items-center justify-between text-2xs text-[#8F94A0] mt-0.5">
+                                                    <span>DB: {{ t.db_status || 'Isolated' }}</span>
+                                                    <span>{{ t.data?.backup_size || '0.5 MB' }}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <!-- Status Badge -->
+                                        <td class="py-4 px-6">
+                                            <span 
+                                                :class="(t.status || t.data?.status) === 'suspended' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'" 
+                                                class="px-3 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5"
                                             >
-                                                <i class="fa-solid fa-globe"></i>
-                                                <span>Domain</span>
-                                            </button>
-                                            <button 
-                                                @click="offboardTenant(t.id)"
-                                                title="Export Data / Offboard Tenant"
-                                                class="rounded-lg border border-[#DADCE0] bg-white px-3 py-1.5 text-xs font-semibold text-[#3C4043] hover:bg-[#F8F9FA] hover:text-[#C5221F] hover:border-[#FAD2CF] transition-all flex items-center gap-1.5 whitespace-nowrap shadow-2xs cursor-pointer"
-                                            >
-                                                <i class="fa-solid fa-file-export"></i>
-                                                <span>Offboard</span>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                                <span class="h-1.5 w-1.5 rounded-full" :class="(t.status || t.data?.status) === 'suspended' ? 'bg-red-500' : 'bg-emerald-500'"></span>
+                                                <span>{{ (t.status || t.data?.status) === 'suspended' ? 'Suspended' : 'Active' }}</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Action Buttons -->
+                                        <td class="py-4 px-6 text-right">
+                                            <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                                
+                                                <!-- Edit School -->
+                                                <button 
+                                                    @click="openEditSchoolModal(t)"
+                                                    title="Edit School Details"
+                                                    class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111318] hover:bg-[#F8F9FA] hover:border-[#111318] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                                    <span>Edit</span>
+                                                </button>
+
+                                                <!-- Impersonate -->
+                                                <a 
+                                                    :href="`/tenants/${t.id}/impersonate`"
+                                                    target="_blank"
+                                                    title="Impersonate Principal"
+                                                    class="rounded-lg border border-[#D6E4FF] bg-[#EEF3FF] px-2.5 py-1.5 text-xs font-bold text-[#2F6BFF] hover:bg-[#D6E4FF] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-user-secret text-xs"></i>
+                                                    <span>Impersonate</span>
+                                                </a>
+
+                                                <!-- Activate / Suspend -->
+                                                <button 
+                                                    @click="toggleTenantStatus(t)"
+                                                    :title="(t.status || t.data?.status) === 'suspended' ? 'Activate School' : 'Suspend School'"
+                                                    :class="(t.status || t.data?.status) === 'suspended' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'"
+                                                    class="rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i :class="(t.status || t.data?.status) === 'suspended' ? 'fa-solid fa-play' : 'fa-solid fa-pause'"></i>
+                                                    <span>{{ (t.status || t.data?.status) === 'suspended' ? 'Activate' : 'Suspend' }}</span>
+                                                </button>
+
+                                                <!-- Backup -->
+                                                <button 
+                                                    @click="backupTenant(t.id, t.name)"
+                                                    title="Backup Isolated Database"
+                                                    class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#5B6270] hover:text-[#111318] hover:bg-[#F8F9FA] transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-floppy-disk text-xs"></i>
+                                                    <span>Backup</span>
+                                                </button>
+
+                                                <!-- Sync RBAC -->
+                                                <button 
+                                                    @click="syncTenant(t.id, t.name)"
+                                                    title="Sync Schema & RBAC"
+                                                    class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#5B6270] hover:text-[#111318] hover:bg-[#F8F9FA] transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-rotate text-xs"></i>
+                                                    <span>Sync</span>
+                                                </button>
+
+                                                <!-- Custom Domain -->
+                                                <button 
+                                                    @click="mapCustomDomain(t.id)"
+                                                    title="Map Custom FQDN Domain"
+                                                    class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#5B6270] hover:text-[#111318] hover:bg-[#F8F9FA] transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-globe text-xs"></i>
+                                                    <span>Domain</span>
+                                                </button>
+
+                                                <!-- Offboard -->
+                                                <button 
+                                                    @click="offboardTenant(t.id, t.name)"
+                                                    title="Offboard Tenant"
+                                                    class="rounded-lg border border-red-200 bg-red-50/50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-file-export text-xs"></i>
+                                                    <span>Offboard</span>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- ================= TAB: PAYMENT APPROVALS ================= -->
-                <div v-if="activeTab === 'approvals'" class="space-y-6 animate-fadeIn">
-                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4 mb-4">
-                            <div>
-                                <h3 class="text-base font-extrabold text-[#202124]">Pending SaaS Payment Approvals</h3>
-                                <p class="text-xs text-[#5F6368] mt-0.5">Review onboarding deposits and subscription renewals uploaded by school administrators.</p>
+                <!-- ================= TAB: INQUIRIES & LEADS ================= -->
+                <div v-if="activeTab === 'inquiries'" class="space-y-6">
+                    <!-- Stat Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-semibold text-[#5B6270]">Total Inquiries</div>
+                                    <div class="text-2xl font-extrabold text-[#111318] mt-1">{{ inquiries?.length || 0 }}</div>
+                                </div>
+                                <div class="h-10 w-10 rounded-xl bg-[#EEF3FF] text-[#2F6BFF] flex items-center justify-center">
+                                    <i class="fa-solid fa-inbox text-lg"></i>
+                                </div>
                             </div>
-                            <span class="rounded-full bg-[#E8F0FE] px-3 py-1 text-xs font-bold text-[#1A73E8]">
-                                {{ pendingApprovals ? pendingApprovals.length : 0 }} Pending
+                            <div class="text-2xs text-[#5B6270] mt-2 font-medium">All incoming portal requests</div>
+                        </div>
+
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-semibold text-[#5B6270]">New & Uncontacted</div>
+                                    <div class="text-2xl font-extrabold text-amber-600 mt-1">{{ newInquiriesCount }}</div>
+                                </div>
+                                <div class="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-bell text-lg"></i>
+                                </div>
+                            </div>
+                            <div class="text-2xs text-[#5B6270] mt-2 font-medium">Require administrative follow-up</div>
+                        </div>
+
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-semibold text-[#5B6270]">Contacted / Closed</div>
+                                    <div class="text-2xl font-extrabold text-emerald-600 mt-1">
+                                        {{ (inquiries?.length || 0) - newInquiriesCount }}
+                                    </div>
+                                </div>
+                                <div class="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-circle-check text-lg"></i>
+                                </div>
+                            </div>
+                            <div class="text-2xs text-[#5B6270] mt-2 font-medium">Successfully processed inquiries</div>
+                        </div>
+                    </div>
+
+                    <!-- Inquiries Table Card -->
+                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E6E8EE] pb-4 mb-4">
+                            <div>
+                                <h3 class="text-base font-extrabold text-[#111318]">Portal Leads & Messages</h3>
+                                <p class="text-xs text-[#5B6270] mt-0.5">Prospective schools and users reaching out via Raibix landing page.</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <!-- Search Input -->
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#5B6270]"></i>
+                                    <input 
+                                        v-model="inquirySearch"
+                                        type="text"
+                                        placeholder="Search inquiries..."
+                                        class="rounded-xl border border-[#E6E8EE] pl-8 pr-3 py-1.5 text-xs focus:border-[#2F6BFF] focus:outline-none w-48 sm:w-60 bg-[#FAFAFC]"
+                                    />
+                                    <button 
+                                        v-if="inquirySearch" 
+                                        @click="inquirySearch = ''"
+                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6270] hover:text-[#111318]"
+                                    >
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Status Filter -->
+                                <select 
+                                    v-model="inquiryStatusFilter"
+                                    class="rounded-xl border border-[#E6E8EE] px-3 py-1.5 text-xs font-semibold text-[#111318] focus:border-[#2F6BFF] focus:outline-none bg-[#FAFAFC] cursor-pointer"
+                                >
+                                    <option value="all">All Statuses</option>
+                                    <option value="new">New Only</option>
+                                    <option value="contacted">Contacted</option>
+                                    <option value="closed">Closed</option>
+                                </select>
+
+                                <!-- Type Filter -->
+                                <select 
+                                    v-model="inquiryTypeFilter"
+                                    class="rounded-xl border border-[#E6E8EE] px-3 py-1.5 text-xs font-semibold text-[#111318] focus:border-[#2F6BFF] focus:outline-none bg-[#FAFAFC] cursor-pointer"
+                                >
+                                    <option value="all">All Types</option>
+                                    <option value="contact">Contact Queries</option>
+                                    <option value="expert_call">Expert Calls</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div v-if="filteredInquiries.length === 0" class="py-16 text-center text-[#5B6270] text-sm">
+                            <div class="h-14 w-14 rounded-2xl bg-[#EEF3FF] text-[#2F6BFF] flex items-center justify-center mx-auto mb-3">
+                                <i class="fa-solid fa-headset text-2xl"></i>
+                            </div>
+                            <p class="font-bold text-[#111318] text-base">No Inquiries Found</p>
+                            <p class="text-xs text-[#5B6270] mt-1 max-w-sm mx-auto">
+                                {{ inquirySearch || inquiryStatusFilter !== 'all' || inquiryTypeFilter !== 'all' 
+                                    ? 'No results match your active filters. Try resetting search or filter criteria.' 
+                                    : 'When visitors submit the contact form or request an expert call from the portal, they will appear here.' }}
+                            </p>
+                            <button 
+                                v-if="inquirySearch || inquiryStatusFilter !== 'all' || inquiryTypeFilter !== 'all'"
+                                @click="inquirySearch = ''; inquiryStatusFilter = 'all'; inquiryTypeFilter = 'all'"
+                                class="mt-4 px-4 py-2 rounded-full border border-[#E6E8EE] bg-white text-xs font-bold text-[#2F6BFF] hover:bg-[#EEF3FF] cursor-pointer"
+                            >
+                                Reset Filters
+                            </button>
+                        </div>
+
+                        <!-- Table -->
+                        <div v-else class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-[#E6E8EE] text-[#5B6270] font-bold uppercase tracking-wider">
+                                        <th class="py-3.5 px-4">Lead / Sender</th>
+                                        <th class="py-3.5 px-4">Institution</th>
+                                        <th class="py-3.5 px-4">Type</th>
+                                        <th class="py-3.5 px-4">Message Preview</th>
+                                        <th class="py-3.5 px-4">Submitted</th>
+                                        <th class="py-3.5 px-4">Status</th>
+                                        <th class="py-3.5 px-4 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#E6E8EE] font-medium text-[#111318]">
+                                    <tr v-for="inq in filteredInquiries" :key="inq.id" class="hover:bg-[#F8F9FA]/60 transition-colors">
+                                        <!-- Sender & Contact -->
+                                        <td class="py-4 px-4">
+                                            <div class="font-bold text-sm text-[#111318] flex items-center gap-1.5">
+                                                <span>{{ inq.name }}</span>
+                                                <span v-if="inq.status === 'new'" class="h-2 w-2 rounded-full bg-amber-500 animate-pulse" title="New Inquiry"></span>
+                                            </div>
+                                            <div class="text-xs text-[#5B6270] flex items-center gap-2 mt-0.5">
+                                                <a :href="`mailto:${inq.email}`" class="hover:text-[#2F6BFF] flex items-center gap-1 font-mono text-2xs">
+                                                    <i class="fa-solid fa-envelope text-[10px]"></i>
+                                                    <span>{{ inq.email }}</span>
+                                                </a>
+                                                <a v-if="inq.phone" :href="`tel:${inq.phone}`" class="hover:text-[#2F6BFF] flex items-center gap-1 font-mono text-2xs">
+                                                    <i class="fa-solid fa-phone text-[10px]"></i>
+                                                    <span>{{ inq.phone }}</span>
+                                                </a>
+                                            </div>
+                                        </td>
+
+                                        <!-- Institution -->
+                                        <td class="py-4 px-4">
+                                            <div class="font-semibold text-[#111318]">{{ inq.institution || 'Individual Lead' }}</div>
+                                            <div class="text-2xs text-[#5B6270]">Prospective Organization</div>
+                                        </td>
+
+                                        <!-- Type -->
+                                        <td class="py-4 px-4">
+                                            <span 
+                                                v-if="inq.type === 'expert_call'" 
+                                                class="px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 font-bold text-[11px] border border-purple-200 inline-flex items-center gap-1"
+                                            >
+                                                <i class="fa-solid fa-phone text-[10px]"></i>
+                                                <span>Expert Call</span>
+                                            </span>
+                                            <span 
+                                                v-else 
+                                                class="px-2.5 py-1 rounded-full bg-[#EEF3FF] text-[#2F6BFF] font-bold text-[11px] border border-[#D6E4FF] inline-flex items-center gap-1"
+                                            >
+                                                <i class="fa-solid fa-envelope text-[10px]"></i>
+                                                <span>Contact Form</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Message Preview -->
+                                        <td class="py-4 px-4 max-w-xs">
+                                            <div 
+                                                @click="viewInquiry(inq)" 
+                                                class="text-xs text-[#5B6270] line-clamp-2 cursor-pointer hover:text-[#111318]" 
+                                                :title="inq.message"
+                                            >
+                                                {{ inq.message || 'No additional message provided.' }}
+                                            </div>
+                                        </td>
+
+                                        <!-- Received -->
+                                        <td class="py-4 px-4 whitespace-nowrap">
+                                            <div class="font-semibold text-xs text-[#111318]">{{ inq.time_ago }}</div>
+                                            <div class="text-2xs text-[#5B6270]">{{ inq.created_at }}</div>
+                                        </td>
+
+                                        <!-- Status -->
+                                        <td class="py-4 px-4 whitespace-nowrap">
+                                            <span 
+                                                v-if="inq.status === 'new'" 
+                                                class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-bold text-[11px] border border-amber-200 inline-flex items-center gap-1"
+                                            >
+                                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                                <span>New</span>
+                                            </span>
+                                            <span 
+                                                v-else-if="inq.status === 'contacted'" 
+                                                class="px-2.5 py-1 rounded-full bg-blue-50 text-[#2F6BFF] font-bold text-[11px] border border-blue-200 inline-flex items-center gap-1"
+                                            >
+                                                <i class="fa-solid fa-check text-[10px]"></i>
+                                                <span>Contacted</span>
+                                            </span>
+                                            <span 
+                                                v-else 
+                                                class="px-2.5 py-1 rounded-full bg-gray-100 text-[#5B6270] font-bold text-[11px] border border-gray-200 inline-flex items-center gap-1"
+                                            >
+                                                <span>Closed</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Actions -->
+                                        <td class="py-4 px-4 text-right space-x-1.5 whitespace-nowrap">
+                                            <!-- View / Read -->
+                                            <button 
+                                                @click="viewInquiry(inq)" 
+                                                title="View Full Details"
+                                                class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111318] hover:bg-[#F8F9FA] hover:border-[#111318] transition-all inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                                            >
+                                                <i class="fa-solid fa-eye text-xs"></i>
+                                                <span>View</span>
+                                            </button>
+
+                                            <!-- Toggle Status -->
+                                            <button 
+                                                v-if="inq.status === 'new'"
+                                                @click="updateInquiryStatus(inq, 'contacted')"
+                                                title="Mark as Contacted"
+                                                class="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-bold text-[#2F6BFF] hover:bg-blue-100 transition-all inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                                            >
+                                                <i class="fa-solid fa-check text-xs"></i>
+                                                <span>Mark Contacted</span>
+                                            </button>
+                                            <button 
+                                                v-else-if="inq.status === 'contacted'"
+                                                @click="updateInquiryStatus(inq, 'closed')"
+                                                title="Mark as Closed"
+                                                class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#5B6270] hover:bg-[#F8F9FA] transition-all inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                                            >
+                                                <span>Close</span>
+                                            </button>
+                                            <button 
+                                                v-else
+                                                @click="updateInquiryStatus(inq, 'new')"
+                                                title="Reopen Inquiry"
+                                                class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-all inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                                            >
+                                                <span>Reopen</span>
+                                            </button>
+
+                                            <!-- Delete -->
+                                            <button 
+                                                @click="deleteInquiry(inq)" 
+                                                title="Delete Inquiry Record"
+                                                class="rounded-lg border border-red-200 bg-red-50/50 px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-all inline-flex items-center gap-1 cursor-pointer shadow-2xs"
+                                            >
+                                                <i class="fa-solid fa-trash-can text-xs"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inquiry Detail Modal -->
+                <div v-if="selectedInquiry" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative border border-[#E6E8EE] flex flex-col max-h-[90vh]">
+                        <!-- Modal Header -->
+                        <div class="flex justify-between items-start border-b border-[#E6E8EE] pb-4 mb-4">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span 
+                                        v-if="selectedInquiry.type === 'expert_call'" 
+                                        class="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold text-[10px] border border-purple-200"
+                                    >
+                                        Expert Call Request
+                                    </span>
+                                    <span 
+                                        v-else 
+                                        class="px-2 py-0.5 rounded-full bg-[#EEF3FF] text-[#2F6BFF] font-bold text-[10px] border border-[#D6E4FF]"
+                                    >
+                                        Contact Query
+                                    </span>
+                                    <span 
+                                        :class="selectedInquiry.status === 'new' ? 'bg-amber-50 text-amber-700 border-amber-200' : selectedInquiry.status === 'contacted' ? 'bg-blue-50 text-[#2F6BFF] border-blue-200' : 'bg-gray-100 text-[#5B6270] border-gray-200'"
+                                        class="px-2 py-0.5 rounded-full font-bold text-[10px] border capitalize"
+                                    >
+                                        {{ selectedInquiry.status }}
+                                    </span>
+                                </div>
+                                <h3 class="font-extrabold text-[#111318] text-lg mt-2">{{ selectedInquiry.name }}</h3>
+                                <p class="text-xs text-[#5B6270]">{{ selectedInquiry.institution || 'Individual prospect' }}</p>
+                            </div>
+                            <button @click="selectedInquiry = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] text-[#5B6270] flex items-center justify-center cursor-pointer">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+
+                        <!-- Modal Content -->
+                        <div class="flex-1 overflow-y-auto space-y-5 text-xs">
+                            <!-- Contact Details Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#FAFAFC] p-4 rounded-2xl border border-[#E6E8EE]">
+                                <div>
+                                    <div class="text-[10px] font-bold text-[#5B6270] uppercase tracking-wider">Email Address</div>
+                                    <a :href="`mailto:${selectedInquiry.email}`" class="font-semibold text-[#111318] hover:text-[#2F6BFF] flex items-center gap-1.5 mt-1 font-mono">
+                                        <i class="fa-solid fa-envelope text-[#2F6BFF]"></i>
+                                        <span>{{ selectedInquiry.email }}</span>
+                                    </a>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] font-bold text-[#5B6270] uppercase tracking-wider">Phone / WhatsApp</div>
+                                    <div v-if="selectedInquiry.phone" class="flex items-center gap-2 mt-1">
+                                        <a :href="`tel:${selectedInquiry.phone}`" class="font-semibold text-[#111318] hover:text-[#2F6BFF] flex items-center gap-1 font-mono">
+                                            <i class="fa-solid fa-phone text-[#2F6BFF]"></i>
+                                            <span>{{ selectedInquiry.phone }}</span>
+                                        </a>
+                                        <a 
+                                            :href="`https://wa.me/${selectedInquiry.phone.replace(/[^0-9]/g, '')}`" 
+                                            target="_blank" 
+                                            title="Chat on WhatsApp"
+                                            class="text-emerald-600 hover:text-emerald-700 font-bold"
+                                        >
+                                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                                        </a>
+                                    </div>
+                                    <div v-else class="text-[#5B6270] italic mt-1">Not provided</div>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <div class="text-[10px] font-bold text-[#5B6270] uppercase tracking-wider">Submitted Timestamp</div>
+                                    <div class="font-medium text-[#111318] mt-1">{{ selectedInquiry.created_at }} ({{ selectedInquiry.time_ago }})</div>
+                                </div>
+                            </div>
+
+                            <!-- Message Content -->
+                            <div>
+                                <div class="text-[10px] font-bold text-[#5B6270] uppercase tracking-wider mb-2">Message / Requirement</div>
+                                <div class="bg-[#F8F9FA] rounded-2xl border border-[#E6E8EE] p-4 text-xs text-[#111318] leading-relaxed whitespace-pre-line font-normal">
+                                    {{ selectedInquiry.message || 'No additional message was written by the user.' }}
+                                </div>
+                            </div>
+
+                            <!-- Update Status Controls -->
+                            <div class="pt-2">
+                                <div class="text-[10px] font-bold text-[#5B6270] uppercase tracking-wider mb-2">Update Inquiry Status</div>
+                                <div class="flex items-center gap-2">
+                                    <button 
+                                        @click="updateInquiryStatus(selectedInquiry, 'new')"
+                                        :class="selectedInquiry.status === 'new' ? 'bg-amber-500 text-white font-bold' : 'bg-white border border-[#E6E8EE] text-[#5B6270] hover:bg-[#F8F9FA]'"
+                                        class="px-3.5 py-1.5 rounded-full text-xs transition-all cursor-pointer shadow-2xs"
+                                    >
+                                        Mark as New
+                                    </button>
+                                    <button 
+                                        @click="updateInquiryStatus(selectedInquiry, 'contacted')"
+                                        :class="selectedInquiry.status === 'contacted' ? 'bg-[#2F6BFF] text-white font-bold' : 'bg-white border border-[#E6E8EE] text-[#5B6270] hover:bg-[#F8F9FA]'"
+                                        class="px-3.5 py-1.5 rounded-full text-xs transition-all cursor-pointer shadow-2xs"
+                                    >
+                                        Mark Contacted
+                                    </button>
+                                    <button 
+                                        @click="updateInquiryStatus(selectedInquiry, 'closed')"
+                                        :class="selectedInquiry.status === 'closed' ? 'bg-gray-800 text-white font-bold' : 'bg-white border border-[#E6E8EE] text-[#5B6270] hover:bg-[#F8F9FA]'"
+                                        class="px-3.5 py-1.5 rounded-full text-xs transition-all cursor-pointer shadow-2xs"
+                                    >
+                                        Mark Closed
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="mt-6 pt-4 border-t border-[#E6E8EE] flex justify-between items-center">
+                            <button 
+                                @click="deleteInquiry(selectedInquiry)"
+                                class="text-red-600 hover:text-red-700 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>Delete Inquiry</span>
+                            </button>
+                            <button 
+                                @click="selectedInquiry = null" 
+                                class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 font-bold text-xs text-white shadow-sm transition-colors cursor-pointer"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB 3: PAYMENT APPROVALS ================= -->
+                <div v-if="activeTab === 'approvals'" class="space-y-6">
+                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs">
+                        <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4 mb-4">
+                            <div>
+                                <h3 class="text-base font-extrabold text-[#111318]">Pending SaaS Payment Approvals</h3>
+                                <p class="text-xs text-[#5B6270] mt-0.5">Verify subscription deposits and invoice slips uploaded by school administrators.</p>
+                            </div>
+                            <span class="rounded-full bg-[#EEF3FF] border border-[#D6E4FF] px-3.5 py-1 text-xs font-bold text-[#2F6BFF]">
+                                {{ pendingApprovals ? pendingApprovals.length : 0 }} Awaiting Review
                             </span>
                         </div>
 
-                        <div v-if="!pendingApprovals || pendingApprovals.length === 0" class="py-12 text-center text-[#5F6368] text-sm">
-                            <i class="fa-solid fa-circle-check text-4xl text-[#137333] mb-3 block"></i>
-                            <p class="font-bold text-[#202124]">All Clear!</p>
-                            <p class="text-xs mt-1">There are no pending subscription or onboarding payments awaiting verification.</p>
+                        <div v-if="!pendingApprovals || pendingApprovals.length === 0" class="py-16 text-center text-[#5B6270] text-sm">
+                            <i class="fa-solid fa-circle-check text-4xl text-emerald-500 mb-3 block"></i>
+                            <p class="font-bold text-[#111318] text-base">All Clear!</p>
+                            <p class="text-xs text-[#5B6270] mt-1">There are no pending subscription receipts requiring Super Admin review.</p>
                         </div>
 
                         <div v-else class="overflow-x-auto">
                             <table class="w-full text-left border-collapse text-xs">
                                 <thead>
-                                    <tr class="border-b border-[#DADCE0] text-[#5F6368] font-bold">
-                                        <th class="py-3 px-4">Transaction Code</th>
-                                        <th class="py-3 px-4">School Name</th>
-                                        <th class="py-3 px-4">Plan & Billing</th>
-                                        <th class="py-3 px-4">Amount Due</th>
-                                        <th class="py-3 px-4">Ref Number</th>
-                                        <th class="py-3 px-4">Receipt Slip</th>
-                                        <th class="py-3 px-4 text-right">Actions</th>
+                                    <tr class="border-b border-[#E6E8EE] text-[#5B6270] font-bold uppercase tracking-wider">
+                                        <th class="py-3.5 px-4">Transaction Code</th>
+                                        <th class="py-3.5 px-4">School Tenant</th>
+                                        <th class="py-3.5 px-4">Requested Plan</th>
+                                        <th class="py-3.5 px-4">Amount</th>
+                                        <th class="py-3.5 px-4">Reference No</th>
+                                        <th class="py-3.5 px-4">Receipt Proof</th>
+                                        <th class="py-3.5 px-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-[#E8EAED] font-medium text-[#202124]">
-                                    <tr v-for="appr in pendingApprovals" :key="appr.id" class="hover:bg-[#F8F9FA]/50">
-                                        <td class="py-4 px-4 font-mono font-bold text-[#1A73E8]">{{ appr.transaction_code }}</td>
+                                <tbody class="divide-y divide-[#E6E8EE] font-medium text-[#111318]">
+                                    <tr v-for="appr in pendingApprovals" :key="appr.id" class="hover:bg-[#F8F9FA]/60">
+                                        <td class="py-4 px-4 font-mono font-bold text-[#2F6BFF]">{{ appr.transaction_code }}</td>
                                         <td class="py-4 px-4">
-                                            <div class="font-bold text-sm">{{ appr.school_name }}</div>
-                                            <div class="text-3xs text-[#5F6368] font-mono">Tenant ID: {{ appr.tenant_id }}</div>
+                                            <div class="font-bold text-sm text-[#111318]">{{ appr.school_name }}</div>
+                                            <div class="text-2xs text-[#5B6270] font-mono">Tenant ID: {{ appr.tenant_id }}</div>
                                         </td>
                                         <td class="py-4 px-4">
-                                            <span class="px-2 py-0.5 rounded-full bg-[#E8F0FE] text-[#1A73E8] font-bold text-[10px]">
+                                            <span class="px-2.5 py-1 rounded-full bg-[#EEF3FF] text-[#2F6BFF] font-bold text-[11px] border border-[#D6E4FF]">
                                                 {{ appr.plan_name }}
                                             </span>
                                         </td>
-                                        <td class="py-4 px-4 font-bold text-sm text-[#137333]">PKR {{ appr.amount.toLocaleString() }}</td>
-                                        <td class="py-4 px-4 font-mono font-bold">{{ appr.reference_no }}</td>
+                                        <td class="py-4 px-4 font-extrabold text-sm text-emerald-600">PKR {{ (Number(appr.amount) || 0).toLocaleString() }}</td>
+                                        <td class="py-4 px-4 font-mono font-semibold">{{ appr.reference_no }}</td>
                                         <td class="py-4 px-4">
                                             <button 
                                                 v-if="appr.receipt_path" 
                                                 type="button" 
                                                 @click="selectedReceipt = appr.receipt_path"
-                                                class="rounded-lg bg-[#F1F3F4] hover:bg-[#E8EAED] px-3 py-1.5 font-bold text-[#1A73E8] inline-flex items-center gap-1"
+                                                class="rounded-lg bg-[#F8F9FA] hover:bg-[#EEF3FF] border border-[#E6E8EE] px-3 py-1.5 font-bold text-[#2F6BFF] inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
                                             >
                                                 <i class="fa-solid fa-image"></i>
                                                 <span>View Slip</span>
                                             </button>
-                                            <span v-else class="text-[#C5221F] font-bold text-[10px]">No Slip Uploaded</span>
+                                            <span v-else class="text-red-500 font-bold text-2xs">No Slip Uploaded</span>
                                         </td>
                                         <td class="py-4 px-4 text-right space-x-2">
                                             <button 
-                                                @click="approveSaaSCheckout(appr.id)"
-                                                class="rounded-full bg-[#137333] hover:bg-[#0D652D] px-4 py-2 font-bold text-white shadow-sm inline-flex items-center gap-1"
+                                                @click="approveSaaSCheckout(appr.id, appr.school_name)"
+                                                class="rounded-full bg-emerald-600 hover:bg-emerald-700 px-4 py-2 font-bold text-white shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
                                             >
-                                                <i class="fa-solid fa-circle-check"></i> Approve
+                                                <i class="fa-solid fa-check"></i>
+                                                <span>Approve</span>
                                             </button>
                                             <button 
-                                                @click="rejectSaaSCheckout(appr.id)"
-                                                class="rounded-full bg-[#C5221F] hover:bg-[#A51D19] px-4 py-2 font-bold text-white shadow-sm inline-flex items-center gap-1"
+                                                @click="rejectSaaSCheckout(appr.id, appr.school_name)"
+                                                class="rounded-full bg-red-600 hover:bg-red-700 px-4 py-2 font-bold text-white shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
                                             >
-                                                <i class="fa-solid fa-circle-xmark"></i> Reject
+                                                <i class="fa-solid fa-xmark"></i>
+                                                <span>Reject</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -1359,252 +2095,213 @@ const logout = () => {
 
                 <!-- Receipt Slip Modal Dialog -->
                 <div v-if="selectedReceipt" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-                    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col relative max-h-[85vh]">
-                        <div class="flex justify-between items-center border-b border-[#DADCE0] pb-3 mb-4">
-                            <h3 class="font-bold text-[#202124] text-sm uppercase tracking-wider flex items-center gap-1.5">
-                                <i class="fa-solid fa-file-invoice"></i> Payment Receipt Slip Verification
+                    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl flex flex-col relative max-h-[90vh] border border-[#E6E8EE]">
+                        <div class="flex justify-between items-center border-b border-[#E6E8EE] pb-4 mb-4">
+                            <h3 class="font-extrabold text-[#111318] text-sm uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-file-invoice text-[#2F6BFF]"></i>
+                                <span>Uploaded Payment Verification Proof</span>
                             </h3>
-                            <button @click="selectedReceipt = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] font-bold text-[#5F6368] flex items-center justify-center cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+                            <button @click="selectedReceipt = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] text-[#5B6270] flex items-center justify-center cursor-pointer">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
                         </div>
-                        <div class="flex-1 overflow-y-auto flex items-center justify-center bg-[#F8F9FA] rounded-xl border border-[#DADCE0] p-2">
-                            <img :src="selectedReceipt" class="max-h-[60vh] object-contain rounded-lg shadow-sm" alt="Payment Receipt" />
+                        <div class="flex-1 overflow-y-auto flex items-center justify-center bg-[#F8F9FA] rounded-2xl border border-[#E6E8EE] p-4">
+                            <img :src="selectedReceipt" class="max-h-[60vh] object-contain rounded-lg shadow-sm" alt="Payment Proof Slip" />
                         </div>
                         <div class="mt-4 flex justify-end">
-                            <button @click="selectedReceipt = null" class="rounded-full bg-[#1A73E8] px-6 py-2.5 font-bold text-white shadow-sm hover:bg-[#1557B0]">Close Viewer</button>
+                            <button @click="selectedReceipt = null" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 font-bold text-xs text-white shadow-sm transition-colors cursor-pointer">
+                                Close Preview
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ================= TAB 3: PLANS & PACKAGES ================= -->
-                <div v-if="activeTab === 'plans'" class="space-y-6 animate-fadeIn">
-                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl border border-[#DADCE0] shadow-2xs">
+                <!-- ================= TAB 4: PLANS & PACKAGES ================= -->
+                <div v-if="activeTab === 'plans'" class="space-y-6">
+                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl border border-[#E6E8EE] shadow-2xs">
                         <div>
-                            <h3 class="text-base font-bold text-[#202124]">Subscription Tiers</h3>
-                            <p class="text-xs text-[#5F6368]">Add or customize plans available for new and existing schools.</p>
+                            <h3 class="text-base font-extrabold text-[#111318]">Subscription Tiers & Packages</h3>
+                            <p class="text-xs text-[#5B6270]">Define package pricing, student caps, and module feature sets.</p>
                         </div>
-                        <button @click="openAddPlanModal" class="rounded-full bg-[#1A73E8] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#1557B0] transition-all shadow-sm">
+                        <button @click="openAddPlanModal" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all cursor-pointer">
                             + Add New Plan
                         </button>
                     </div>
 
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                        <div v-for="plan in plans" :key="plan.id" class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs flex flex-col justify-between relative overflow-hidden">
+                        <div v-for="plan in plans" :key="plan.id" class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex flex-col justify-between relative overflow-hidden transition-all hover:border-[#2F6BFF]/40">
                             <div>
                                 <div class="flex items-center justify-between">
-                                    <span class="rounded-full bg-[#E8F0FE] px-3 py-1 text-xs font-bold text-[#1A73E8] uppercase tracking-wider">
+                                    <span class="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-bold text-[#2F6BFF] uppercase tracking-wider border border-[#D6E4FF]">
                                         {{ plan.code }}
                                     </span>
-                                    <div class="space-x-1.5">
-                                        <button @click="openEditPlanModal(plan)" class="text-xs font-bold text-[#1A73E8] hover:underline">Edit</button>
-                                        <button @click="confirmDeletePlan(plan)" class="text-xs font-bold text-[#C5221F] hover:underline">Delete</button>
+                                    <div class="space-x-2">
+                                        <button @click="openEditPlanModal(plan)" class="text-xs font-bold text-[#2F6BFF] hover:underline cursor-pointer">Edit</button>
+                                        <button @click="confirmDeletePlan(plan)" class="text-xs font-bold text-red-600 hover:underline cursor-pointer">Delete</button>
                                     </div>
                                 </div>
 
-                                <h3 class="mt-4 text-xl font-extrabold text-[#202124]">{{ plan.name }}</h3>
+                                <h3 class="mt-4 text-xl font-extrabold text-[#111318]">{{ plan.name }}</h3>
                                 <div class="mt-2 flex items-baseline space-x-1">
-                                    <span class="text-3xl font-extrabold text-[#202124]">PKR {{ (plan.price_monthly || 0).toLocaleString() }}</span>
-                                    <span class="text-xs font-semibold text-[#5F6368]">/ month</span>
+                                    <span class="text-3xl font-extrabold text-[#111318]">PKR {{ (plan.price_monthly || 0).toLocaleString() }}</span>
+                                    <span class="text-xs font-semibold text-[#5B6270]">/ month</span>
                                 </div>
-                                <p class="mt-1 text-xs font-semibold text-[#5F6368]">Max Students: {{ (plan.max_students || 500).toLocaleString() }}</p>
+                                <p class="mt-1 text-xs font-semibold text-[#5B6270]">Enrollment Cap: {{ (plan.max_students || 500).toLocaleString() }} Students</p>
 
-                                <div class="mt-6 border-t border-[#DADCE0] pt-4 space-y-2">
-                                    <p class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Included Features:</p>
+                                <div class="mt-6 border-t border-[#E6E8EE] pt-4 space-y-2">
+                                    <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Package Inclusions:</p>
                                     <ul class="space-y-2 text-xs">
-                                        <li v-for="feature in (Array.isArray(plan.features) ? plan.features : ['Core LMS', 'Attendance', 'Admissions'])" :key="feature" class="flex items-center space-x-2 text-[#202124]">
-                                            <i class="fa-solid fa-check text-[#137333]"></i>
-                                            <span>{{ feature }}</span>
-                                        </li>
-                                        <li class="flex items-center space-x-2 text-[#202124]">
-                                            <i class="fa-solid fa-check text-[#137333]"></i>
-                                            <span>14-Day Free Trial</span>
-                                        </li>
-                                        <li class="flex items-center space-x-2 text-[#202124]">
-                                            <i class="fa-solid fa-check text-[#137333]"></i>
-                                            <span>Self-Serve Upgrade/Downgrade</span>
-                                        </li>
-                                        <li class="flex items-center space-x-2 text-[#202124]">
-                                            <i class="fa-solid fa-check text-[#137333]"></i>
-                                            <span>API Rate Limit: 100 req/min</span>
+                                        <li v-for="feature in (Array.isArray(plan.features) ? plan.features : ['Core SIS', 'Attendance', 'Fees', 'LMS'])" :key="feature" class="flex items-center space-x-2 text-[#111318]">
+                                            <i class="fa-solid fa-check text-emerald-600"></i>
+                                            <span class="font-medium">{{ feature }}</span>
                                         </li>
                                     </ul>
                                 </div>
                             </div>
 
-                            <div class="mt-6 pt-4 border-t border-[#DADCE0]">
-                                <span class="block text-center text-xs font-bold text-[#5F6368]">{{ plan.tenants_count || 0 }} Schools Currently Subscribed</span>
+                            <div class="mt-6 pt-4 border-t border-[#E6E8EE]">
+                                <span class="block text-center text-xs font-bold text-[#5B6270]">
+                                    {{ plan.tenants_count || 0 }} Schools Subscribed
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ================= TAB 4: PAYMENTS ================= -->
-                <div v-if="activeTab === 'payments'" class="space-y-6 animate-fadeIn">
-                    <!-- Revenue & Payment Summary Metrics -->
+                <!-- ================= TAB 5: PAYMENTS ================= -->
+                <div v-if="activeTab === 'payments'" class="space-y-6">
+                    
+                    <!-- Metrics Row -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs flex items-center justify-between">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Total Revenue Collected</p>
-                                <h4 class="mt-2 text-2xl font-black text-[#137333]">PKR {{ paymentStats.totalRevenue.toLocaleString() }}</h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5F6368]">Lifetime subscription inflows</p>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Total Inflows Collected</p>
+                                <h4 class="mt-2 text-2xl font-black text-emerald-600">PKR {{ paymentStats.totalRevenue.toLocaleString() }}</h4>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Cumulative verified subscriptions</p>
                             </div>
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E6F4EA] text-[#137333] shadow-xs">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-2xs">
                                 <i class="fa-solid fa-wallet text-xl"></i>
                             </div>
                         </div>
 
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs flex items-center justify-between">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Successful Transactions</p>
-                                <h4 class="mt-2 text-2xl font-black text-[#1A73E8]">{{ paymentStats.paidCount }} <span class="text-sm font-semibold text-[#5F6368]">/ {{ paymentStats.totalCount }}</span></h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5F6368]">Verified payments processed</p>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Processed Transactions</p>
+                                <h4 class="mt-2 text-2xl font-black text-[#2F6BFF]">{{ paymentStats.paidCount }} <span class="text-sm font-semibold text-[#5B6270]">/ {{ paymentStats.totalCount }}</span></h4>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Confirmed ledger receipts</p>
                             </div>
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E8F0FE] text-[#1A73E8] shadow-xs">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF3FF] text-[#2F6BFF] shadow-2xs">
                                 <i class="fa-solid fa-check-double text-xl"></i>
                             </div>
                         </div>
 
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs flex items-center justify-between">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-[#5F6368]">Average Ticket Size</p>
-                                <h4 class="mt-2 text-2xl font-black text-[#B06000]">PKR {{ paymentStats.avgTicket.toLocaleString() }}</h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5F6368]">Per school billing average</p>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Average Invoice Ticket</p>
+                                <h4 class="mt-2 text-2xl font-black text-[#111318]">PKR {{ paymentStats.avgTicket.toLocaleString() }}</h4>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Per tenant billing mean</p>
                             </div>
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FEF7E0] text-[#B06000] shadow-xs">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 shadow-2xs">
                                 <i class="fa-solid fa-chart-line text-xl"></i>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Dunning Management Alerts -->
-                    <div v-if="overdueCount > 0" class="rounded-2xl border border-[#FAD2CF] bg-[#FCE8E6] p-5 shadow-2xs flex items-start sm:items-center justify-between flex-col sm:flex-row gap-4 mb-6">
-                        <div class="flex items-start gap-4">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C5221F] text-white">
-                                <i class="fa-solid fa-triangle-exclamation"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-[#C5221F]">Dunning Management: {{ overdueCount }} {{ overdueCount === 1 ? 'School' : 'Schools' }} Overdue</h4>
-                                <p class="mt-1 text-xs text-[#C5221F]">Automated retry logic failed. Grace periods expire in 48 hours before auto-suspension.</p>
-                            </div>
-                        </div>
-                        <button 
-                            @click="paymentStatusFilter = 'pending'"
-                            class="shrink-0 rounded-lg bg-[#C5221F] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#A50E0E] transition-colors cursor-pointer"
-                        >
-                            Review Failed Payments
-                        </button>
-                    </div>
-
-                    <!-- Filter & Search Card -->
-                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <!-- Search and Status Bar -->
+                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div class="relative w-full sm:w-80">
-                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#5F6368]"></i>
+                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6270]"></i>
                             <input 
                                 v-model="paymentSearch" 
                                 type="text" 
-                                placeholder="Search by Trx ID, school name, or gateway..." 
-                                class="w-full rounded-xl border border-[#DADCE0] bg-[#F8F9FA] pl-9 pr-4 py-2 text-xs font-medium text-[#202124] placeholder-[#5F6368] focus:border-[#1A73E8] focus:bg-white focus:outline-none transition-all"
+                                placeholder="Search by transaction ID, tenant, or gateway..." 
+                                class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] pl-9 pr-4 py-2.5 text-xs font-medium text-[#111318] placeholder-[#8F94A0] focus:border-[#2F6BFF] focus:bg-white focus:outline-none transition-all"
                             />
                         </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                            <span class="text-xs font-bold text-[#5F6368] whitespace-nowrap mr-1">Status:</span>
+                        <div class="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
                             <button 
-                                v-for="status in ['all', 'paid', 'pending', 'refunded']" 
+                                v-for="status in ['all', 'paid', 'pending', 'failed']" 
                                 :key="status"
                                 @click="paymentStatusFilter = status"
-                                :class="paymentStatusFilter === status ? 'bg-[#202124] text-white shadow-xs' : 'bg-[#F8F9FA] text-[#5F6368] hover:text-[#202124] border border-[#DADCE0]'"
-                                class="rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition-all cursor-pointer shrink-0"
+                                :class="paymentStatusFilter === status ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                class="rounded-xl px-3.5 py-1.5 text-xs font-bold capitalize transition-all cursor-pointer shrink-0"
                             >
-                                {{ status === 'all' ? 'All Statuses' : status }}
+                                {{ status === 'all' ? 'All Transactions' : status }}
                             </button>
                         </div>
                     </div>
 
-                    <!-- Payments Table Card -->
-                    <div class="google-card overflow-hidden rounded-2xl border border-[#DADCE0] bg-white shadow-2xs">
-                        <div class="p-6 border-b border-[#DADCE0] flex items-center justify-between">
-                            <div>
-                                <h3 class="text-base font-bold text-[#202124]">Subscription Ledger & Invoices</h3>
-                                <p class="text-xs text-[#5F6368]">Detailed record of all incoming subscription payments. Click any transaction to view HMAC verification & receipt.</p>
-                            </div>
-                            <span class="rounded-full bg-[#F8F9FA] px-3 py-1 text-xs font-bold text-[#5F6368] border border-[#DADCE0]">
-                                {{ filteredTransactions.length }} Records
-                            </span>
-                        </div>
+                    <!-- Payments Table -->
+                    <div class="overflow-hidden rounded-2xl border border-[#E6E8EE] bg-white shadow-2xs">
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
+                            <table class="w-full text-left border-collapse text-sm min-w-[950px]">
                                 <thead>
-                                    <tr class="border-b border-[#DADCE0] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5F6368]">
+                                    <tr class="border-b border-[#E6E8EE] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5B6270]">
                                         <th class="py-4 px-6">Transaction ID</th>
                                         <th class="py-4 px-6">School Tenant</th>
                                         <th class="py-4 px-6">Subscription Tier</th>
-                                        <th class="py-4 px-6">Gateway / Method</th>
+                                        <th class="py-4 px-6">Gateway Method</th>
                                         <th class="py-4 px-6">Amount</th>
-                                        <th class="py-4 px-6">Date & Time</th>
+                                        <th class="py-4 px-6">Date</th>
                                         <th class="py-4 px-6">Status</th>
-                                        <th class="py-4 px-6 text-right">Action</th>
+                                        <th class="py-4 px-6 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-[#E8EAED]">
+                                <tbody class="divide-y divide-[#E6E8EE]">
                                     <tr v-if="filteredTransactions.length === 0">
-                                        <td colspan="8" class="py-12 text-center text-sm text-[#5F6368]">
-                                            <div class="flex flex-col items-center gap-2">
-                                                <i class="fa-solid fa-receipt text-3xl text-[#DADCE0]"></i>
-                                                <span class="font-semibold">No transaction records match your criteria.</span>
-                                                <span class="text-xs text-[#5F6368]">Try clearing your search query or status filter.</span>
-                                            </div>
+                                        <td colspan="8" class="py-12 text-center text-sm text-[#5B6270]">
+                                            No transaction records found matching your filter criteria.
                                         </td>
                                     </tr>
-                                    <tr v-for="trx in filteredTransactions" :key="trx.id" class="hover:bg-[#F8F9FA]/80 transition-colors group">
-                                        <td class="py-4 px-6 font-mono text-xs font-bold text-[#1A73E8] group-hover:underline cursor-pointer" @click="selectedTransaction = trx">
-                                            {{ trx.transaction_id || trx.transaction_code || ('REV-' + trx.id) }}
+
+                                    <tr v-for="trx in filteredTransactions" :key="trx.id" class="hover:bg-[#F8F9FA]/80 transition-colors">
+                                        <td class="py-4 px-6 font-mono text-xs font-bold text-[#2F6BFF]">
+                                            {{ trx.transaction_id || trx.transaction_code }}
                                         </td>
                                         <td class="py-4 px-6">
-                                            <div class="font-bold text-[#202124]">{{ trx.school_name || trx.tenant?.name || 'School' }}</div>
-                                            <div class="font-mono text-2xs text-[#5F6368]">ID: {{ trx.tenant_id || trx.tenant?.id || 'N/A' }}</div>
+                                            <div class="font-extrabold text-[#111318]">{{ trx.school_name || trx.tenant?.name }}</div>
+                                            <div class="font-mono text-2xs text-[#5B6270]">ID: {{ trx.tenant_id }}</div>
                                         </td>
                                         <td class="py-4 px-6">
-                                            <span class="inline-flex items-center gap-1.5 rounded-md bg-[#F8F9FA] px-2.5 py-1 text-xs font-semibold text-[#202124] border border-[#DADCE0]">
-                                                <i class="fa-solid fa-layer-group text-2xs text-[#1A73E8]"></i>
-                                                {{ trx.plan_name || trx.plan?.name || 'Growth Plan' }}
+                                            <span class="rounded-md bg-[#F8F9FA] px-2.5 py-1 text-xs font-semibold text-[#111318] border border-[#E6E8EE]">
+                                                {{ trx.plan_name || 'Growth Plan' }}
                                             </span>
                                         </td>
-                                        <td class="py-4 px-6">
-                                            <div class="text-xs font-semibold text-[#3C4043] flex items-center gap-1.5">
-                                                <i :class="[
-                                                    'fa-solid',
-                                                    (trx.gateway || '').toLowerCase().includes('jazzcash') ? 'fa-mobile-screen text-[#C5221F]' : 'fa-building-columns text-[#1A73E8]'
-                                                ]"></i>
-                                                <span>{{ trx.gateway || 'Bank Transfer' }}</span>
-                                            </div>
-                                            <div class="font-mono text-2xs text-[#5F6368] truncate max-w-[150px]">Ref: {{ trx.reference_no || 'N/A' }}</div>
+                                        <td class="py-4 px-6 text-xs font-semibold text-[#111318]">
+                                            {{ trx.gateway }}
                                         </td>
-                                        <td class="py-4 px-6 font-black text-sm text-[#137333]">
-                                            PKR {{ (trx.amount || 0).toLocaleString() }}
+                                        <td class="py-4 px-6 font-black text-sm text-emerald-600">
+                                            PKR {{ (Number(trx.amount) || 0).toLocaleString() }}
                                         </td>
-                                        <td class="py-4 px-6 text-xs text-[#5F6368]">
-                                            {{ trx.date || trx.created_at || 'Recent' }}
+                                        <td class="py-4 px-6 text-xs text-[#5B6270]">
+                                            {{ trx.date || trx.created_at }}
                                         </td>
                                         <td class="py-4 px-6">
-                                            <span :class="[
-                                                'rounded-full px-3 py-1 text-xs font-bold border inline-flex items-center gap-1.5',
-                                                (trx.status || 'paid').toLowerCase() === 'paid' ? 'bg-[#E6F4EA] text-[#137333] border-[#CEEAD6]' :
-                                                (trx.status || '').toLowerCase() === 'pending' ? 'bg-[#FEF7E0] text-[#B06000] border-[#FAD2CF]' :
-                                                'bg-[#FCE8E6] text-[#C5221F] border-[#FAD2CF]'
-                                            ]">
-                                                <span class="h-1.5 w-1.5 rounded-full" :class="[
-                                                    (trx.status || 'paid').toLowerCase() === 'paid' ? 'bg-[#137333]' :
-                                                    (trx.status || '').toLowerCase() === 'pending' ? 'bg-[#B06000]' : 'bg-[#C5221F]'
-                                                ]"></span>
-                                                {{ (trx.status || 'paid').toUpperCase() }}
+                                            <span 
+                                                :class="[
+                                                    'rounded-full px-3 py-1 text-xs font-bold border inline-flex items-center gap-1.5',
+                                                    (trx.status || 'paid').toLowerCase() === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    (trx.status || '').toLowerCase() === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                    'bg-red-50 text-red-700 border-red-200'
+                                                ]"
+                                            >
+                                                <span class="h-1.5 w-1.5 rounded-full" :class="(trx.status || 'paid').toLowerCase() === 'paid' ? 'bg-emerald-500' : (trx.status || '').toLowerCase() === 'pending' ? 'bg-amber-500' : 'bg-red-500'"></span>
+                                                <span>{{ (trx.status || 'paid').toUpperCase() }}</span>
                                             </span>
                                         </td>
-                                        <td class="py-4 px-6 text-right">
+                                        <td class="py-4 px-6 text-right space-x-2">
                                             <button 
                                                 @click="selectedTransaction = trx"
-                                                class="rounded-lg bg-[#F8F9FA] px-3 py-1.5 text-xs font-bold text-[#1A73E8] hover:bg-[#E8F0FE] border border-[#DADCE0] transition-colors cursor-pointer"
-                                                title="Inspect Transaction Details"
+                                                class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[#111318] hover:bg-[#F8F9FA] border border-[#E6E8EE] transition-colors cursor-pointer"
                                             >
                                                 Inspect
+                                            </button>
+                                            <button 
+                                                @click="downloadInvoicePDF(trx)"
+                                                class="rounded-lg bg-[#111318] hover:bg-[#2F6BFF] px-3 py-1.5 text-xs font-bold text-white transition-colors cursor-pointer"
+                                                title="Print Official Tax Invoice"
+                                            >
+                                                <i class="fa-solid fa-print"></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -1614,107 +2311,157 @@ const logout = () => {
                     </div>
                 </div>
 
-                <!-- ================= TAB 5: LOGS ================= -->
-                <div v-if="activeTab === 'logs'" class="space-y-6 animate-fadeIn">
-                    <!-- Logs Filter & Search Bar -->
-                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                <!-- Transaction Details Slide-Over -->
+                <div v-if="selectedTransaction" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
+                    <div class="absolute inset-0" @click="selectedTransaction = null"></div>
+                    <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 border-l border-[#E6E8EE]">
+                        <div class="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
+                            <div class="flex justify-between items-center border-b border-[#E6E8EE] pb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                        <i class="fa-solid fa-receipt text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-extrabold text-[#111318]">Transaction Ledger Slip</h3>
+                                        <p class="font-mono text-xs text-[#2F6BFF] font-bold">{{ selectedTransaction.transaction_id || selectedTransaction.transaction_code }}</p>
+                                    </div>
+                                </div>
+                                <button @click="selectedTransaction = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] text-[#5B6270] flex items-center justify-center cursor-pointer">
+                                    <i class="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                            </div>
+
+                            <div class="rounded-2xl bg-[#F8F9FA] p-5 border border-[#E6E8EE] space-y-3.5 text-xs">
+                                <div class="flex justify-between border-b border-[#E6E8EE] pb-2.5">
+                                    <span class="font-bold text-[#5B6270]">Tenant School:</span>
+                                    <span class="font-bold text-[#111318]">{{ selectedTransaction.school_name || selectedTransaction.tenant?.name }}</span>
+                                </div>
+                                <div class="flex justify-between border-b border-[#E6E8EE] pb-2.5">
+                                    <span class="font-bold text-[#5B6270]">Tenant ID:</span>
+                                    <span class="font-mono font-semibold text-[#2F6BFF]">{{ selectedTransaction.tenant_id }}</span>
+                                </div>
+                                <div class="flex justify-between border-b border-[#E6E8EE] pb-2.5">
+                                    <span class="font-bold text-[#5B6270]">Subscription Plan:</span>
+                                    <span class="font-bold text-[#111318]">{{ selectedTransaction.plan_name }}</span>
+                                </div>
+                                <div class="flex justify-between border-b border-[#E6E8EE] pb-2.5">
+                                    <span class="font-bold text-[#5B6270]">Payment Method:</span>
+                                    <span class="font-bold text-[#111318]">{{ selectedTransaction.gateway }}</span>
+                                </div>
+                                <div class="flex justify-between border-b border-[#E6E8EE] pb-2.5">
+                                    <span class="font-bold text-[#5B6270]">Reference Code:</span>
+                                    <span class="font-mono text-[#111318] font-semibold">{{ selectedTransaction.reference_no }}</span>
+                                </div>
+                                <div class="flex justify-between border-b border-[#E6E8EE] pb-2.5">
+                                    <span class="font-bold text-[#5B6270]">Total Inflow:</span>
+                                    <span class="font-black text-sm text-emerald-600">PKR {{ (Number(selectedTransaction.amount) || 0).toLocaleString() }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="font-bold text-[#5B6270]">Processed Timestamp:</span>
+                                    <span class="font-semibold text-[#111318]">{{ selectedTransaction.date || selectedTransaction.created_at }}</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270] mb-1.5">Central HMAC Verification Signature</label>
+                                <div class="rounded-xl bg-[#111318] p-3.5 font-mono text-2xs text-emerald-400 break-all select-all">
+                                    {{ selectedTransaction.secure_hash || 'SHA256:VERIFIED:CLUSTER:RAIBIX:NODE01' }}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-2">
+                                <button @click="selectedTransaction = null" class="rounded-xl bg-[#F8F9FA] px-5 py-2.5 text-xs font-bold text-[#111318] hover:bg-[#E6E8EE] transition-colors border border-[#E6E8EE] cursor-pointer">
+                                    Close Window
+                                </button>
+                                <button @click="downloadInvoicePDF(selectedTransaction)" class="rounded-xl bg-[#111318] hover:bg-[#2F6BFF] px-5 py-2.5 text-xs font-bold text-white transition-colors shadow-2xs flex items-center gap-2 cursor-pointer">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                    <span>Download Tax Invoice</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB 6: ACTIVITY LOGS ================= -->
+                <div v-if="activeTab === 'logs'" class="space-y-6">
+                    
+                    <!-- Search and Severity Filter -->
+                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div class="relative w-full sm:w-96">
-                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#5F6368]"></i>
+                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6270]"></i>
                             <input 
                                 v-model="logSearch" 
                                 type="text" 
-                                placeholder="Search event titles, descriptions, or actors..." 
-                                class="w-full rounded-xl border border-[#DADCE0] bg-[#F8F9FA] pl-9 pr-4 py-2 text-xs font-medium text-[#202124] placeholder-[#5F6368] focus:border-[#1A73E8] focus:bg-white focus:outline-none transition-all"
+                                placeholder="Search action events, descriptions, or actors..." 
+                                class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] pl-9 pr-4 py-2.5 text-xs font-medium text-[#111318] placeholder-[#8F94A0] focus:border-[#2F6BFF] focus:bg-white focus:outline-none transition-all"
                             />
                         </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                            <span class="text-xs font-bold text-[#5F6368] whitespace-nowrap mr-1">Severity:</span>
+                        <div class="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
                             <button 
                                 v-for="type in ['all', 'success', 'info', 'warning', 'error']" 
                                 :key="type"
                                 @click="logTypeFilter = type"
-                                :class="logTypeFilter === type ? 'bg-[#202124] text-white shadow-xs' : 'bg-[#F8F9FA] text-[#5F6368] hover:text-[#202124] border border-[#DADCE0]'"
-                                class="rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition-all cursor-pointer shrink-0 flex items-center gap-1.5"
+                                :class="logTypeFilter === type ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                class="rounded-xl px-3.5 py-1.5 text-xs font-bold capitalize transition-all cursor-pointer shrink-0"
                             >
-                                <span v-if="type !== 'all'" class="h-2 w-2 rounded-full" :class="[
-                                    type === 'success' ? 'bg-[#137333]' :
-                                    type === 'info' ? 'bg-[#1A73E8]' :
-                                    type === 'warning' ? 'bg-[#B06000]' : 'bg-[#C5221F]'
-                                ]"></span>
-                                <span>{{ type === 'all' ? 'All Severities' : type }}</span>
+                                {{ type === 'all' ? 'All Severities' : type }}
                             </button>
                         </div>
                     </div>
 
-                    <!-- Activity Logs Table Card -->
-                    <div class="google-card overflow-hidden rounded-2xl border border-[#DADCE0] bg-white shadow-2xs">
-                        <div class="p-6 border-b border-[#DADCE0] flex items-center justify-between">
-                            <div>
-                                <h3 class="text-base font-bold text-[#202124]">System Audit & Activity Logs</h3>
-                                <p class="text-xs text-[#5F6368]">Central-level audit trail tracking Super Admin actions across all tenants (e.g., plan upgrades, impersonations).</p>
-                            </div>
-                            <span class="rounded-full bg-[#F8F9FA] px-3 py-1 text-xs font-bold text-[#5F6368] border border-[#DADCE0]">
-                                {{ filteredLogs.length }} Events Recorded
-                            </span>
-                        </div>
+                    <!-- Logs Table -->
+                    <div class="overflow-hidden rounded-2xl border border-[#E6E8EE] bg-white shadow-2xs">
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
+                            <table class="w-full text-left border-collapse text-sm min-w-[950px]">
                                 <thead>
-                                    <tr class="border-b border-[#DADCE0] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5F6368]">
+                                    <tr class="border-b border-[#E6E8EE] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5B6270]">
                                         <th class="py-4 px-6">Severity</th>
-                                        <th class="py-4 px-6">Event Title / Action</th>
-                                        <th class="py-4 px-6">Description Breakdown</th>
-                                        <th class="py-4 px-6">Initiated By (Actor)</th>
+                                        <th class="py-4 px-6">Event Title</th>
+                                        <th class="py-4 px-6">Description Payload</th>
+                                        <th class="py-4 px-6">Initiated By</th>
                                         <th class="py-4 px-6">IP Address</th>
                                         <th class="py-4 px-6 text-right">Timestamp</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-[#E8EAED]">
+                                <tbody class="divide-y divide-[#E6E8EE]">
                                     <tr v-if="filteredLogs.length === 0">
-                                        <td colspan="6" class="py-12 text-center text-sm text-[#5F6368]">
-                                            <div class="flex flex-col items-center gap-2">
-                                                <i class="fa-solid fa-shield-halved text-3xl text-[#DADCE0]"></i>
-                                                <span class="font-semibold">No system logs match your filter criteria.</span>
-                                                <span class="text-xs text-[#5F6368]">Try clearing the search query or selecting 'All Severities'.</span>
-                                            </div>
+                                        <td colspan="6" class="py-12 text-center text-sm text-[#5B6270]">
+                                            No system logs recorded matching your filter.
                                         </td>
                                     </tr>
-                                    <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-[#F8F9FA]/80 transition-colors group cursor-pointer" @click="selectedLog = log">
+
+                                    <tr v-for="log in filteredLogs" :key="log.id" class="hover:bg-[#F8F9FA]/80 transition-colors cursor-pointer" @click="selectedLog = log">
                                         <td class="py-4 px-6">
-                                            <span :class="[
-                                                'rounded-full px-2.5 py-1 text-2xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 border',
-                                                (log.type || 'info') === 'success' ? 'bg-[#E6F4EA] text-[#137333] border-[#CEEAD6]' :
-                                                (log.type || 'info') === 'warning' ? 'bg-[#FEF7E0] text-[#B06000] border-[#FAD2CF]' :
-                                                (log.type || 'info') === 'error' ? 'bg-[#FCE8E6] text-[#C5221F] border-[#FAD2CF]' :
-                                                'bg-[#E8F0FE] text-[#1A73E8] border-[#D2E3FC]'
-                                            ]">
-                                                <i :class="[
-                                                    'fa-solid text-2xs',
-                                                    (log.type || 'info') === 'success' ? 'fa-check-circle' :
-                                                    (log.type || 'info') === 'warning' ? 'fa-exclamation-triangle' :
-                                                    (log.type || 'info') === 'error' ? 'fa-times-circle' : 'fa-info-circle'
-                                                ]"></i>
-                                                {{ (log.type || 'info') }}
+                                            <span 
+                                                :class="[
+                                                    'rounded-full px-2.5 py-0.5 text-2xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1 border',
+                                                    (log.type || 'info') === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    (log.type || 'info') === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                                    (log.type || 'info') === 'error' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                    'bg-[#EEF3FF] text-[#2F6BFF] border-[#D6E4FF]'
+                                                ]"
+                                            >
+                                                {{ log.type || 'info' }}
                                             </span>
                                         </td>
-                                        <td class="py-4 px-6 font-bold text-[#202124] group-hover:text-[#1A73E8] transition-colors">
-                                            {{ log.action || log.event || log.event_title || 'System Event' }}
+                                        <td class="py-4 px-6 font-bold text-[#111318]">
+                                            {{ log.action || log.event || log.event_title }}
                                         </td>
-                                        <td class="py-4 px-6 text-xs text-[#5F6368] max-w-md truncate">
+                                        <td class="py-4 px-6 text-xs text-[#5B6270] max-w-sm truncate">
                                             {{ log.details || log.description || '-' }}
                                         </td>
                                         <td class="py-4 px-6">
                                             <div class="flex items-center gap-2">
-                                                <div class="h-6 w-6 rounded-full bg-[#202124] text-white flex items-center justify-center font-bold text-2xs shrink-0">
+                                                <div class="h-6 w-6 rounded-full bg-[#111318] text-white flex items-center justify-center font-bold text-3xs">
                                                     {{ (log.user || log.actor_name || 'S').charAt(0).toUpperCase() }}
                                                 </div>
-                                                <span class="text-xs font-semibold text-[#202124]">{{ log.user || log.actor_name || 'System' }}</span>
+                                                <span class="text-xs font-semibold text-[#111318]">{{ log.user || log.actor_name || 'System' }}</span>
                                             </div>
                                         </td>
-                                        <td class="py-4 px-6 font-mono text-xs text-[#5F6368]">
+                                        <td class="py-4 px-6 font-mono text-xs text-[#5B6270]">
                                             {{ log.ip_address || '127.0.0.1' }}
                                         </td>
-                                        <td class="py-4 px-6 text-xs text-[#5F6368] text-right font-mono whitespace-nowrap">
+                                        <td class="py-4 px-6 text-xs text-[#5B6270] text-right font-mono whitespace-nowrap">
                                             {{ log.timestamp || log.created_at || 'Just now' }}
                                         </td>
                                     </tr>
@@ -1724,253 +2471,178 @@ const logout = () => {
                     </div>
                 </div>
 
-        <!-- ================= TRANSACTION INSPECTION MODAL ================= -->
-        <div v-if="selectedTransaction" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
-            <div class="absolute inset-0" @click="selectedTransaction = null"></div>
-            <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 animate-slideLeft border-l border-[#DADCE0]">
-                <div class="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
-                    <div class="flex justify-between items-center border-b border-[#DADCE0] pb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E6F4EA] text-[#137333] border border-[#CEEAD6]">
-                                <i class="fa-solid fa-receipt text-xl"></i>
-                            </div>
+                <!-- Log Details Modal -->
+                <div v-if="selectedLog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+                    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#E6E8EE] space-y-5">
+                        <div class="flex justify-between items-center border-b border-[#E6E8EE] pb-4">
                             <div>
-                                <h3 class="text-lg font-bold text-[#202124]">Transaction Receipt Details</h3>
-                                <p class="font-mono text-xs text-[#1A73E8] font-bold">{{ selectedTransaction.transaction_id || selectedTransaction.transaction_code }}</p>
+                                <span class="text-2xs font-bold uppercase tracking-wider text-[#5B6270]">Log Entry #{{ selectedLog.id }}</span>
+                                <h3 class="text-base font-extrabold text-[#111318] mt-0.5">{{ selectedLog.action || selectedLog.event || selectedLog.event_title }}</h3>
+                            </div>
+                            <button @click="selectedLog = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] text-[#5B6270] flex items-center justify-center cursor-pointer">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="bg-[#F8F9FA] rounded-2xl p-4 border border-[#E6E8EE] space-y-3 text-xs">
+                            <div>
+                                <span class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270] mb-1">Payload Breakdown</span>
+                                <p class="font-semibold text-[#111318] leading-relaxed">{{ selectedLog.details || selectedLog.description }}</p>
+                            </div>
+                            <div class="border-t border-[#E6E8EE] pt-3 grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270]">Actor</span>
+                                    <span class="font-bold text-[#111318]">{{ selectedLog.user || selectedLog.actor_name || 'System Engine' }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-2xs font-bold uppercase tracking-wider text-[#5B6270]">IP Address</span>
+                                    <span class="font-mono font-bold text-[#2F6BFF]">{{ selectedLog.ip_address || '127.0.0.1' }}</span>
+                                </div>
                             </div>
                         </div>
-                        <button @click="selectedTransaction = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] font-bold text-[#5F6368] flex items-center justify-center cursor-pointer">
-                            <i class="fa-solid fa-xmark text-lg"></i>
-                        </button>
-                    </div>
-
-                    <div class="rounded-xl bg-[#F8F9FA] p-4 border border-[#DADCE0] space-y-3 text-xs">
-                        <div class="flex justify-between border-b border-[#DADCE0] pb-2">
-                            <span class="font-bold text-[#5F6368]">School Tenant:</span>
-                            <span class="font-bold text-[#202124]">{{ selectedTransaction.school_name || selectedTransaction.tenant?.name }}</span>
+                        <div class="flex justify-end pt-2">
+                            <button @click="selectedLog = null" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer">
+                                Close
+                            </button>
                         </div>
-                        <div class="flex justify-between border-b border-[#DADCE0] pb-2">
-                            <span class="font-bold text-[#5F6368]">Tenant ID / Domain:</span>
-                            <span class="font-mono font-semibold text-[#1A73E8]">{{ selectedTransaction.tenant_id }}</span>
-                        </div>
-                        <div class="flex justify-between border-b border-[#DADCE0] pb-2">
-                            <span class="font-bold text-[#5F6368]">Subscription Plan:</span>
-                            <span class="font-bold text-[#202124]">{{ selectedTransaction.plan_name || selectedTransaction.plan?.name }}</span>
-                        </div>
-                        <div class="flex justify-between border-b border-[#DADCE0] pb-2">
-                            <span class="font-bold text-[#5F6368]">Payment Gateway:</span>
-                            <span class="font-bold text-[#202124]">{{ selectedTransaction.gateway }}</span>
-                        </div>
-                        <div class="flex justify-between border-b border-[#DADCE0] pb-2">
-                            <span class="font-bold text-[#5F6368]">Reference Number:</span>
-                            <span class="font-mono text-[#202124] font-semibold">{{ selectedTransaction.reference_no }}</span>
-                        </div>
-                        <div class="flex justify-between border-b border-[#DADCE0] pb-2">
-                            <span class="font-bold text-[#5F6368]">Amount Paid:</span>
-                            <span class="font-black text-sm text-[#137333]">PKR {{ (selectedTransaction.amount || 0).toLocaleString() }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="font-bold text-[#5F6368]">Processed Date:</span>
-                            <span class="font-semibold text-[#202124]">{{ selectedTransaction.date || selectedTransaction.created_at }}</span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-2xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Cryptographic Hash (HMAC Verification)</label>
-                        <div class="rounded-lg bg-[#202124] p-3 font-mono text-2xs text-emerald-400 break-all select-all border border-black/20">
-                            {{ selectedTransaction.secure_hash || 'SHA256-VERIFIED-INTEGRITY-OK' }}
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 pt-2">
-                        <button @click="selectedTransaction = null" class="rounded-xl bg-[#F8F9FA] px-5 py-2.5 text-xs font-bold text-[#202124] hover:bg-[#E8EAED] transition-colors border border-[#DADCE0] cursor-pointer">
-                            Close Window
-                        </button>
-                        <button @click="downloadInvoicePDF(selectedTransaction)" class="rounded-xl bg-[#1A73E8] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#1557B0] transition-colors shadow-2xs flex items-center gap-2 cursor-pointer">
-                            <i class="fa-solid fa-file-pdf"></i>
-                            <span>Download Invoice PDF</span>
-                        </button>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- ================= ACTIVITY LOG INSPECTION MODAL ================= -->
-        <div v-if="selectedLog" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
-            <div class="absolute inset-0" @click="selectedLog = null"></div>
-            <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 animate-slideLeft border-l border-[#DADCE0]">
-                <div class="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
-                    <div class="flex justify-between items-center border-b border-[#DADCE0] pb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl border" :class="[
-                                (selectedLog.type || 'info') === 'success' ? 'bg-[#E6F4EA] text-[#137333] border-[#CEEAD6]' :
-                                (selectedLog.type || 'info') === 'warning' ? 'bg-[#FEF7E0] text-[#B06000] border-[#FAD2CF]' :
-                                (selectedLog.type || 'info') === 'error' ? 'bg-[#FCE8E6] text-[#C5221F] border-[#FAD2CF]' :
-                                'bg-[#E8F0FE] text-[#1A73E8] border-[#D2E3FC]'
-                            ]">
-                                <i :class="[
-                                    'fa-solid text-xl',
-                                    (selectedLog.type || 'info') === 'success' ? 'fa-check-circle' :
-                                    (selectedLog.type || 'info') === 'warning' ? 'fa-exclamation-triangle' :
-                                    (selectedLog.type || 'info') === 'error' ? 'fa-times-circle' : 'fa-info-circle'
-                                ]"></i>
-                            </div>
-                            <div>
-                                <span class="text-2xs font-black uppercase tracking-wider text-[#5F6368]">Audit Log Entry #{{ selectedLog.id }}</span>
-                                <h3 class="text-base font-bold text-[#202124] leading-tight">{{ selectedLog.action || selectedLog.event || selectedLog.event_title }}</h3>
-                            </div>
-                        </div>
-                        <button @click="selectedLog = null" class="h-8 w-8 rounded-full hover:bg-[#F8F9FA] font-bold text-[#5F6368] flex items-center justify-center cursor-pointer">
-                            <i class="fa-solid fa-xmark text-lg"></i>
-                        </button>
-                    </div>
-
-                    <div class="rounded-xl bg-[#F8F9FA] p-4 border border-[#DADCE0] space-y-3 text-xs">
+                <!-- ================= TAB 7: MARKETING & COUPONS ================= -->
+                <div v-if="activeTab === 'marketing'" class="space-y-6">
+                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl border border-[#E6E8EE] shadow-2xs">
                         <div>
-                            <span class="block text-2xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Full Event Description & Payload</span>
-                            <p class="font-semibold text-[#202124] leading-relaxed">{{ selectedLog.details || selectedLog.description }}</p>
+                            <h3 class="text-base font-extrabold text-[#111318]">Discount Vouchers & Promo Codes</h3>
+                            <p class="text-xs text-[#5B6270]">Create and manage promotional discount coupons for new school registrations.</p>
                         </div>
-                        <div class="border-t border-[#DADCE0] pt-3 grid grid-cols-2 gap-3">
-                            <div>
-                                <span class="block text-2xs font-bold uppercase tracking-wider text-[#5F6368]">Initiating Actor</span>
-                                <span class="font-bold text-[#202124] mt-0.5 block">{{ selectedLog.user || selectedLog.actor_name || 'System' }}</span>
-                            </div>
-                            <div>
-                                <span class="block text-2xs font-bold uppercase tracking-wider text-[#5F6368]">Source IP Address</span>
-                                <span class="font-mono font-bold text-[#1A73E8] mt-0.5 block">{{ selectedLog.ip_address || '127.0.0.1' }}</span>
-                            </div>
-                        </div>
-                        <div class="border-t border-[#DADCE0] pt-3 flex justify-between items-center">
-                            <span class="font-bold text-[#5F6368]">Execution Timestamp:</span>
-                            <span class="font-mono text-xs font-semibold text-[#202124]">{{ selectedLog.timestamp || selectedLog.created_at }}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end pt-2">
-                        <button @click="selectedLog = null" class="rounded-xl bg-[#202124] px-6 py-2.5 text-xs font-bold text-white hover:bg-black transition-colors cursor-pointer">
-                            Done
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-                <!-- ================= TAB 6: MARKETING ================= -->
-                <div v-if="activeTab === 'marketing'" class="space-y-6 animate-fadeIn">
-                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl border border-[#DADCE0] shadow-2xs">
-                        <div>
-                            <h3 class="text-base font-bold text-[#202124]">Coupons & Referral Programs</h3>
-                            <p class="text-xs text-[#5F6368]">Manage SaaS onboarding discounts, trial extensions, and referral links.</p>
-                        </div>
-                        <button @click="createCoupon" class="rounded-full bg-[#1A73E8] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#1557B0] transition-all shadow-sm cursor-pointer">
+                        <button @click="createCoupon" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all cursor-pointer">
                             + Create Coupon
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-sm font-bold text-[#202124]">Active Coupons</h4>
-                                <i class="fa-solid fa-ticket text-[#1A73E8]"></i>
-                            </div>
-                            <div class="space-y-3">
-                                <div v-if="!coupons || coupons.length === 0" class="py-6 text-center text-xs text-[#5F6368]">
-                                    No active coupons registered yet. Click "+ Create Coupon" to get started!
-                                </div>
-                                <div v-for="coupon in coupons" :key="coupon.id" class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0] hover:border-[#1A73E8]/50 transition-all group">
-                                    <div>
-                                        <div class="font-extrabold text-[#137333] font-mono flex items-center gap-1.5">
-                                            <span>{{ coupon.code }}</span>
-                                            <span v-if="!coupon.is_active" class="text-3xs font-bold text-[#C5221F] bg-[#FCE8E6] border border-[#FAD2CF] px-2 py-0.5 rounded-full uppercase">Inactive</span>
-                                        </div>
-                                        <div class="text-xs text-[#5F6368] mt-0.5">{{ coupon.discount_percentage }}% discount • Max uses: {{ coupon.max_uses || 'Unlimited' }}</div>
-                                    </div>
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-xs font-bold text-[#5F6368]">{{ coupon.times_used }} Used</span>
-                                        <button @click="deleteCoupon(coupon.id, coupon.code)" class="text-[#5F6368] hover:text-[#C5221F] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1" title="Delete Coupon">
-                                            <i class="fa-solid fa-trash-can"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
+                        <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
+                            <h4 class="text-sm font-extrabold text-[#111318]">Active Discount Codes</h4>
+                            <span class="text-xs font-bold text-[#5B6270]">{{ coupons?.length || 0 }} Registered</span>
                         </div>
 
-                        <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs">
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-sm font-bold text-[#202124]">Referral Program Tracking</h4>
-                                <i class="fa-solid fa-users text-[#1A73E8]"></i>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#DADCE0]">
-                                    <div>
-                                        <div class="font-bold text-[#202124]">Beaconhouse School System</div>
-                                        <div class="text-xs text-[#5F6368]">Referred 2 new tenants</div>
+                        <div v-if="!coupons || coupons.length === 0" class="py-12 text-center text-xs text-[#5B6270]">
+                            No promo discount codes active. Click "+ Create Coupon" above to issue one.
+                        </div>
+
+                        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="coupon in coupons" :key="coupon.id" class="p-4 bg-[#F8F9FA] rounded-2xl border border-[#E6E8EE] flex items-center justify-between group hover:border-[#2F6BFF]/40 transition-all">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono font-extrabold text-[#2F6BFF] text-sm">{{ coupon.code }}</span>
+                                        <span class="text-3xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                            {{ coupon.discount_percentage }}% OFF
+                                        </span>
                                     </div>
-                                    <span class="text-xs font-bold text-[#1A73E8]">Pending Payout</span>
+                                    <div class="text-xs text-[#5B6270] mt-1">
+                                        Used {{ coupon.times_used || 0 }} times • Max Cap: {{ coupon.max_uses || 'Unlimited' }}
+                                    </div>
                                 </div>
+                                <button 
+                                    @click="deleteCoupon(coupon.id, coupon.code)"
+                                    class="h-8 w-8 rounded-lg flex items-center justify-center text-[#5B6270] hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title="Delete Coupon"
+                                >
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ================= TAB 7: SETTINGS ================= -->
-                <div v-if="activeTab === 'settings'" class="max-w-3xl space-y-6 animate-fadeIn">
-                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-8 shadow-2xs space-y-6">
-                        <div>
-                            <h3 class="text-base font-bold text-[#202124]">Global Platform Configuration</h3>
-                            <p class="text-xs text-[#5F6368]">Manage system name, support contact details, and maintenance state.</p>
+                <!-- ================= TAB 8: SYSTEM SETTINGS ================= -->
+                <!-- Dynamic platform title input removed per user instruction -->
+                <div v-if="activeTab === 'settings'" class="max-w-3xl space-y-6">
+                    <div class="rounded-2xl border border-[#E6E8EE] bg-white p-8 shadow-2xs space-y-6">
+                        <div class="border-b border-[#E6E8EE] pb-4">
+                            <h3 class="text-base font-extrabold text-[#111318]">Global Platform Configuration</h3>
+                            <p class="text-xs text-[#5B6270] mt-0.5">Control central communication channels, maintenance states, and trial parameters.</p>
                         </div>
 
-                        <form @submit.prevent="submitSettings" class="space-y-5 border-t border-[#DADCE0] pt-6">
-                            <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1.5">Platform Title</label>
-                                <input 
-                                    v-model="settingsForm.platform_name" 
-                                    type="text" 
-                                    required
-                                    class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:outline-none transition-all"
-                                />
+                        <form @submit.prevent="submitSettings" class="space-y-6">
+                            
+                            <!-- Platform Identity Note -->
+                            <div class="p-4 rounded-2xl bg-[#EEF3FF] border border-[#D6E4FF] flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <img src="/images/raibix.png" alt="Raibix" class="h-6 w-auto object-contain" />
+                                    <div>
+                                        <p class="text-xs font-bold text-[#111318]">Platform Engine: Raibix Multi-Tenant SaaS</p>
+                                        <p class="text-2xs text-[#5B6270]">Platform branding is managed statically via system environment</p>
+                                    </div>
+                                </div>
+                                <span class="text-3xs font-bold text-[#2F6BFF] uppercase tracking-wider bg-white px-2.5 py-1 rounded-full border border-[#D6E4FF]">Static</span>
                             </div>
 
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1.5">Support Contact Email</label>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Contact Email</label>
                                     <input 
                                         v-model="settingsForm.contact_email" 
                                         type="email" 
                                         required
-                                        class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:outline-none transition-all"
+                                        class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1.5">Support Phone Number</label>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Phone Line</label>
                                     <input 
                                         v-model="settingsForm.support_phone" 
                                         type="text" 
                                         required
-                                        class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:outline-none transition-all"
+                                        class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between rounded-xl bg-[#F8F9FA] p-4 border border-[#DADCE0]">
+                            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                                 <div>
-                                    <p class="text-sm font-bold text-[#202124]">Platform Maintenance Mode</p>
-                                    <p class="text-xs text-[#5F6368]">Temporarily disable tenant portal logins while updating databases.</p>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Default Free Trial Duration (Days)</label>
+                                    <input 
+                                        v-model.number="settingsForm.default_trial_days" 
+                                        type="number" 
+                                        min="1"
+                                        max="90"
+                                        required
+                                        class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] px-4 py-3 text-xs font-medium text-[#111318] focus:bg-white focus:border-[#2F6BFF] focus:outline-none transition-all"
+                                    />
+                                </div>
+
+                                <div class="flex items-center justify-between rounded-xl bg-[#F8F9FA] p-4 border border-[#E6E8EE]">
+                                    <div>
+                                        <p class="text-xs font-bold text-[#111318]">Public Self-Registration</p>
+                                        <p class="text-2xs text-[#5B6270]">Allow schools to register on the landing page</p>
+                                    </div>
+                                    <input 
+                                        v-model="settingsForm.public_onboarding" 
+                                        type="checkbox" 
+                                        class="rounded-md border-[#E6E8EE] text-[#2F6BFF] focus:ring-[#2F6BFF] h-5 w-5 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Maintenance Mode Switch -->
+                            <div class="flex items-center justify-between rounded-2xl bg-[#F8F9FA] p-5 border border-[#E6E8EE]">
+                                <div>
+                                    <p class="text-sm font-bold text-[#111318]">Global Maintenance Mode</p>
+                                    <p class="text-xs text-[#5B6270]">Temporarily pause tenant portal access for planned migrations or infrastructure maintenance.</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input v-model="settingsForm.maintenance_mode" type="checkbox" class="sr-only peer" />
-                                    <div class="w-11 h-6 bg-[#DADCE0] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1A73E8]"></div>
+                                    <div class="w-11 h-6 bg-[#DADCE0] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2F6BFF]"></div>
                                 </label>
                             </div>
 
-                            <div class="pt-4 flex justify-end">
+                            <div class="pt-2 flex justify-end">
                                 <button 
                                     type="submit" 
                                     :disabled="settingsForm.processing"
-                                    class="rounded-full bg-[#1A73E8] px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] disabled:opacity-50 transition-all"
+                                    class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-7 py-3 text-xs font-bold text-white shadow-sm disabled:opacity-50 transition-all cursor-pointer"
                                 >
-                                    {{ settingsForm.processing ? 'Saving...' : 'Save Settings' }}
+                                    {{ settingsForm.processing ? 'Saving...' : 'Save Configuration' }}
                                 </button>
                             </div>
                         </form>
@@ -1980,479 +2652,447 @@ const logout = () => {
         </main>
 
         <!-- ================= MODAL: ONBOARD NEW SCHOOL ================= -->
-                <div v-if="showModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
+        <div v-if="showModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
             <div class="absolute inset-0" @click="showModal = false"></div>
-            <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 animate-slideLeft border-l border-[#DADCE0]">
-                <div class="p-8 flex-1 overflow-y-auto space-y-6">
-                    <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
-                    <h3 class="text-lg font-bold text-[#202124]">Onboard New School Tenant</h3>
-                    <button @click="showModal = false" class="text-sm font-bold text-[#5F6368] hover:text-[#202124]"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <form @submit.prevent="submitTenant" class="space-y-4 text-sm">
-                    <div v-if="form.hasErrors" class="rounded-xl bg-[#FCE8E6] p-3 text-xs font-bold text-[#C5221F] border border-[#FAD2CF] flex items-center gap-2">
-                        <i class="fa-solid fa-triangle-exclamation text-base"></i>
-                        <span>Please fix the validation errors below before proceeding.</span>
+            <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 border-l border-[#E6E8EE]">
+                <div class="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
+                    <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-[#111318]">Onboard New School Tenant</h3>
+                            <p class="text-xs text-[#5B6270]">Provisions isolated schema, domains, and root credentials.</p>
+                        </div>
+                        <button @click="showModal = false" class="text-[#5B6270] hover:text-[#111318] cursor-pointer">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Domain (ID)</label>
-                            <input 
-                                v-model="form.id" 
-                                @input="form.id = form.id.toLowerCase().replace(/[^a-z0-9-]/g, ''); autoFillDomain()"
-                                type="text" 
-                                required 
-                                placeholder="e.g. beacon"
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 font-mono text-sm focus:border-[#1A73E8] focus:outline-none"
-                                :class="{ 'border-[#C5221F] bg-[#FCE8E6]/30': form.errors.id }"
-                            />
-                            <p v-if="form.errors.id" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.id }}</p>
+                    <form @submit.prevent="submitTenant" class="space-y-4 text-xs">
+                        <div v-if="form.hasErrors" class="rounded-xl bg-red-50 p-3.5 text-xs font-bold text-red-600 border border-red-200 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                            <span>Please review and fix the validation errors below.</span>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Assigned Domain</label>
-                            <input 
-                                v-model="form.domain" 
-                                type="text" 
-                                required 
-                                readonly
-                                :placeholder="'beacon.' + getDomainSuffix()"
-                                class="w-full rounded-xl border border-[#DADCE0] bg-[#F1F3F4] px-3.5 py-2.5 font-mono text-sm text-[#5F6368] cursor-not-allowed focus:outline-none"
-                                :class="{ 'border-[#C5221F]': form.errors.domain }"
-                            />
-                            <p v-if="form.errors.domain" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.domain }}</p>
-                        </div>
-                    </div>
 
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">School Name</label>
-                        <input 
-                            v-model="form.name" 
-                            type="text" 
-                            required 
-                            placeholder="Beacon Light High School"
-                            class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                            :class="{ 'border-[#C5221F] bg-[#FCE8E6]/30': form.errors.name }"
-                        />
-                        <p v-if="form.errors.name" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.name }}</p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Subscription Plan</label>
-                            <select 
-                                v-model="form.plan_id" 
-                                required
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 bg-white focus:border-[#1A73E8] focus:outline-none"
-                                :class="{ 'border-[#C5221F]': form.errors.plan_id }"
-                            >
-                                <option v-for="plan in plans" :key="plan.id" :value="plan.id">
-                                    {{ plan.name }} (PKR {{ (plan.price_monthly || 0).toLocaleString() }}/mo)
-                                </option>
-                            </select>
-                            <p v-if="form.errors.plan_id" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.plan_id }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Billing Cycle</label>
-                            <select 
-                                v-model="form.billing_cycle" 
-                                required
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 bg-white focus:border-[#1A73E8] focus:outline-none font-semibold text-[#1A73E8]"
-                            >
-                                <option value="monthly">Monthly Billing</option>
-                                <option value="yearly">Yearly Billing (10 Months Price)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Payment Method / Gateway Verification</label>
-                        <select 
-                            v-model="form.payment_gateway" 
-                            required
-                            class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 bg-white focus:border-[#1A73E8] focus:outline-none"
-                        >
-                            <option value="Direct Invoice / Manual Onboarding">Direct Invoice / Manual Onboarding (Paid)</option>
-                            <option value="JazzCash Verified">JazzCash Mobile Wallet / Card (Paid)</option>
-                            <option value="Meezan Bank Verified">Meezan Bank Direct Transfer (Paid)</option>
-                            <option value="Trial Account (No Payment)">Trial Account / Complimentary (14 Days)</option>
-                        </select>
-                    </div>
-
-                    <div class="border-t border-[#DADCE0] pt-4 space-y-4">
-                        <p class="text-xs font-bold uppercase tracking-wider text-[#1A73E8]">Principal / Admin Account Credentials</p>
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Principal Name</label>
-                            <input 
-                                v-model="form.admin_name" 
-                                type="text" 
-                                required 
-                                placeholder="Dr. Sarah Ahmed"
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                                :class="{ 'border-[#C5221F] bg-[#FCE8E6]/30': form.errors.admin_name }"
-                            />
-                            <p v-if="form.errors.admin_name" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.admin_name }}</p>
-                        </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Admin Email (Login ID)</label>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Subdomain Identifier</label>
                                 <input 
-                                    v-model="form.admin_email" 
-                                    type="email" 
+                                    v-model="form.id" 
+                                    @input="form.id = form.id.toLowerCase().replace(/[^a-z0-9-]/g, ''); autoFillDomain()"
+                                    type="text" 
                                     required 
-                                    placeholder="principal@school.test"
-                                    class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                                    :class="{ 'border-[#C5221F] bg-[#FCE8E6]/30': form.errors.admin_email }"
+                                    placeholder="e.g. springdale"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 font-mono text-xs focus:border-[#2F6BFF] focus:outline-none"
+                                    :class="{ 'border-red-400 bg-red-50': form.errors.id }"
                                 />
-                                <p v-if="form.errors.admin_email" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.admin_email }}</p>
+                                <p v-if="form.errors.id" class="text-2xs font-bold text-red-600 mt-1">{{ form.errors.id }}</p>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Phone Number</label>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Assigned FQDN Domain</label>
                                 <input 
-                                    v-model="form.admin_phone" 
+                                    v-model="form.domain" 
                                     type="text" 
                                     required 
-                                    placeholder="+92 300 0000000"
-                                    class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                                    :class="{ 'border-[#C5221F] bg-[#FCE8E6]/30': form.errors.admin_phone }"
+                                    readonly
+                                    class="w-full rounded-xl border border-[#E6E8EE] bg-[#F1F3F4] px-3.5 py-2.5 font-mono text-xs text-[#5B6270] cursor-not-allowed focus:outline-none"
                                 />
-                                <p v-if="form.errors.admin_phone" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.admin_phone }}</p>
                             </div>
                         </div>
+
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Principal Initial Password</label>
-                            <div class="relative">
-                                <input 
-                                    v-model="form.admin_password" 
-                                    type="text" 
-                                    required 
-                                    minlength="6"
-                                    placeholder="e.g. Principal@2026"
-                                    class="w-full rounded-xl border border-[#DADCE0] pl-3.5 pr-28 py-2.5 font-mono text-sm font-semibold text-[#137333] focus:border-[#1A73E8] focus:outline-none bg-[#F8F9FA]"
-                                    :class="{ 'border-[#C5221F] bg-[#FCE8E6]/30': form.errors.admin_password }"
-                                />
-                                <button 
-                                    type="button"
-                                    @click="form.admin_password = 'LMS@' + Math.random().toString(36).substring(2, 8).toUpperCase() + '!' + Math.floor(Math.random() * 90 + 10)"
-                                    class="absolute right-1.5 top-1.5 rounded-lg bg-[#E8F0FE] px-3 py-1.5 text-2xs font-bold text-[#1A73E8] hover:bg-[#D2E3FC] transition-colors cursor-pointer"
+                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">School Campus Legal Name</label>
+                            <input 
+                                v-model="form.name" 
+                                type="text" 
+                                required 
+                                placeholder="Springdale International School"
+                                class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                                :class="{ 'border-red-400 bg-red-50': form.errors.name }"
+                            />
+                            <p v-if="form.errors.name" class="text-2xs font-bold text-red-600 mt-1">{{ form.errors.name }}</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Subscription Tier</label>
+                                <select 
+                                    v-model="form.plan_id" 
+                                    required
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3 py-2.5 bg-white text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
                                 >
-                                    <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate
-                                </button>
+                                    <option v-for="plan in plans" :key="plan.id" :value="plan.id">
+                                        {{ plan.name }} (PKR {{ (plan.price_monthly || 0).toLocaleString() }}/mo)
+                                    </option>
+                                </select>
                             </div>
-                            <p v-if="form.errors.admin_password" class="text-2xs font-bold text-[#C5221F] mt-1">{{ form.errors.admin_password }}</p>
-                            <p v-else class="mt-1 text-2xs text-[#5F6368]">Share this password securely with the new Principal so they can log in to their school portal immediately.</p>
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Billing Cycle</label>
+                                <select 
+                                    v-model="form.billing_cycle" 
+                                    required
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3 py-2.5 bg-white text-xs font-bold text-[#2F6BFF] focus:border-[#2F6BFF] focus:outline-none"
+                                >
+                                    <option value="monthly">Monthly Cycle</option>
+                                    <option value="yearly">Yearly Cycle (Discounted)</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="pt-4 flex justify-end space-x-3">
-                        <button type="button" @click="showModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5F6368] hover:bg-[#F8F9FA]">
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="form.processing"
-                            class="rounded-full bg-[#1A73E8] px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] disabled:opacity-50 transition-all flex items-center gap-1.5"
-                        >
-                            <i v-if="!form.processing" class="fa-solid fa-rocket"></i>
-                            <span>{{ form.processing ? 'Provisioning Cloud DB...' : 'Provision & Onboard School' }}</span>
-                        </button>
-                    </div>
-                </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= MODAL: ADD / EDIT PLAN ================= -->
-                <div v-if="showPlanModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
-            <div class="absolute inset-0" @click="showPlanModal = false"></div>
-            <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 animate-slideLeft border-l border-[#DADCE0]">
-                <div class="p-8 flex-1 overflow-y-auto space-y-6">
-                    <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
-                    <h3 class="text-lg font-bold text-[#202124]">{{ isEditingPlan ? 'Edit Plan: ' + planForm.name : 'Create New Subscription Plan' }}</h3>
-                    <button @click="showPlanModal = false" class="text-sm font-bold text-[#5F6368] hover:text-[#202124]"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <form @submit.prevent="submitPlan" class="space-y-4 text-sm">
-                    <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Plan Name</label>
-                            <input 
-                                v-model="planForm.name" 
-                                type="text" 
-                                required 
-                                placeholder="Growth Tier"
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                            />
+                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Payment Verification Channel</label>
+                            <select 
+                                v-model="form.payment_gateway" 
+                                required
+                                class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 bg-white text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                            >
+                                <option value="Direct Invoice / Manual Onboarding">Direct Invoice / Manual Onboarding (Paid)</option>
+                                <option value="JazzCash Verified">JazzCash Mobile Wallet / Online (Paid)</option>
+                                <option value="Meezan Bank Verified">Meezan Bank 1-Bill API (Paid)</option>
+                                <option value="Trial Account (14 Days)">Complimentary Free Trial (14 Days)</option>
+                            </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Code / Badge</label>
-                            <input 
-                                v-model="planForm.code" 
-                                type="text" 
-                                required 
-                                placeholder="GROWTH"
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 uppercase font-mono focus:border-[#1A73E8] focus:outline-none"
-                            />
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Monthly Price (PKR)</label>
-                            <input 
-                                v-model.number="planForm.price_monthly" 
-                                type="number" 
-                                required 
-                                min="0"
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Max Student Limit</label>
-                            <input 
-                                v-model.number="planForm.max_students" 
-                                type="number" 
-                                required 
-                                min="10"
-                                class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#1A73E8] focus:outline-none"
-                            />
-                        </div>
-                    </div>
+                        <!-- Principal Credentials Section -->
+                        <div class="border-t border-[#E6E8EE] pt-4 space-y-3.5">
+                            <p class="text-2xs font-bold uppercase tracking-wider text-[#2F6BFF]">Principal Admin Credentials</p>
+                            
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Principal Full Name</label>
+                                <input 
+                                    v-model="form.admin_name" 
+                                    type="text" 
+                                    required 
+                                    placeholder="Dr. Eleanor Vance"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
 
-                    <div class="border-t border-[#DADCE0] pt-4 space-y-3">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368]">Included Features Checklist</label>
-                        <div class="flex space-x-2">
-                            <input 
-                                v-model="featureInput" 
-                                type="text" 
-                                placeholder="Add feature description..."
-                                class="flex-1 rounded-xl border border-[#DADCE0] px-3.5 py-2 text-xs focus:border-[#1A73E8] focus:outline-none"
-                                @keydown.enter.prevent="addFeatureToPlan"
-                            />
-                            <button type="button" @click="addFeatureToPlan" class="rounded-xl bg-[#E8F0FE] px-4 py-2 text-xs font-bold text-[#1A73E8] hover:bg-[#D2E3FC]">
-                                + Add
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Admin Email (Login ID)</label>
+                                    <input 
+                                        v-model="form.admin_email" 
+                                        type="email" 
+                                        required 
+                                        placeholder="principal@school.edu"
+                                        class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Phone Number</label>
+                                    <input 
+                                        v-model="form.admin_phone" 
+                                        type="text" 
+                                        required 
+                                        placeholder="+1 555 123 4567"
+                                        class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Initial Password</label>
+                                <div class="relative">
+                                    <input 
+                                        v-model="form.admin_password" 
+                                        type="text" 
+                                        required 
+                                        minlength="6"
+                                        placeholder="Generate or enter secure password"
+                                        class="w-full rounded-xl border border-[#E6E8EE] pl-3.5 pr-28 py-2.5 font-mono text-xs font-bold text-emerald-700 bg-[#F8F9FA] focus:border-[#2F6BFF] focus:outline-none"
+                                    />
+                                    <button 
+                                        type="button"
+                                        @click="generateRandomPassword"
+                                        class="absolute right-1.5 top-1.5 rounded-lg bg-[#EEF3FF] px-2.5 py-1 text-2xs font-bold text-[#2F6BFF] hover:bg-[#D6E4FF] transition-colors cursor-pointer"
+                                    >
+                                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Generate
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 flex justify-end space-x-3">
+                            <button type="button" @click="showModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="form.processing"
+                                class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 text-xs font-bold text-white shadow-sm disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                                <i v-if="!form.processing" class="fa-solid fa-rocket"></i>
+                                <span>{{ form.processing ? 'Provisioning Cloud Schema...' : 'Provision & Launch School' }}</span>
                             </button>
                         </div>
-                        <div class="flex flex-wrap gap-2 pt-1">
-                            <span 
-                                v-for="(feat, idx) in planForm.features" 
-                                :key="idx"
-                                class="inline-flex items-center space-x-1.5 rounded-full bg-[#F1F3F4] px-3 py-1 text-xs font-semibold text-[#202124]"
-                            >
-                                <span>{{ feat }}</span>
-                                <button type="button" @click="removeFeatureFromPlan(idx)" class="text-[#C5221F] font-bold hover:text-red-700"><i class="fa-solid fa-xmark"></i></button>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="pt-4 flex justify-end space-x-3">
-                        <button type="button" @click="showPlanModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5F6368] hover:bg-[#F8F9FA]">
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            :disabled="planForm.processing"
-                            class="rounded-full bg-[#1A73E8] px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] disabled:opacity-50 transition-all"
-                        >
-                            {{ planForm.processing ? 'Saving...' : (isEditingPlan ? 'Update Plan' : 'Create Plan') }}
-                        </button>
-                    </div>
-                </form>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <!-- ================= MODAL: DELETE PLAN CONFIRMATION ================= -->
-        <div v-if="showDeletePlanModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-            <div class="google-card w-full max-w-md rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-xl space-y-4 text-center">
-                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FCE8E6] text-xl text-[#C5221F]">
-                    <i class="fa-solid fa-trash-can"></i>
-                </div>
-                <h3 class="text-base font-bold text-[#202124]">Delete Subscription Plan?</h3>
-                <p class="text-xs text-[#5F6368]">
-                    Are you sure you want to delete <strong class="text-[#202124]">{{ planToDelete?.name }}</strong>? Schools currently on this plan will not be deleted but won't be able to renew under this package.
-                </p>
-                <div class="flex justify-center space-x-3 pt-2">
-                    <button @click="showDeletePlanModal = false" class="rounded-full px-5 py-2 text-xs font-bold text-[#5F6368] hover:bg-[#F8F9FA]">
-                        Cancel
-                    </button>
-                    <button @click="deletePlan" class="rounded-full bg-[#C5221F] px-6 py-2 text-xs font-bold text-white hover:bg-red-700 shadow-sm transition-all">
-                        Yes, Delete Plan
+        <!-- ================= MODAL: EDIT SCHOOL ================= -->
+        <div v-if="showEditSchoolModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white w-full max-w-lg rounded-3xl border border-[#E6E8EE] p-6 sm:p-8 space-y-6 shadow-2xl">
+                <div class="flex justify-between items-center border-b border-[#E6E8EE] pb-4">
+                    <h3 class="text-base font-extrabold text-[#111318]">Edit School Tenant Details</h3>
+                    <button @click="showEditSchoolModal = false" class="text-[#5B6270] hover:text-[#111318] cursor-pointer">
+                        <i class="fa-solid fa-xmark text-lg"></i>
                     </button>
                 </div>
-            </div>
-        </div>
-    
-        <!-- ================= MODAL: ADD / EDIT COUPON ================= -->
-        <div v-if="showCouponModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
-            <div class="absolute inset-0" @click="showCouponModal = false"></div>
-            <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col p-6 space-y-6 z-10 animate-slideOver">
-                <div class="flex items-center justify-between border-b border-[#DADCE0] pb-4">
-                    <h3 class="text-lg font-bold text-[#202124]">Create Subscription Coupon</h3>
-                    <button @click="showCouponModal = false" class="text-sm font-bold text-[#5F6368] hover:text-[#202124]"><i class="fa-solid fa-xmark"></i></button>
-                </div>
 
-                <form @submit.prevent="submitCoupon" class="space-y-4 text-sm flex-1 flex flex-col justify-between">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Coupon Code</label>
-                            <input 
-                                v-model="couponForm.code" 
-                                type="text" 
-                                placeholder="e.g. SUMMER50" 
-                                class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold uppercase focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
-                                :class="{ 'border-[#C5221F]': couponForm.errors.code }"
-                            />
-                            <p v-if="couponForm.errors.code" class="text-2xs font-bold text-[#C5221F] mt-1">{{ couponForm.errors.code }}</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Discount Percentage (1-100)</label>
-                            <input 
-                                v-model.number="couponForm.discount_percentage" 
-                                type="number" 
-                                min="1" 
-                                max="100" 
-                                class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
-                                :class="{ 'border-[#C5221F]': couponForm.errors.discount_percentage }"
-                            />
-                            <p v-if="couponForm.errors.discount_percentage" class="text-2xs font-bold text-[#C5221F] mt-1">{{ couponForm.errors.discount_percentage }}</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Max Uses (Optional)</label>
-                            <input 
-                                v-model.number="couponForm.max_uses" 
-                                type="number" 
-                                placeholder="Unlimited" 
-                                class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
-                                :class="{ 'border-[#C5221F]': couponForm.errors.max_uses }"
-                            />
-                            <p v-if="couponForm.errors.max_uses" class="text-2xs font-bold text-[#C5221F] mt-1">{{ couponForm.errors.max_uses }}</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#DADCE0] mt-auto">
-                        <button type="button" @click="showCouponModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5F6368] hover:bg-[#F8F9FA]">
-                            Cancel
-                        </button>
-                        <button type="submit" :disabled="couponForm.processing" class="rounded-full bg-[#1A73E8] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#1557B0] transition-all shadow-sm disabled:opacity-50">
-                            {{ couponForm.processing ? 'Saving...' : 'Create Coupon' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- ================= MODAL: EDIT SCHOOL DETAILS ================= -->
-        <div v-if="showEditSchoolModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-            <div class="google-card w-full max-w-lg rounded-2xl border border-[#DADCE0] bg-white p-6 sm:p-8 space-y-6 shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center border-b border-[#DADCE0] pb-4">
-                    <h3 class="text-lg font-bold text-[#202124]">Edit School Tenant Details</h3>
-                    <button @click="showEditSchoolModal = false" class="text-[#5F6368] hover:text-[#202124] font-bold"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-
-                <form @submit.prevent="submitEditSchool" class="space-y-4 text-sm">
-                    <div v-if="editSchoolForm.hasErrors" class="rounded-xl bg-[#FCE8E6] p-3 text-xs font-bold text-[#C5221F] border border-[#FAD2CF] flex items-center gap-2">
-                        <i class="fa-solid fa-triangle-exclamation text-base"></i>
-                        <span>Please fix the validation errors below before proceeding.</span>
-                    </div>
-
+                <form @submit.prevent="submitEditSchool" class="space-y-4 text-xs">
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">School Name</label>
+                        <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">School Name</label>
                         <input 
                             v-model="editSchoolForm.name" 
                             type="text" 
                             required 
-                            placeholder="e.g. Beacon Light School"
-                            class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 text-sm focus:border-[#1A73E8] focus:outline-none"
-                            :class="{ 'border-[#C5221F]': editSchoolForm.errors.name }"
+                            class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
                         />
-                        <p v-if="editSchoolForm.errors.name" class="text-2xs font-bold text-[#C5221F] mt-1">{{ editSchoolForm.errors.name }}</p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Domain Subdomain</label>
+                        <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Subdomain Route</label>
                         <input 
                             v-model="editSchoolForm.domain" 
                             type="text" 
                             required 
-                            :placeholder="'e.g. beacon.' + getDomainSuffix()"
-                            class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 font-mono text-sm focus:border-[#1A73E8] focus:outline-none"
-                            :class="{ 'border-[#C5221F]': editSchoolForm.errors.domain }"
+                            class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 font-mono text-xs focus:border-[#2F6BFF] focus:outline-none"
                         />
-                        <p v-if="editSchoolForm.errors.domain" class="text-2xs font-bold text-[#C5221F] mt-1">{{ editSchoolForm.errors.domain }}</p>
-                        <p class="text-3xs text-[#5F6368] mt-1">Changing the subdomain updates the login URL portal immediately. For example: changing from <code>oldname.{{ getDomainSuffix() }}</code> to <code>newname.{{ getDomainSuffix() }}</code>.</p>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#DADCE0]">
-                        <button type="button" @click="showEditSchoolModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5F6368] hover:bg-[#F8F9FA]">
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#E6E8EE]">
+                        <button type="button" @click="showEditSchoolModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
                             Cancel
                         </button>
-                        <button type="submit" :disabled="editSchoolForm.processing" class="rounded-full bg-[#1A73E8] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#1557B0] transition-all shadow-sm disabled:opacity-50">
+                        <button type="submit" :disabled="editSchoolForm.processing" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 text-xs font-bold text-white transition-all shadow-sm disabled:opacity-50 cursor-pointer">
                             {{ editSchoolForm.processing ? 'Saving...' : 'Update Details' }}
                         </button>
                     </div>
                 </form>
             </div>
         </div>
-    
-        <!-- Custom Confirm Dialog Overlay -->
-        <div v-if="confirmDialog.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-            <div class="bg-white rounded-2xl border border-[#DADCE0] p-6 max-w-md w-full shadow-2xl space-y-4">
+
+        <!-- ================= MODAL: ADD / EDIT PLAN ================= -->
+        <div v-if="showPlanModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
+            <div class="absolute inset-0" @click="showPlanModal = false"></div>
+            <div class="bg-white w-full max-w-lg shadow-2xl flex flex-col h-full z-10 border-l border-[#E6E8EE]">
+                <div class="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6">
+                    <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
+                        <h3 class="text-base font-extrabold text-[#111318]">{{ isEditingPlan ? 'Edit Subscription Package' : 'Create Subscription Package' }}</h3>
+                        <button @click="showPlanModal = false" class="text-[#5B6270] hover:text-[#111318] cursor-pointer">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitPlan" class="space-y-4 text-xs">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Plan Display Name</label>
+                                <input 
+                                    v-model="planForm.name" 
+                                    type="text" 
+                                    required 
+                                    placeholder="Essential Plan"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Identifier Code</label>
+                                <input 
+                                    v-model="planForm.code" 
+                                    type="text" 
+                                    required 
+                                    placeholder="ESSENTIAL"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 uppercase font-mono focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Monthly Price (PKR)</label>
+                                <input 
+                                    v-model.number="planForm.price_monthly" 
+                                    type="number" 
+                                    required 
+                                    min="0"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Max Student Cap</label>
+                                <input 
+                                    v-model.number="planForm.max_students" 
+                                    type="number" 
+                                    required 
+                                    min="10"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="border-t border-[#E6E8EE] pt-4 space-y-3">
+                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318]">Package Features Checklist</label>
+                            <div class="flex space-x-2">
+                                <input 
+                                    v-model="featureInput" 
+                                    type="text" 
+                                    placeholder="Add feature description..."
+                                    class="flex-1 rounded-xl border border-[#E6E8EE] px-3.5 py-2 text-xs focus:border-[#2F6BFF] focus:outline-none"
+                                    @keydown.enter.prevent="addFeatureToPlan"
+                                />
+                                <button type="button" @click="addFeatureToPlan" class="rounded-xl bg-[#EEF3FF] px-4 py-2 text-xs font-bold text-[#2F6BFF] hover:bg-[#D6E4FF] cursor-pointer">
+                                    + Add
+                                </button>
+                            </div>
+                            <div class="flex flex-wrap gap-2 pt-1">
+                                <span 
+                                    v-for="(feat, idx) in planForm.features" 
+                                    :key="idx"
+                                    class="inline-flex items-center space-x-1.5 rounded-full bg-[#F0F2F6] px-3 py-1 text-xs font-semibold text-[#111318]"
+                                >
+                                    <span>{{ feat }}</span>
+                                    <button type="button" @click="removeFeatureFromPlan(idx)" class="text-red-500 font-bold hover:text-red-700 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 flex justify-end space-x-3">
+                            <button type="button" @click="showPlanModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="planForm.processing"
+                                class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 text-xs font-bold text-white shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+                            >
+                                {{ planForm.processing ? 'Saving...' : (isEditingPlan ? 'Update Plan' : 'Create Plan') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= MODAL: CREATE COUPON ================= -->
+        <div v-if="showCouponModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
+            <div class="absolute inset-0" @click="showCouponModal = false"></div>
+            <div class="bg-white w-full max-w-md shadow-2xl flex flex-col h-full z-10 border-l border-[#E6E8EE]">
+                <div class="p-6 sm:p-8 flex-1 overflow-y-auto space-y-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4 mb-5">
+                            <h3 class="text-base font-extrabold text-[#111318]">Create Discount Voucher</h3>
+                            <button @click="showCouponModal = false" class="text-[#5B6270] hover:text-[#111318] cursor-pointer">
+                                <i class="fa-solid fa-xmark text-lg"></i>
+                            </button>
+                        </div>
+
+                        <form @submit.prevent="submitCoupon" class="space-y-4 text-xs">
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Coupon Code (Uppercase)</label>
+                                <input 
+                                    v-model="couponForm.code" 
+                                    type="text" 
+                                    required
+                                    placeholder="e.g. LAUNCH50" 
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-mono font-bold uppercase focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Discount Percentage (1-100%)</label>
+                                <input 
+                                    v-model.number="couponForm.discount_percentage" 
+                                    type="number" 
+                                    min="1" 
+                                    max="100" 
+                                    required
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-bold focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Max Redemptions (Optional)</label>
+                                <input 
+                                    v-model.number="couponForm.max_uses" 
+                                    type="number" 
+                                    placeholder="Unlimited if empty" 
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs font-medium focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-[#E6E8EE] mt-6">
+                                <button type="button" @click="showCouponModal = false" class="rounded-full px-5 py-2.5 text-xs font-bold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="couponForm.processing" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-6 py-2.5 text-xs font-bold text-white transition-all shadow-sm disabled:opacity-50 cursor-pointer">
+                                    {{ couponForm.processing ? 'Creating...' : 'Create Voucher' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= CUSTOM CONFIRM DIALOG ================= -->
+        <div v-if="confirmDialog.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl border border-[#E6E8EE] p-6 max-w-md w-full shadow-2xl space-y-4">
                 <div class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-full flex items-center justify-center bg-gray-50 shrink-0">
+                    <div class="h-10 w-10 rounded-full flex items-center justify-center bg-[#F8F9FA] shrink-0">
                         <i :class="[confirmDialog.icon, confirmDialog.iconColor]" class="fa-solid text-lg"></i>
                     </div>
-                    <h3 class="text-base font-bold text-gray-900">{{ confirmDialog.title }}</h3>
+                    <h3 class="text-base font-extrabold text-[#111318]">{{ confirmDialog.title }}</h3>
                 </div>
-                <p class="text-xs text-gray-500 leading-relaxed">{{ confirmDialog.message }}</p>
-                <div class="flex justify-end space-x-3 pt-2 border-t border-gray-50">
-                    <button @click="confirmDialog.show = false" class="px-4 py-2 border border-[#DADCE0] rounded-full text-xs font-semibold text-gray-600 hover:bg-[#F8F9FA]">
+                <p class="text-xs text-[#5B6270] leading-relaxed">{{ confirmDialog.message }}</p>
+                <div class="flex justify-end space-x-3 pt-3 border-t border-[#E6E8EE]">
+                    <button @click="confirmDialog.show = false" class="px-5 py-2 border border-[#E6E8EE] rounded-full text-xs font-semibold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
                         Cancel
                     </button>
-                    <button @click="confirmDialog.onConfirm" :class="confirmDialog.confirmClass" class="px-5 py-2 text-white rounded-full text-xs font-semibold shadow-xs transition-all">
+                    <button @click="confirmDialog.onConfirm" :class="confirmDialog.confirmClass" class="px-5 py-2 text-white rounded-full text-xs font-bold shadow-xs transition-all cursor-pointer">
                         {{ confirmDialog.confirmText }}
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Custom Input Dialog Overlay -->
-        <div v-if="inputDialog.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fadeIn">
-            <div class="bg-white rounded-2xl border border-[#DADCE0] p-6 max-w-md w-full shadow-2xl space-y-4">
-                <h3 class="text-base font-bold text-gray-900">{{ inputDialog.title }}</h3>
-                <p class="text-xs text-gray-500 leading-relaxed">{{ inputDialog.message }}</p>
+        <!-- ================= CUSTOM INPUT DIALOG ================= -->
+        <div v-if="inputDialog.show" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl border border-[#E6E8EE] p-6 max-w-md w-full shadow-2xl space-y-4">
+                <h3 class="text-base font-extrabold text-[#111318]">{{ inputDialog.title }}</h3>
+                <p class="text-xs text-[#5B6270] leading-relaxed">{{ inputDialog.message }}</p>
                 <div>
                     <input 
                         v-model="inputDialog.value" 
                         type="text" 
                         :placeholder="inputDialog.placeholder"
-                        class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                        class="w-full rounded-xl border border-[#E6E8EE] px-4 py-2.5 text-xs focus:border-[#2F6BFF] focus:outline-none"
                         @keydown.enter="inputDialog.onConfirm(inputDialog.value)"
                     />
                 </div>
-                <div class="flex justify-end space-x-3 pt-2 border-t border-gray-50">
-                    <button @click="inputDialog.show = false" class="px-4 py-2 border border-[#DADCE0] rounded-full text-xs font-semibold text-gray-600 hover:bg-[#F8F9FA]">
+                <div class="flex justify-end space-x-3 pt-3 border-t border-[#E6E8EE]">
+                    <button @click="inputDialog.show = false" class="px-5 py-2 border border-[#E6E8EE] rounded-full text-xs font-semibold text-[#5B6270] hover:bg-[#F8F9FA] cursor-pointer">
                         Cancel
                     </button>
-                    <button @click="inputDialog.onConfirm(inputDialog.value)" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold shadow-xs transition-all">
+                    <button @click="inputDialog.onConfirm(inputDialog.value)" class="px-5 py-2 bg-[#111318] hover:bg-[#2F6BFF] text-white rounded-full text-xs font-bold shadow-xs transition-all cursor-pointer">
                         Submit
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Global Alert Toasts -->
+        <!-- ================= GLOBAL ALERT TOAST ================= -->
         <transition name="slide-up">
             <div v-if="alertDialog.show" class="fixed bottom-6 right-6 z-[110]">
-                <div :class="alertDialog.type === 'success' ? 'bg-emerald-600 border-emerald-500' : 'bg-red-600 border-red-500'" class="flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl text-white max-w-sm">
-                    <i :class="alertDialog.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'" class="fa-solid text-lg shrink-0"></i>
-                    <div>
+                <div :class="alertDialog.type === 'success' ? 'bg-[#111318] text-white border-[#2F6BFF]' : 'bg-red-600 text-white border-red-500'" class="flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl max-w-sm">
+                    <i :class="alertDialog.type === 'success' ? 'fa-circle-check text-[#2F6BFF]' : 'fa-triangle-exclamation text-white'" class="fa-solid text-lg shrink-0"></i>
+                    <div class="flex-1">
                         <div class="text-xs font-bold">{{ alertDialog.title }}</div>
                         <div class="text-xs opacity-90 mt-0.5">{{ alertDialog.message }}</div>
                     </div>
-                    <button @click="alertDialog.show = false" class="ml-2 opacity-70 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+                    <button @click="alertDialog.show = false" class="ml-2 opacity-70 hover:opacity-100 cursor-pointer">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
                 </div>
             </div>
         </transition>

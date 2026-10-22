@@ -767,7 +767,7 @@ const submitParentPasswordChange = () => {
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-500 mb-1">Reason for Leave</label>
-                                    <textarea v-model="leaveForm.reason" rows="4" placeholder="Briefly describe the reason (e.g., medical reasons, family travel)..." required class="w-full rounded-lg border-gray-300 text-sm focus:ring-[#059669] focus:border-[#059669]"></textarea>
+                                    <textarea v-model="leaveForm.reason" rows="4" placeholder="Describe reason for leave request..." required class="w-full rounded-lg border-gray-300 text-sm focus:ring-[#059669] focus:border-[#059669]"></textarea>
                                 </div>
                                 <button type="submit" class="w-full py-2.5 bg-[#059669] hover:bg-[#047857] text-white rounded-lg font-semibold text-sm transition-all shadow-sm">
                                     Submit Leave Request

@@ -9,6 +9,7 @@ use App\Services\TenantProvisioningService;
 use App\Models\SaaSSetting;
 use App\Models\SaaSActivityLog;
 use App\Models\SaaSTransaction;
+use App\Models\PlatformInquiry;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -112,30 +113,24 @@ class SuperAdminController extends Controller
         // Seed initial baseline activity logs if database is empty
         if (SaaSActivityLog::count() === 0) {
             SaaSActivityLog::create(['event_title' => 'New School Tenant Onboarded & Provisioned', 'description' => 'Tenant [test] provisioned with isolated DB and 25 Spatie RBAC roles.', 'event_type' => 'success', 'actor_name' => 'System Engine']);
-            SaaSActivityLog::create(['event_title' => 'JazzCash Subscription Payment Confirmed', 'description' => 'Excellence Academy paid PKR 25,000 for Growth Plan (Tid: JAZZCASH-1784920)', 'event_type' => 'success', 'actor_name' => 'JazzCash IPN']);
+            SaaSActivityLog::create(['event_title' => 'Subscription Payment Confirmed', 'description' => 'School tenant paid PKR 25,000 for Growth Plan (Tid: JAZZCASH-1784920)', 'event_type' => 'success', 'actor_name' => 'Payment Gateway']);
             SaaSActivityLog::create(['event_title' => 'Super Admin Authenticated Session', 'description' => 'Platform Admin logged in via /super-admin/login from IP 127.0.0.1.', 'event_type' => 'info', 'actor_name' => 'Super Admin']);
-            SaaSActivityLog::create(['event_title' => 'Automated Tenant Database Maintenance & Backup', 'description' => 'Completed scheduled backup for 4 isolated tenant SQLite/MySQL databases.', 'event_type' => 'info', 'actor_name' => 'Stancl Cron Worker']);
-            SaaSActivityLog::create(['event_title' => 'AI Face Recognition Model Synchronized', 'description' => 'Loaded OpenCV Biometric Face Bounding Box weights across tenant nodes.', 'event_type' => 'success', 'actor_name' => 'AI Vision Engine']);
+            SaaSActivityLog::create(['event_title' => 'Automated Tenant Database Maintenance & Backup', 'description' => 'Completed scheduled backup for isolated tenant SQLite/MySQL databases.', 'event_type' => 'info', 'actor_name' => 'Stancl Cron Worker']);
+            SaaSActivityLog::create(['event_title' => 'Platform Engine Synchronized', 'description' => 'Verified multi-tenant database connection pools and rate limiting nodes.', 'event_type' => 'success', 'actor_name' => 'Raibix Core Engine']);
         }
 
         // Seed initial revenue ledger if database is empty
         if (SaaSTransaction::count() === 0) {
-            SaaSTransaction::create(['transaction_code' => 'REV-9921', 'school_name' => 'Excellence High School', 'tenant_id' => 'test', 'plan_name' => 'Growth Plan', 'amount' => 25000, 'gateway' => 'JazzCash Mobile Account', 'reference_no' => 'T' . date('YmdHis', strtotime('-2 hours')) . '981', 'secure_hash' => 'F819A3B29C018E47D881B283A499E2F1A02837C19D8274A0F918237189E198C2', 'status' => 'paid']);
-            SaaSTransaction::create(['transaction_code' => 'REV-9920', 'school_name' => 'City Grammar School', 'tenant_id' => 'citygrammar', 'plan_name' => 'Starter Plan', 'amount' => 12000, 'gateway' => 'Meezan Bank 1-Bill API', 'reference_no' => 'MEEZAN-1784901-220', 'secure_hash' => 'N/A (Direct 1-Bill IBAN)', 'status' => 'paid']);
-            SaaSTransaction::create(['transaction_code' => 'REV-9919', 'school_name' => 'Beacon House Campus', 'tenant_id' => 'beaconhouse', 'plan_name' => 'Enterprise Plan', 'amount' => 60000, 'gateway' => 'JazzCash Voucher / Over the Counter', 'reference_no' => 'T' . date('YmdHis', strtotime('-2 days')) . '441', 'secure_hash' => 'E728B10A928374C189D201A98E72839C102847B1928301A928371B98201C8E91', 'status' => 'paid']);
-        }
-
-        if (SaaSTransaction::count() <= 3) {
-            SaaSTransaction::create(['transaction_code' => 'REV-9918', 'school_name' => 'Peshawar Model School', 'tenant_id' => 'peshawarmodel', 'plan_name' => 'Growth Plan', 'amount' => 25000, 'gateway' => 'JazzCash Mobile Account', 'reference_no' => 'T' . date('YmdHis', strtotime('-3 hours')) . '102', 'secure_hash' => 'H819A3B29C018E47D881B283A499E2F1A02837C19D8274A0F918237189E198C1', 'status' => 'pending']);
-            SaaSTransaction::create(['transaction_code' => 'REV-9917', 'school_name' => 'Army Public School', 'tenant_id' => 'armypublic', 'plan_name' => 'Enterprise Plan', 'amount' => 60000, 'gateway' => 'Stripe Card Payment', 'reference_no' => 'pi_failed_3NqXxYClCIKljWvJ', 'secure_hash' => 'E728B10A928374C189D201A98E72839C102847B1928301A928371B98201C8E92', 'status' => 'failed']);
-            SaaSTransaction::create(['transaction_code' => 'REV-9916', 'school_name' => 'Roots Millennium School', 'tenant_id' => 'rootsmillennium', 'plan_name' => 'Growth Plan', 'amount' => 25000, 'gateway' => 'Direct Invoice / Bank Deposit', 'reference_no' => 'UNPAID-INV-Roots', 'secure_hash' => 'N/A', 'status' => 'unpaid']);
+            SaaSTransaction::create(['transaction_code' => 'REV-9921', 'school_name' => 'Apex Grammar School', 'tenant_id' => 'test', 'plan_name' => 'Growth Plan', 'amount' => 25000, 'gateway' => 'JazzCash Mobile Account', 'reference_no' => 'T' . date('YmdHis', strtotime('-2 hours')) . '981', 'secure_hash' => 'F819A3B29C018E47D881B283A499E2F1A02837C19D8274A0F918237189E198C2', 'status' => 'paid']);
+            SaaSTransaction::create(['transaction_code' => 'REV-9920', 'school_name' => 'City Model Academy', 'tenant_id' => 'citygrammar', 'plan_name' => 'Starter Plan', 'amount' => 12000, 'gateway' => 'Meezan Bank 1-Bill API', 'reference_no' => 'MEEZAN-1784901-220', 'secure_hash' => 'N/A (Direct 1-Bill IBAN)', 'status' => 'paid']);
+            SaaSTransaction::create(['transaction_code' => 'REV-9919', 'school_name' => 'Horizon International School', 'tenant_id' => 'beaconhouse', 'plan_name' => 'Enterprise Plan', 'amount' => 60000, 'gateway' => 'Bank Transfer / Voucher', 'reference_no' => 'T' . date('YmdHis', strtotime('-2 days')) . '441', 'secure_hash' => 'E728B10A928374C189D201A98E72839C102847B1928301A928371B98201C8E91', 'status' => 'paid']);
         }
 
         // Ensure global settings row exists
         $settingsRow = SaaSSetting::firstOrCreate(['id' => 1], [
-            'platform_name' => config('app.name', 'LMS Cloud Pakistan'),
-            'contact_email' => 'admin@lmscloud.pk',
-            'support_phone' => '+92 300 1234567',
+            'platform_name' => config('app.name', 'Raibix'),
+            'contact_email' => 'admin@raibix.com',
+            'support_phone' => '+1 (555) 019-2834',
             'maintenance_mode' => false,
             'public_onboarding' => true,
             'require_email_verification' => false,
@@ -211,6 +206,43 @@ class SuperAdminController extends Controller
             ];
         });
 
+        // Seed initial demo inquiries if empty
+        if (PlatformInquiry::count() === 0) {
+            PlatformInquiry::create([
+                'name' => 'Prof. Tariq Mahmood',
+                'email' => 'principal@cedargrammar.edu',
+                'phone' => '+92 301 8492019',
+                'institution' => 'Cedar Grammar School Network',
+                'message' => 'We have 3 campuses with around 2,400 students total. We are interested in automated fee challan generation, biometric attendance integration, and custom white-label subdomains.',
+                'type' => 'contact',
+                'status' => 'new',
+            ]);
+            PlatformInquiry::create([
+                'name' => 'Ayesha Siddiqui',
+                'email' => 'admin@stmarys.org',
+                'phone' => '+92 333 4920192',
+                'institution' => 'St. Mary High School',
+                'message' => 'Requesting a live walkthrough for our academic board and accountant. What are your SLA response times?',
+                'type' => 'expert_call',
+                'status' => 'new',
+            ]);
+        }
+
+        $inquiries = PlatformInquiry::latest()->get()->map(function ($inq) {
+            return [
+                'id' => $inq->id,
+                'name' => $inq->name,
+                'email' => $inq->email,
+                'phone' => $inq->phone,
+                'institution' => $inq->institution,
+                'message' => $inq->message,
+                'type' => $inq->type ?? 'contact',
+                'status' => $inq->status ?? 'new',
+                'created_at' => $inq->created_at ? $inq->created_at->format('d M Y, h:i A') : now()->format('d M Y, h:i A'),
+                'time_ago' => $inq->created_at ? $inq->created_at->diffForHumans() : 'Just now',
+            ];
+        });
+
         return Inertia::render('Central/Dashboard', [
             'tenants' => $tenants,
             'plans' => $plans,
@@ -220,6 +252,7 @@ class SuperAdminController extends Controller
             'platformSettings' => $platformSettings,
             'coupons' => $coupons,
             'pendingApprovals' => $pendingApprovals,
+            'inquiries' => $inquiries,
         ]);
     }
 
@@ -476,7 +509,6 @@ class SuperAdminController extends Controller
     public function updateSettings(Request $request)
     {
         $validated = $request->validate([
-            'platform_name' => 'nullable|string|max:255',
             'contact_email' => 'nullable|email|max:255',
             'support_phone' => 'nullable|string|max:50',
             'maintenance_mode' => 'boolean',
@@ -488,7 +520,7 @@ class SuperAdminController extends Controller
 
         $setting = SaaSSetting::firstOrCreate(['id' => 1]);
         $setting->update([
-            'platform_name' => $validated['platform_name'] ?? $setting->platform_name,
+            'platform_name' => config('app.name', 'Raibix'),
             'contact_email' => $validated['contact_email'] ?? $setting->contact_email,
             'support_phone' => $validated['support_phone'] ?? $setting->support_phone,
             'maintenance_mode' => $request->boolean('maintenance_mode'),
@@ -703,6 +735,72 @@ class SuperAdminController extends Controller
         ]);
 
         return redirect()->back()->with('success', "School [{$tenant->name}] information updated successfully!");
+    }
+
+    /**
+     * Store inquiry submitted from the public portal homepage.
+     */
+    public function storeInquiry(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'institution' => 'nullable|string|max:255',
+            'message' => 'nullable|string|max:5000',
+            'type' => 'nullable|string|in:contact,expert_call',
+        ]);
+
+        $inquiry = PlatformInquiry::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'institution' => $validated['institution'] ?? null,
+            'message' => $validated['message'] ?? null,
+            'type' => $validated['type'] ?? 'contact',
+            'status' => 'new',
+            'ip_address' => $request->ip(),
+        ]);
+
+        SaaSActivityLog::create([
+            'event_title' => 'New Portal Inquiry Received',
+            'description' => "Inquiry received from [{$inquiry->name}] ({$inquiry->institution}) via Public Portal.",
+            'event_type' => 'info',
+            'actor_name' => 'Portal Visitor',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your inquiry has been received! A Raibix solutions advisor will contact you shortly.',
+            'id' => $inquiry->id,
+        ]);
+    }
+
+    /**
+     * Update inquiry processing status (new / contacted).
+     */
+    public function updateInquiryStatus(Request $request, PlatformInquiry $inquiry)
+    {
+        $newStatus = ($inquiry->status === 'contacted') ? 'new' : 'contacted';
+        if ($request->has('status')) {
+            $newStatus = $request->input('status');
+        }
+
+        $inquiry->update(['status' => $newStatus]);
+
+        return redirect()->back()->with('success', "Inquiry marked as {$newStatus}!");
+    }
+
+    /**
+     * Delete an inquiry.
+     */
+    public function destroyInquiry(PlatformInquiry $inquiry)
+    {
+        $name = $inquiry->name;
+        $inquiry->delete();
+
+        return redirect()->back()->with('success', "Inquiry from [{$name}] deleted.");
     }
 }
 

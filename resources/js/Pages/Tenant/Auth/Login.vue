@@ -1,5 +1,5 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { useForm, Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     tenant: Object,
@@ -37,6 +37,12 @@ const submit = () => {
                 </p>
             </div>
 
+            <!-- Flash Success Message -->
+            <div v-if="$page.props.flash?.success" class="mt-4 rounded-xl bg-[#E6F4EA] border border-[#CEEAD6] p-3.5 text-xs font-semibold text-[#137333] flex items-center gap-2">
+                <i class="fa-solid fa-circle-check text-sm shrink-0"></i>
+                <span>{{ $page.props.flash.success }}</span>
+            </div>
+
             <form @submit.prevent="submit" class="mt-6 space-y-4">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-[#5F6368] mb-1.5">Email / Portal ID</label>
@@ -44,7 +50,7 @@ const submit = () => {
                         v-model="form.email"
                         type="email" 
                         required 
-                        placeholder="user@school.test"
+                        placeholder="Email Address"
                         class="w-full rounded-lg border border-[#DADCE0] bg-white px-4 py-3 text-sm text-[#202124] placeholder-[#5F6368] focus:border-[#1A73E8] focus:outline-none focus:ring-2 focus:ring-[#1A73E8]/20 transition-all"
                     />
                 </div>
@@ -55,7 +61,7 @@ const submit = () => {
                         v-model="form.password"
                         type="password" 
                         required 
-                        placeholder="********"
+                        placeholder="Password"
                         class="w-full rounded-lg border border-[#DADCE0] bg-white px-4 py-3 text-sm text-[#202124] placeholder-[#5F6368] focus:border-[#1A73E8] focus:outline-none focus:ring-2 focus:ring-[#1A73E8]/20 transition-all"
                     />
                 </div>
@@ -69,13 +75,13 @@ const submit = () => {
                         <input v-model="form.remember" type="checkbox" class="rounded border-[#DADCE0] bg-white text-[#1A73E8] focus:ring-0" />
                         <span>Remember credentials</span>
                     </label>
-                    <a href="#" class="text-[#1A73E8] hover:underline font-medium">Forgot password?</a>
+                    <Link :href="route('tenant.password.request')" class="text-[#1A73E8] hover:underline font-medium">Forgot password?</Link>
                 </div>
 
                 <button 
                     type="submit" 
                     :disabled="form.processing"
-                    class="w-full rounded-full bg-[#1A73E8] py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1557B0] active:scale-[0.98] disabled:opacity-50 mt-4"
+                    class="w-full rounded-full bg-[#1A73E8] py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#1557B0] active:scale-[0.98] disabled:opacity-50 mt-4 cursor-pointer"
                 >
                     <span v-if="form.processing">Authenticating...</span>
                     <span v-else>Sign In to Portal <i class="fa-solid fa-arrow-right ml-1"></i></span>

@@ -614,7 +614,7 @@ const enrollStudentFinal = (id) => {
                     <form v-if="drawerType === 'new_inquiry'" @submit.prevent="submitInquiry" class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">Candidate Student Name</label>
-                            <input v-model="inquiryForm.student_name" type="text" placeholder="e.g. Kamran Khan" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                            <input v-model="inquiryForm.student_name" type="text" placeholder="Candidate Student Name" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">Desired Class Grade</label>
@@ -624,22 +624,22 @@ const enrollStudentFinal = (id) => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 mb-1.5">Previous School Attended</label>
-                            <input v-model="inquiryForm.previous_school" type="text" placeholder="e.g. Beaconhouse School System" class="w-full rounded-lg border-gray-300 text-sm" />
+                            <input v-model="inquiryForm.previous_school" type="text" placeholder="Previous School Attended" class="w-full rounded-lg border-gray-300 text-sm" />
                         </div>
                         <div class="border-t border-gray-100 pt-4 space-y-4">
                             <h4 class="font-bold text-xs text-gray-700 uppercase tracking-wider">Parent/Guardian Contact</h4>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-1.5">Parent Full Name</label>
-                                <input v-model="inquiryForm.parent_name" type="text" placeholder="e.g. Khan Mohammad" required class="w-full rounded-lg border-gray-300 text-sm" />
+                                <input v-model="inquiryForm.parent_name" type="text" placeholder="Parent Full Name" required class="w-full rounded-lg border-gray-300 text-sm" />
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1.5">Mobile Phone</label>
-                                    <input v-model="inquiryForm.parent_phone" type="text" placeholder="03001234567" required class="w-full rounded-lg border-gray-300 text-sm" />
+                                    <input v-model="inquiryForm.parent_phone" type="text" placeholder="Mobile Phone" required class="w-full rounded-lg border-gray-300 text-sm" />
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 mb-1.5">Email Address</label>
-                                    <input v-model="inquiryForm.parent_email" type="email" placeholder="name@domain.com" class="w-full rounded-lg border-gray-300 text-sm" />
+                                    <input v-model="inquiryForm.parent_email" type="email" placeholder="Email Address" class="w-full rounded-lg border-gray-300 text-sm" />
                                 </div>
                             </div>
                         </div>

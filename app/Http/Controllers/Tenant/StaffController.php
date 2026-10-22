@@ -8,6 +8,7 @@ use App\Models\Subject;
 use App\Models\SchoolClass;
 use App\Models\Section;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -115,8 +116,18 @@ class StaffController extends Controller
     {
         $user = User::findOrFail($id);
         
-        $resetToken = Str::random(40);
-        $resetUrl = route('tenant.login') . "?token=" . $resetToken;
+        $rawToken = Str::random(64);
+        $email = strtolower(trim($user->email));
+
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $email],
+            [
+                'token' => Hash::make($rawToken),
+                'created_at' => now(),
+            ]
+        );
+
+        $resetUrl = route('tenant.password.reset', ['token' => $rawToken, 'email' => $email]);
 
         try {
             \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\ResetPasswordMail($user, $resetUrl));

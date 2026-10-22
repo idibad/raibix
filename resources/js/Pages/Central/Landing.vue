@@ -114,7 +114,7 @@ const roles = [
 // =============================================================================
 // 4. SCHOOL VIEW MOCKUPS & SUBDOMAIN CHECK
 // =============================================================================
-const schoolSubdomainInput = ref('beaconhouse');
+const schoolSubdomainInput = ref('');
 const checkingSubdomain = ref(false);
 const subdomainAvailable = ref(true);
 const activeMockupView = ref('desktop'); // 'desktop' or 'mobile'
@@ -254,15 +254,29 @@ const getDisplayPrice = (plan) => {
 const expertModalOpen = ref(false);
 const expertForm = ref({ name: '', phone: '', institution: '' });
 const expertSubmitted = ref(false);
+const expertSubmitting = ref(false);
 
-const submitExpert = () => {
+const submitExpert = async () => {
     if (!expertForm.value.name || !expertForm.value.phone) return;
-    expertSubmitted.value = true;
-    setTimeout(() => {
-        expertModalOpen.value = false;
-        expertSubmitted.value = false;
-        expertForm.value = { name: '', phone: '', institution: '' };
-    }, 2000);
+    expertSubmitting.value = true;
+    try {
+        await axios.post('/inquiries', {
+            name: expertForm.value.name,
+            phone: expertForm.value.phone,
+            institution: expertForm.value.institution || 'Direct Portal Request',
+            type: 'expert_call',
+        });
+        expertSubmitted.value = true;
+        setTimeout(() => {
+            expertModalOpen.value = false;
+            expertSubmitted.value = false;
+            expertForm.value = { name: '', phone: '', institution: '' };
+        }, 2200);
+    } catch (e) {
+        console.error('Failed to submit expert request:', e);
+    } finally {
+        expertSubmitting.value = false;
+    }
 };
 
 // =============================================================================
@@ -306,7 +320,7 @@ const contactErrors = ref({});
 const contactSubmitting = ref(false);
 const contactSuccess = ref(false);
 
-const submitContact = () => {
+const submitContact = async () => {
     contactErrors.value = {};
     if (!contactForm.value.name.trim()) contactErrors.value.name = 'Full name is required';
     if (!contactForm.value.email.trim() || !contactForm.value.email.includes('@')) {
@@ -318,12 +332,22 @@ const submitContact = () => {
     if (Object.keys(contactErrors.value).length > 0) return;
 
     contactSubmitting.value = true;
-    setTimeout(() => {
-        contactSubmitting.value = false;
+    try {
+        await axios.post('/inquiries', {
+            name: contactForm.value.name,
+            email: contactForm.value.email,
+            institution: contactForm.value.institution,
+            message: contactForm.value.message,
+            type: 'contact',
+        });
         contactSuccess.value = true;
         contactForm.value = { name: '', email: '', institution: '', message: '' };
-        setTimeout(() => { contactSuccess.value = false; }, 6000);
-    }, 1200);
+        setTimeout(() => { contactSuccess.value = false; }, 8000);
+    } catch (e) {
+        contactErrors.value.general = 'Failed to submit inquiry. Please try again.';
+    } finally {
+        contactSubmitting.value = false;
+    }
 };
 
 // =============================================================================
@@ -1081,7 +1105,7 @@ onUnmounted(() => {
                                     <input 
                                         v-model="contactForm.name" 
                                         type="text" 
-                                        placeholder="Dr. Tariq Mahmood"
+                                        placeholder="Full Name"
                                         class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-3 text-xs sm:text-sm text-[#111318] focus:border-[#111318] focus:bg-white focus:outline-none transition-colors"
                                     />
                                     <p v-if="contactErrors.name" class="mt-1 text-xs text-[#B91C1C]">{{ contactErrors.name }}</p>
@@ -1094,7 +1118,7 @@ onUnmounted(() => {
                                     <input 
                                         v-model="contactForm.email" 
                                         type="email" 
-                                        placeholder="principal@school.edu.pk"
+                                        placeholder="Work Email Address"
                                         class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-3 text-xs sm:text-sm text-[#111318] focus:border-[#111318] focus:bg-white focus:outline-none transition-colors"
                                     />
                                     <p v-if="contactErrors.email" class="mt-1 text-xs text-[#B91C1C]">{{ contactErrors.email }}</p>
@@ -1107,7 +1131,7 @@ onUnmounted(() => {
                                     <input 
                                         v-model="contactForm.institution" 
                                         type="text" 
-                                        placeholder="Beaconhouse School System"
+                                        placeholder="School or Institution Name"
                                         class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-3 text-xs sm:text-sm text-[#111318] focus:border-[#111318] focus:bg-white focus:outline-none transition-colors"
                                     />
                                     <p v-if="contactErrors.institution" class="mt-1 text-xs text-[#B91C1C]">{{ contactErrors.institution }}</p>
@@ -1291,17 +1315,17 @@ onUnmounted(() => {
 
                     <div>
                         <label class="block text-[11px] font-bold uppercase text-[#111318] mb-1">Your Full Name</label>
-                        <input v-model="expertForm.name" type="text" placeholder="Principal / Registrar Name" class="w-full rounded-lg border border-[#E7E9EE] p-2.5 text-xs text-[#111318] focus:outline-none" />
+                        <input v-model="expertForm.name" type="text" placeholder="Full Name" class="w-full rounded-lg border border-[#E7E9EE] p-2.5 text-xs text-[#111318] focus:outline-none" />
                     </div>
 
                     <div>
                         <label class="block text-[11px] font-bold uppercase text-[#111318] mb-1">Mobile / WhatsApp</label>
-                        <input v-model="expertForm.phone" type="tel" placeholder="+92 300 1234567" class="w-full rounded-lg border border-[#E7E9EE] p-2.5 text-xs text-[#111318] focus:outline-none" />
+                        <input v-model="expertForm.phone" type="tel" placeholder="Mobile / WhatsApp Number" class="w-full rounded-lg border border-[#E7E9EE] p-2.5 text-xs text-[#111318] focus:outline-none" />
                     </div>
 
                     <div>
                         <label class="block text-[11px] font-bold uppercase text-[#111318] mb-1">School / Institution</label>
-                        <input v-model="expertForm.institution" type="text" placeholder="e.g. Beaconhouse Campus" class="w-full rounded-lg border border-[#E7E9EE] p-2.5 text-xs text-[#111318] focus:outline-none" />
+                        <input v-model="expertForm.institution" type="text" placeholder="School / Institution Name" class="w-full rounded-lg border border-[#E7E9EE] p-2.5 text-xs text-[#111318] focus:outline-none" />
                     </div>
 
                     <button 

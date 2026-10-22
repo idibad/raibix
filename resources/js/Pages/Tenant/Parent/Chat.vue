@@ -194,7 +194,7 @@ watch(() => props.threads, (newThreads) => {
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Subject</label>
-                            <input type="text" v-model="newThreadForm.subject" placeholder="e.g. Leave Inquiry, Grade Update" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-[#137333] focus:border-[#137333]" />
+                            <input type="text" v-model="newThreadForm.subject" placeholder="Message Subject" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-[#137333] focus:border-[#137333]" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Message Content</label>

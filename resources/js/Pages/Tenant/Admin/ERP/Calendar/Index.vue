@@ -97,7 +97,7 @@ const deleteEvent = (id) => {
                 <form @submit.prevent="submitEvent" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Event Title</label>
-                        <input type="text" v-model="eventForm.title" placeholder="e.g. Annual Parent-Teacher Meeting" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                        <input type="text" v-model="eventForm.title" placeholder="Event Title" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Event Type</label>

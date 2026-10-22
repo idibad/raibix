@@ -727,7 +727,7 @@ const faqs = [
                                         v-model="form.student_name" 
                                         type="text" 
                                         required 
-                                        placeholder="e.g. Ayesha Khan" 
+                                        placeholder="Student Full Name" 
                                         class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/15 transition-all"
                                     />
                                 </div>
@@ -759,7 +759,7 @@ const faqs = [
                                         v-model="form.parent_name" 
                                         type="text" 
                                         required 
-                                        placeholder="e.g. Muhammad Khan" 
+                                        placeholder="Parent / Guardian Name" 
                                         class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/15 transition-all"
                                     />
                                 </div>
@@ -772,7 +772,7 @@ const faqs = [
                                         v-model="form.parent_phone" 
                                         type="tel" 
                                         required 
-                                        placeholder="03xx-xxxxxxx" 
+                                        placeholder="Active Phone Number" 
                                         class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/15 transition-all"
                                     />
                                 </div>
@@ -787,7 +787,7 @@ const faqs = [
                                     <input 
                                         v-model="form.parent_email" 
                                         type="email" 
-                                        placeholder="parent@example.com" 
+                                        placeholder="Email Address" 
                                         class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/15 transition-all"
                                     />
                                 </div>
@@ -799,7 +799,7 @@ const faqs = [
                                     <input 
                                         v-model="form.previous_school" 
                                         type="text" 
-                                        placeholder="Name of previous institution" 
+                                        placeholder="Previous School / Institution" 
                                         class="w-full rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-3 text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/15 transition-all"
                                     />
                                 </div>

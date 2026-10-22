@@ -51,17 +51,7 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
-        $platformName = config('app.name', 'LMS Cloud OS');
-        try {
-            // Use central connection directly via DB facade to avoid opening duplicate raw PDO handles that lock SQLite
-            $centralConn = config('tenancy.database.central_connection', 'sqlite');
-            $dbName = \Illuminate\Support\Facades\DB::connection($centralConn)->table('saas_settings')->value('platform_name');
-            if (!empty($dbName)) {
-                $platformName = $dbName;
-            }
-        } catch (\Throwable $e) {
-            // Fallback gracefully to config - saas_settings may not exist yet
-        }
+        $platformName = config('app.name', 'Raibix');
 
         return array_merge(parent::share($request), [
             'platformName' => $platformName,

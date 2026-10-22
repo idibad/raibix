@@ -51,6 +51,7 @@ Route::domain($domain)->group(function () {
     // Public SaaS Landing Page & School Registration
     Route::get('/', [SuperAdminController::class, 'landing'])->name('central.landing');
     Route::post('/tenants', [SuperAdminController::class, 'storeTenant'])->name('central.tenants.store');
+    Route::post('/inquiries', [SuperAdminController::class, 'storeInquiry'])->name('central.inquiries.store');
 
     // SaaS Subscription Checkout & Payment
     Route::get('/checkout/{plan_code}', [SaaSCheckoutController::class, 'showCheckout'])->name('central.checkout.show');
@@ -58,9 +59,12 @@ Route::domain($domain)->group(function () {
     Route::get('/checkout-success', [SaaSCheckoutController::class, 'showCheckoutSuccess'])->name('central.checkout.success');
     Route::post('/checkout/add-user', [SaaSCheckoutController::class, 'addFirstUser'])->name('central.checkout.add_user');
 
-    // Super Admin Authentication Routes
+    // Super Admin Authentication Routes (with 2FA)
     Route::get('/super-admin/login', [CentralAuthController::class, 'showLoginForm'])->name('login');
     Route::post('/super-admin/login', [CentralAuthController::class, 'login'])->name('central.login.post');
+    Route::post('/super-admin/login/verify-2fa', [CentralAuthController::class, 'verify2fa'])->name('central.login.verify2fa');
+    Route::post('/super-admin/login/resend-2fa', [CentralAuthController::class, 'resend2fa'])->name('central.login.resend2fa');
+    Route::post('/super-admin/login/cancel-2fa', [CentralAuthController::class, 'cancel2fa'])->name('central.login.cancel2fa');
     Route::post('/super-admin/logout', [CentralAuthController::class, 'logout'])->name('central.logout');
 
     // Protected Super Admin Portal Routes
@@ -81,6 +85,10 @@ Route::domain($domain)->group(function () {
         Route::post('/tenants/{tenant}/domain', [SuperAdminController::class, 'addDomain'])->name('central.tenants.domain');
         Route::post('/tenants/{tenant}/offboard', [SuperAdminController::class, 'offboard'])->name('central.tenants.offboard');
         
+        // Inquiries Management
+        Route::post('/super-admin/inquiries/{inquiry}/status', [SuperAdminController::class, 'updateInquiryStatus'])->name('central.inquiries.status');
+        Route::delete('/super-admin/inquiries/{inquiry}', [SuperAdminController::class, 'destroyInquiry'])->name('central.inquiries.destroy');
+
         Route::post('/super-admin/settings', [SuperAdminController::class, 'updateSettings'])->name('central.settings.update');
         Route::post('/super-admin/coupons', [SuperAdminController::class, 'storeCoupon'])->name('central.coupons.store');
         Route::delete('/super-admin/coupons/{id}', [SuperAdminController::class, 'destroyCoupon'])->name('central.coupons.destroy');

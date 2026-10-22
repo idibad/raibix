@@ -91,14 +91,24 @@ class SendFeeReminders extends Command
 
                         // Also send default mail notice if email is available
                         if ($parentEmail) {
-                            // Queue fee defalter mailable notice
                             try {
-                                \Illuminate\Support\Facades\Mail::raw($message, function ($mail) use ($parentEmail, $challan) {
-                                    $mail->to($parentEmail)
-                                        ->subject("URGENT: School Fee Payment Reminder - Challan #{$challan->challan_number}");
-                                });
+                                $actionUrl = function_exists('route') ? route('tenant.challans.print', $challan->id) : null;
+                                \Illuminate\Support\Facades\Mail::to($parentEmail)->send(new \App\Mail\SchoolAlertMail(
+                                    title: "Fee Payment Reminder - Challan #{$challan->challan_number}",
+                                    recipientName: $parent->user?->name ?? 'Respected Parent',
+                                    messageBody: "This is a reminder that the school fee challan for {$studentName} remains unpaid. Please clear the pending dues to ensure uninterrupted access to academic services.",
+                                    details: [
+                                        'Student Name' => $studentName,
+                                        'Challan #' => $challan->challan_number,
+                                        'Total Amount' => "PKR {$amount}",
+                                        'Due Date' => (string) $challan->due_date,
+                                    ],
+                                    actionUrl: $actionUrl,
+                                    actionText: 'View / Print Challan',
+                                    alertType: 'warning'
+                                ));
                             } catch (\Exception $e) {
-                                Log::error("Failed to send fee mailable reminder to {$parentEmail}: " . $e->getMessage());
+                                Log::error("Failed to send fee alert email to {$parentEmail}: " . $e->getMessage());
                             }
                         }
 

@@ -403,7 +403,7 @@ onMounted(() => {
                                         v-model="form.name" 
                                         @input="handleNameInput"
                                         type="text" 
-                                        placeholder="e.g. Lahore Grammar School"
+                                        placeholder="Campus / School Name"
                                         required
                                         class="w-full rounded-xl border border-[#E7E9EE] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#111318] placeholder-[#9CA3AF] focus:border-[#2F6BFF] focus:ring-2 focus:ring-[#2F6BFF]/10 focus:outline-none transition-all"
                                     />
@@ -464,7 +464,7 @@ onMounted(() => {
                                     <input 
                                         v-model="form.admin_name" 
                                         type="text" 
-                                        placeholder="e.g. Dr. Arshad Khan"
+                                        placeholder="Administrator Full Name"
                                         required
                                         class="w-full rounded-xl border border-[#E7E9EE] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#111318] placeholder-[#9CA3AF] focus:border-[#2F6BFF] focus:ring-2 focus:ring-[#2F6BFF]/10 focus:outline-none transition-all"
                                     />
@@ -480,7 +480,7 @@ onMounted(() => {
                                         <input 
                                             v-model="form.admin_email" 
                                             type="email" 
-                                            placeholder="principal@school.edu.pk"
+                                            placeholder="Work Email Address"
                                             required
                                             class="w-full rounded-xl border border-[#E7E9EE] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#111318] placeholder-[#9CA3AF] focus:border-[#2F6BFF] focus:ring-2 focus:ring-[#2F6BFF]/10 focus:outline-none transition-all"
                                         />
@@ -494,7 +494,7 @@ onMounted(() => {
                                         <input 
                                             v-model="form.admin_phone" 
                                             type="text" 
-                                            placeholder="0300 1234567"
+                                            placeholder="Mobile / WhatsApp Number"
                                             required
                                             class="w-full rounded-xl border border-[#E7E9EE] bg-white px-3.5 py-2.5 text-xs sm:text-sm text-[#111318] placeholder-[#9CA3AF] focus:border-[#2F6BFF] focus:ring-2 focus:ring-[#2F6BFF]/10 focus:outline-none transition-all"
                                         />
@@ -514,7 +514,7 @@ onMounted(() => {
                                         <input 
                                             v-model="form.admin_password" 
                                             :type="showPassword ? 'text' : 'password'"
-                                            placeholder="Create a secure password"
+                                            placeholder="Master Password"
                                             required
                                             minlength="6"
                                             autocomplete="new-password"

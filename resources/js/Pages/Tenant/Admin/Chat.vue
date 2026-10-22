@@ -250,7 +250,7 @@ watch(() => props.threads, (newThreads) => {
                     </div>
                     <div>
                         <label class="block font-bold text-[#5F6368] uppercase tracking-wider mb-1">Subject Topic *</label>
-                        <input v-model="newThreadForm.subject" type="text" placeholder="e.g. Academic Review / Conduct Meeting Inquiry" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:ring-1 focus:ring-[#1A73E8]" />
+                        <input v-model="newThreadForm.subject" type="text" placeholder="Message Subject" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:ring-1 focus:ring-[#1A73E8]" />
                     </div>
                     <div>
                         <label class="block font-bold text-[#5F6368] uppercase tracking-wider mb-1">Initial Message Text *</label>

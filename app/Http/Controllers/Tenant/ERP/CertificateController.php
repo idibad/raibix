@@ -102,7 +102,7 @@ class CertificateController extends Controller
         $student = $issued->student;
         $template = $issued->template;
 
-        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'Excellence High School');
+        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'School Portal');
 
         // Parse variables inside template content with matching HTML spans
         $variables = [
@@ -175,7 +175,7 @@ class CertificateController extends Controller
             ->whereIn('id', $ids)
             ->get();
 
-        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'Excellence High School');
+        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'School Portal');
 
         $certificates = $issuedList->map(function ($issued) use ($schoolName) {
             $student = $issued->student;

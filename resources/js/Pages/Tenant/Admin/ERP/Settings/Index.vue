@@ -235,7 +235,7 @@ const toggleYearStatus = (id) => {
                 <form @submit.prevent="submitYear" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Session Name</label>
-                        <input type="text" v-model="yearForm.name" placeholder="e.g. 2026-2027 Session" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                        <input type="text" v-model="yearForm.name" placeholder="Academic Session Name" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -265,7 +265,7 @@ const toggleYearStatus = (id) => {
                 <form @submit.prevent="submitTerm" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Term Name</label>
-                        <input type="text" v-model="termForm.name" placeholder="e.g. Mid-Term / 1st Semester" required class="w-full rounded-lg border-gray-300 text-sm" />
+                        <input type="text" v-model="termForm.name" placeholder="Term / Semester Name" required class="w-full rounded-lg border-gray-300 text-sm" />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>

@@ -42,6 +42,12 @@ Route::middleware([
     Route::post('/login', [TenantAuthController::class, 'login'])->name('tenant.login.submit');
     Route::post('/logout', [TenantAuthController::class, 'logout'])->name('tenant.logout');
 
+    // Password Reset Routes
+    Route::get('/forgot-password', [TenantAuthController::class, 'showForgotPasswordForm'])->name('tenant.password.request');
+    Route::post('/forgot-password', [TenantAuthController::class, 'sendResetLinkEmail'])->name('tenant.password.email');
+    Route::get('/reset-password/{token}', [TenantAuthController::class, 'showResetPasswordForm'])->name('tenant.password.reset');
+    Route::post('/reset-password', [TenantAuthController::class, 'resetPassword'])->name('tenant.password.update');
+
     // Public School Landing Page
     Route::get('/', [TenantHomeController::class, 'index'])->name('tenant.home');
 

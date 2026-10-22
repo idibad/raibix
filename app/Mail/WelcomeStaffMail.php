@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -32,8 +33,16 @@ class WelcomeStaffMail extends Mailable
      */
     public function envelope(): Envelope
     {
+        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant 
+            ? tenancy()->tenant->name 
+            : config('app.name', 'Excellence School Portal');
+
         return new Envelope(
-            subject: 'Welcome to ' . (function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'Excellence School Portal')) . ' - Staff Account Created',
+            from: new Address(
+                config('mail.from.address', 'noreply@raibix.com'),
+                $schoolName
+            ),
+            subject: 'Welcome to ' . $schoolName . ' - Staff Account Created',
         );
     }
 

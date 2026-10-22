@@ -108,7 +108,7 @@ const parsedContentPreview = computed(() => {
     const refNoSpan = `<span class="font-mono bg-gray-50 border border-gray-200 px-2 py-0.5 rounded text-3xs font-bold text-gray-600 select-all">CERT-${new Date().getFullYear()}-TEMP</span>`;
     text = text.replace(/\{\{reference_number\}\}/g, refNoSpan);
     
-    const schoolName = page.props.tenant?.name || 'Excellence High School';
+    const schoolName = page.props.tenant?.name || 'School Name';
     const schoolSpan = `<span class="font-extrabold text-indigo-950">${escapeHtml(schoolName)}</span>`;
     text = text.replace(/\{\{school_name\}\}/g, schoolSpan);
     
@@ -372,7 +372,7 @@ const loadPreset = (type) => {
                         <div class="space-y-2 mt-4">
                             <h1 class="text-2xl font-bold text-indigo-950 uppercase tracking-widest">{{ selectedTemplate ? selectedTemplate.name : 'Certificate' }}</h1>
                             <div class="h-0.5 w-40 bg-indigo-950 mx-auto my-1"></div>
-                            <span class="text-3xs text-gray-400 font-sans tracking-widest font-bold">EXCELLENCE HIGH SCHOOL PORTAL</span>
+                            <span class="text-3xs text-gray-400 font-sans tracking-widest font-bold">{{ ($page.props.tenant?.name || 'School Portal').toUpperCase() }}</span>
                         </div>
 
                         <!-- Certificate Body text -->
@@ -593,7 +593,7 @@ const loadPreset = (type) => {
                 <form @submit.prevent="submitTemplate" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Template Name</label>
-                        <input type="text" v-model="templateForm.name" placeholder="e.g. School Leaving Certificate" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                        <input type="text" v-model="templateForm.name" placeholder="Certificate Template Name" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Certificate Type</label>

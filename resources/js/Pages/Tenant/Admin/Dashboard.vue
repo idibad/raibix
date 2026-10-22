@@ -3251,7 +3251,7 @@ const collectionPercentage = computed(() => {
                                 </div>
                                 <div class="space-y-1.5">
                                     <label class="block text-xs font-bold text-[#202124]">School Tagline</label>
-                                    <input type="text" v-model="brandingForm.tagline" placeholder="Excellence in Education" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]" />
+                                    <input type="text" v-model="brandingForm.tagline" placeholder="School Tagline" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]" />
                                 </div>
                                 <div class="space-y-1.5 md:col-span-2">
                                     <label class="block text-xs font-bold text-[#202124]">Hero Description</label>
@@ -3728,16 +3728,16 @@ const collectionPercentage = computed(() => {
                     <form @submit.prevent="submitAddUser" class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Full Name *</label>
-                            <input v-model="userForm.name" type="text" required placeholder="e.g. Sir Tariq Mehmood" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
+                            <input v-model="userForm.name" type="text" required placeholder="Full Name" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-[#202124] mb-1">Email Address *</label>
-                                <input v-model="userForm.email" type="email" required placeholder="staff@school.edu.pk" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
+                                <input v-model="userForm.email" type="email" required placeholder="Email Address" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-[#202124] mb-1">Phone Number</label>
-                                <input v-model="userForm.phone" type="text" placeholder="0300-1234567" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
+                                <input v-model="userForm.phone" type="text" placeholder="Phone Number" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
                             </div>
                         </div>
                         <div>
@@ -3767,7 +3767,7 @@ const collectionPercentage = computed(() => {
                             <div class="text-xs font-bold text-[#1A73E8]">Teacher Specific Assignment</div>
                             <div>
                                 <label class="block text-2xs font-bold text-[#202124] mb-1">Academic Qualification & Subject Specialties</label>
-                                <input v-model="userForm.qualification" type="text" placeholder="e.g. M.Sc Mathematics, B.Ed (Physics / Math)" class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
+                                <input v-model="userForm.qualification" type="text" placeholder="Academic Qualification & Specialties" class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
                             </div>
                             <div>
                                 <label class="block text-2xs font-bold text-[#202124] mb-1">Homeroom Section Assignment (Optional)</label>
@@ -3956,11 +3956,11 @@ const collectionPercentage = computed(() => {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Student Full Name *</label>
-                            <input v-model="studentForm.student_name" type="text" required placeholder="e.g. Ayesha Khan" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
+                            <input v-model="studentForm.student_name" type="text" required placeholder="Student Full Name" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]" />
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Admission Number *</label>
-                            <input v-model="studentForm.admission_number" type="text" required placeholder="e.g. ADM-2026-0412" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-mono font-bold text-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]" />
+                            <input v-model="studentForm.admission_number" type="text" required placeholder="Admission Number" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-mono font-bold text-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]" />
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -3980,7 +3980,7 @@ const collectionPercentage = computed(() => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Roll Number</label>
-                            <input v-model="studentForm.roll_number" type="text" placeholder="e.g. A-14" class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 text-xs" />
+                            <input v-model="studentForm.roll_number" type="text" placeholder="Roll Number" class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 text-xs" />
                         </div>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -3998,7 +3998,7 @@ const collectionPercentage = computed(() => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">B-Form / CNIC</label>
-                            <input v-model="studentForm.b_form" type="text" placeholder="35202-1234567-1" class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 text-xs" />
+                            <input v-model="studentForm.b_form" type="text" placeholder="B-Form / CNIC Number" class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2.5 text-xs" />
                         </div>
                     </div>
 
@@ -4008,11 +4008,11 @@ const collectionPercentage = computed(() => {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-2xs font-bold text-[#202124] mb-1">Father's Name *</label>
-                                <input v-model="studentForm.father_name" type="text" required placeholder="e.g. Muhammad Khan" class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2 text-xs" />
+                                <input v-model="studentForm.father_name" type="text" required placeholder="Father / Guardian Name" class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2 text-xs" />
                             </div>
                             <div>
                                 <label class="block text-2xs font-bold text-[#202124] mb-1">Father's Phone Number *</label>
-                                <input v-model="studentForm.father_phone" type="text" required placeholder="0300-9876543" class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2 text-xs" />
+                                <input v-model="studentForm.father_phone" type="text" required placeholder="Father Phone Number" class="w-full rounded-xl border border-[#DADCE0] bg-white px-3.5 py-2 text-xs" />
                             </div>
                         </div>
                     </div>
@@ -4103,7 +4103,7 @@ const collectionPercentage = computed(() => {
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Mandatory Audit Reason / Notes *</label>
-                        <textarea v-model="statusForm.reason" required rows="3" placeholder="Explain exact context (e.g. 'Transferred to Lahore branch, fee clearance verified on July 14')..." class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]"></textarea>
+                        <textarea v-model="statusForm.reason" required rows="3" placeholder="Reason for status change (e.g. transfer, fee clearance, or graduation)..." class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs focus:ring-2 focus:ring-[#1A73E8]"></textarea>
                     </div>
 
                     <!-- Past Status Logs History -->
@@ -4260,7 +4260,7 @@ const collectionPercentage = computed(() => {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-2xs font-bold text-[#202124] mb-1">Document Title *</label>
-                            <input v-model="documentForm.title" type="text" required placeholder="e.g. Scanned B-Form Front" class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2 text-xs" />
+                            <input v-model="documentForm.title" type="text" required placeholder="Document Title (e.g. B-Form, Certificate)" class="w-full rounded-xl border border-[#DADCE0] px-3.5 py-2 text-xs" />
                         </div>
                         <div>
                             <label class="block text-2xs font-bold text-[#202124] mb-1">Category / Type *</label>
@@ -4577,7 +4577,7 @@ const collectionPercentage = computed(() => {
                 <form @submit.prevent="submitExamDefinition" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Examination Term Name *</label>
-                        <input v-model="examForm.name" type="text" required placeholder="e.g. Mid-Term Examination 2026 or First Unit Test" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
+                        <input v-model="examForm.name" type="text" required placeholder="Examination Term Name" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -4616,7 +4616,7 @@ const collectionPercentage = computed(() => {
                 <form @submit.prevent="submitClass" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Class Name *</label>
-                        <input v-model="classForm.name" type="text" required placeholder="e.g. Grade 1, Grade 10, FSc Part 1" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
+                        <input v-model="classForm.name" type="text" required placeholder="Class / Grade Name" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Academic Level Category *</label>
@@ -4658,11 +4658,11 @@ const collectionPercentage = computed(() => {
                 <form @submit.prevent="submitSection" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Section Name *</label>
-                        <input v-model="sectionForm.name" type="text" required placeholder="e.g. A, B, Blue, Green" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
+                        <input v-model="sectionForm.name" type="text" required placeholder="Section Name" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Room Number / Location</label>
-                        <input v-model="sectionForm.room_number" type="text" placeholder="e.g. Room 102 or North Wing" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
+                        <input v-model="sectionForm.room_number" type="text" placeholder="Room Number / Location" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Class Teacher (Optional)</label>
@@ -4695,7 +4695,7 @@ const collectionPercentage = computed(() => {
                 <form @submit.prevent="submitNotice" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Notice Title *</label>
-                        <input v-model="noticeForm.title" type="text" required placeholder="e.g. Eid Holidays Schedule or Winter Timetable" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
+                        <input v-model="noticeForm.title" type="text" required placeholder="Notice Title" class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-xs font-bold" />
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -4708,7 +4708,7 @@ const collectionPercentage = computed(() => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Category</label>
-                            <input v-model="noticeForm.category" type="text" placeholder="e.g. Academic Circular" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2.5 text-xs font-bold" />
+                            <input v-model="noticeForm.category" type="text" placeholder="Notice Category" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2.5 text-xs font-bold" />
                         </div>
                     </div>
                     <div>
@@ -4760,7 +4760,7 @@ const collectionPercentage = computed(() => {
                 <form @submit.prevent="submitSportsForm" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-[#202124] mb-1">Activity / Team Name *</label>
-                        <input v-model="sportsForm.name" type="text" required placeholder="e.g. Varsity Football Team, Debate Club" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
+                        <input v-model="sportsForm.name" type="text" required placeholder="Activity / Team Name" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -4781,11 +4781,11 @@ const collectionPercentage = computed(() => {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Schedule / Day & Time</label>
-                            <input v-model="sportsForm.schedule" type="text" placeholder="e.g. Mon & Wed, 4:00 PM" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
+                            <input v-model="sportsForm.schedule" type="text" placeholder="Schedule / Day & Time" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Venue / Location</label>
-                            <input v-model="sportsForm.venue" type="text" placeholder="e.g. School Field, Auditorium" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
+                            <input v-model="sportsForm.venue" type="text" placeholder="Venue / Location" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
                         </div>
                     </div>
                     <div>

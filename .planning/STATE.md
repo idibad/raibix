@@ -43,6 +43,12 @@ Recent decisions affecting current work:
 - Tenant routes must be segregated with Spatie role middleware (`role:Admin|Principal`, `role:Teacher`, etc.).
 - Heavy operations (bulk fee challans, CSV imports, notification APIs) must execute in queued background jobs.
 - Uploads containing sensitive student PII and fee payment receipts must move from `public/uploads/` to protected storage disks.
+- Cleaned 756 orphan test tenant SQLite database files (~378MB), preserving 21 registered tenants and central database.
+- Configured default sender `noreply@raibix.com` across all system alert emails and password reset workflows.
+- Standardized form placeholders to use input labels rather than specific school names or mock names.
+
+### Quick Tasks Completed
+- `20261022-clean-db-noreply-emails`: Database cleanup, password reset & alert email setup, and UI placeholder normalization.
 
 ### Pending Todos
 

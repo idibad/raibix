@@ -48,7 +48,7 @@ onMounted(() => {
             <div class="space-y-2 mt-4">
                 <h1 class="text-2xl font-bold text-indigo-955 uppercase tracking-widest">{{ issued.template?.name || 'Certificate' }}</h1>
                 <div class="h-0.5 w-40 bg-indigo-950 mx-auto my-1"></div>
-                <span class="text-3xs text-gray-400 font-sans tracking-widest font-bold">EXCELLENCE HIGH SCHOOL PORTAL</span>
+                <span class="text-3xs text-gray-400 font-sans tracking-widest font-bold">{{ ($page.props.tenant?.name || 'School Portal').toUpperCase() }}</span>
             </div>
 
             <!-- Parsed Content Body -->

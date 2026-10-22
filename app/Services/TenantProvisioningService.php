@@ -177,7 +177,7 @@ class TenantProvisioningService
      */
     protected function createDefaultSchoolAdmin(array $data): void
     {
-        $tenantId = $data['id'] ?? 'excellence';
+        $tenantId = $data['id'] ?? 'school';
         
         // 1. Create the user-defined Principal Admin
         $adminEmail = $data['admin_email'] ?? "principal@{$tenantId}.lmscloud.test";

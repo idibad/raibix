@@ -1147,7 +1147,7 @@ const submitTeacherPenalty = () => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Title</label>
-                            <input v-model="materialForm.title" type="text" placeholder="e.g. Chapter 3: Newton's Laws" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#8430CE] focus:outline-none" />
+                            <input v-model="materialForm.title" type="text" placeholder="Study Material Title" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#8430CE] focus:outline-none" />
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -1205,7 +1205,7 @@ const submitTeacherPenalty = () => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Title</label>
-                            <input v-model="assignmentForm.title" type="text" placeholder="e.g. Weekly Calculus Problem Set #4" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#8430CE] focus:outline-none" />
+                            <input v-model="assignmentForm.title" type="text" placeholder="Assignment Title" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#8430CE] focus:outline-none" />
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Instructions / Description</label>
@@ -1430,7 +1430,7 @@ const submitTeacherPenalty = () => {
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Title</label>
-                            <input v-model="observationForm.title" type="text" placeholder="e.g. Excellent active participation in lab" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#8430CE] focus:outline-none" />
+                            <input v-model="observationForm.title" type="text" placeholder="Observation Title" required class="w-full rounded-xl bg-white border border-[#DADCE0] px-3.5 py-2.5 focus:border-[#8430CE] focus:outline-none" />
                         </div>
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-[#5F6368] mb-1">Detailed Observation Notes</label>
@@ -1507,7 +1507,7 @@ const submitTeacherPenalty = () => {
                     <form @submit.prevent="submitTeacherSports" class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-[#202124] mb-1">Activity / Club Name *</label>
-                            <input v-model="teacherSportsForm.name" type="text" required placeholder="e.g. Science Olympiad, Basketball Team" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
+                            <input v-model="teacherSportsForm.name" type="text" required placeholder="Activity / Team Name" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -1528,11 +1528,11 @@ const submitTeacherPenalty = () => {
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-[#202124] mb-1">Schedule / Day & Time</label>
-                                <input v-model="teacherSportsForm.schedule" type="text" placeholder="e.g. Tue & Thu, 3:30 PM" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
+                                <input v-model="teacherSportsForm.schedule" type="text" placeholder="Schedule / Day & Time" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-[#202124] mb-1">Venue / Room</label>
-                                <input v-model="teacherSportsForm.venue" type="text" placeholder="e.g. Gym, Lab 102" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
+                                <input v-model="teacherSportsForm.venue" type="text" placeholder="Venue / Room" class="w-full rounded-xl border border-[#DADCE0] px-3 py-2 text-xs font-bold" />
                             </div>
                         </div>
                         <div class="flex justify-end space-x-3 pt-4 border-t border-[#DADCE0] font-Outfit">

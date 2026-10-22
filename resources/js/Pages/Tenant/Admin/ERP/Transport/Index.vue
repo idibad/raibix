@@ -252,11 +252,11 @@ const formatCurrency = (amount) => {
                     <form @submit.prevent="submitVehicle" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Bus/Van Number Plate</label>
-                            <input type="text" v-model="vehicleForm.vehicle_number" placeholder="e.g. LES-1234" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                            <input type="text" v-model="vehicleForm.vehicle_number" placeholder="Vehicle Registration Number Plate" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Bus Model/Make</label>
-                            <input type="text" v-model="vehicleForm.model_name" placeholder="e.g. Toyota Coaster 2024" class="w-full rounded-lg border-gray-300 text-sm" />
+                            <input type="text" v-model="vehicleForm.model_name" placeholder="Bus Model/Make" class="w-full rounded-lg border-gray-300 text-sm" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Capacity</label>
@@ -291,7 +291,7 @@ const formatCurrency = (amount) => {
                     <form @submit.prevent="submitRoute" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Route Name</label>
-                            <input type="text" v-model="routeForm.route_name" placeholder="e.g. Route A - Gulberg & DHA" required class="w-full rounded-lg border-gray-300 text-sm" />
+                            <input type="text" v-model="routeForm.route_name" placeholder="Route Name" required class="w-full rounded-lg border-gray-300 text-sm" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Assign Fleet Vehicle</label>
@@ -335,7 +335,7 @@ const formatCurrency = (amount) => {
                     <form @submit.prevent="submitStop" class="space-y-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Stop Point Address/Name</label>
-                            <input type="text" v-model="stopForm.stop_name" placeholder="e.g. Model Town Main Gate" required class="w-full rounded-lg border-gray-300 text-sm" />
+                            <input type="text" v-model="stopForm.stop_name" placeholder="Stop Point Address/Name" required class="w-full rounded-lg border-gray-300 text-sm" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Estimated Pickup Time</label>
@@ -400,7 +400,7 @@ const formatCurrency = (amount) => {
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Pickup Stop Location</label>
-                            <input type="text" v-model="allocationForm.pickup_point" placeholder="e.g. Stop #3 Model Town Gate" required class="w-full rounded-lg border-gray-300 text-sm" />
+                            <input type="text" v-model="allocationForm.pickup_point" placeholder="Pickup Stop Location" required class="w-full rounded-lg border-gray-300 text-sm" />
                         </div>
                         <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                             <button type="button" @click="showAllocationModal = false" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">Cancel</button>

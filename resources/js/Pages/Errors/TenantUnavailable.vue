@@ -243,7 +243,7 @@ const reloadPage = () => {
                             type="text"
                             v-model="searchQuery"
                             @input="onSearchInput"
-                            placeholder="e.g. Beaconhouse, City School, Oxford, or school code..."
+                            placeholder="Search by school name or subdomain code..."
                             class="w-full pl-10 pr-10 py-3 bg-white border border-[#DADCE0] rounded-xl text-sm text-[#202124] placeholder-[#80868B] focus:outline-none focus:border-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]/20 transition-all shadow-inner"
                         />
                         <div v-if="isSearching" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#1A73E8]">

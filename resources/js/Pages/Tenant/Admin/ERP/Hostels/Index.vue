@@ -238,7 +238,7 @@ const formatCurrency = (amount) => {
                 <form @submit.prevent="submitHostel" class="space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Hostel Block Name</label>
-                        <input type="text" v-model="hostelForm.name" placeholder="e.g. Iqbal Hall" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                        <input type="text" v-model="hostelForm.name" placeholder="Hostel / Hall Name" required class="w-full rounded-lg border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Hostel Type</label>
@@ -285,7 +285,7 @@ const formatCurrency = (amount) => {
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 mb-1">Room Number / ID</label>
-                        <input type="text" v-model="roomForm.room_number" placeholder="e.g. Room 104" required class="w-full rounded-lg border-gray-300 text-sm" />
+                        <input type="text" v-model="roomForm.room_number" placeholder="Room Number" required class="w-full rounded-lg border-gray-300 text-sm" />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>

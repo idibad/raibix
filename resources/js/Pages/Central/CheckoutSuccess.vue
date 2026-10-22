@@ -210,12 +210,12 @@ const copyUrl = () => {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-[#111318] mb-1.5">Full Name *</label>
-                                <input v-model="userForm.name" type="text" required placeholder="e.g. Sir Tariq Mehmood" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
+                                <input v-model="userForm.name" type="text" required placeholder="Full Name" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
                                 <span v-if="userForm.errors.name" class="text-xs text-red-600 font-semibold block mt-1">{{ userForm.errors.name }}</span>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-[#111318] mb-1.5">Official Email Address *</label>
-                                <input v-model="userForm.email" type="email" required placeholder="tariq@yourschool.edu.pk" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
+                                <input v-model="userForm.email" type="email" required placeholder="Official Email Address" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
                                 <span v-if="userForm.errors.email" class="text-xs text-red-600 font-semibold block mt-1">{{ userForm.errors.email }}</span>
                             </div>
                         </div>
@@ -223,7 +223,7 @@ const copyUrl = () => {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-[#111318] mb-1.5">Phone Number</label>
-                                <input v-model="userForm.phone" type="text" placeholder="0300 1234567" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
+                                <input v-model="userForm.phone" type="text" placeholder="Phone Number" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-[#111318] mb-1.5">Role Allocation *</label>
@@ -240,7 +240,7 @@ const copyUrl = () => {
                         <div>
                             <label class="block text-xs font-bold text-[#111318] mb-1.5">Password *</label>
                             <div class="flex gap-2">
-                                <input v-model="userForm.password" type="text" required placeholder="Create temporary login password" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs font-mono text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
+                                <input v-model="userForm.password" type="text" required placeholder="Temporary Password" class="w-full rounded-xl border border-[#E7E9EE] bg-[#FBFBFC] px-4 py-2.5 text-xs font-mono text-[#111318] focus:border-[#2F6BFF] focus:outline-none" />
                                 <button type="button" @click="generatePassword" class="shrink-0 rounded-xl border border-[#E7E9EE] bg-white px-4 py-2.5 text-xs font-bold text-[#111318] hover:bg-[#F3F4F6] cursor-pointer shadow-2xs">
                                     Generate
                                 </button>

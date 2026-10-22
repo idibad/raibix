@@ -30,7 +30,7 @@ class NotificationService
         $className = $student->currentClass ? $student->currentClass->name : '';
         $dateFormatted = $attendance->date ? $attendance->date->format('d-M-Y') : date('d-M-Y');
 
-        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'Excellence High School');
+        $schoolName = function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant ? tenancy()->tenant->name : config('app.name', 'School Portal');
         $message = "Your child {$studentName} (Roll # {$student->roll_number}) was absent today ({$dateFormatted}) in {$className}-{$sectionName}. - Principal, {$schoolName}";
 
         // Dispatch SMS
@@ -38,6 +38,30 @@ class NotificationService
 
         // Dispatch WhatsApp
         $this->sendWhatsapp($parentPhone, $message, 'attendance_absent', 'absence_alert_template');
+
+        // Dispatch Email Alert via SchoolAlertMail from noreply@raibix.com
+        $parentEmail = $student->parent->user?->email ?? null;
+        if ($parentEmail) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($parentEmail)->send(new \App\Mail\SchoolAlertMail(
+                    title: "Student Absence Alert - {$studentName}",
+                    recipientName: $student->parent->user?->name ?? 'Respected Parent',
+                    messageBody: "We would like to notify you that {$studentName} was marked absent today ({$dateFormatted}). If this absence was unforeseen or requires medical leave, please submit a leave application via the parent portal.",
+                    details: [
+                        'Student Name' => $studentName,
+                        'Roll Number' => (string) ($student->roll_number ?? 'N/A'),
+                        'Class & Section' => "{$className}-{$sectionName}",
+                        'Date' => $dateFormatted,
+                        'Attendance Status' => 'Absent',
+                    ],
+                    actionUrl: function_exists('route') ? route('tenant.login') : null,
+                    actionText: 'Access Parent Portal',
+                    alertType: 'danger'
+                ));
+            } catch (\Throwable $e) {
+                Log::error("Failed to send absence alert email to {$parentEmail}: " . $e->getMessage());
+            }
+        }
 
         return true;
     }
@@ -109,7 +133,7 @@ class NotificationService
                 // Real UrduBit API invocation
                 $response = Http::get("https://api.urdubit.com/sms/send", [
                     'key' => config('services.urdubit.api_key'),
-                    'sender' => config('services.urdubit.mask', config('app.name', 'EXCELLENCE')),
+                    'sender' => config('services.urdubit.mask', config('app.name', 'RAIBIX')),
                     'mobile' => $phone,
                     'message' => $message,
                 ]);
