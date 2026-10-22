@@ -472,9 +472,9 @@ onUnmounted(() => {
                         <div class="lg:col-span-9 relative rounded-2xl sm:rounded-3xl overflow-hidden border border-[#E7E9EE] flex flex-col justify-end p-8 sm:p-14 min-h-[480px] bg-[#111318]">
                             <!-- Authentic Education Photograph -->
                             <img 
-                                src="/images/campus_student_hero.png" 
-                                alt="Modern campus educator and learning space" 
-                                class="absolute inset-0 h-full w-full object-cover object-center opacity-80"
+                                src="/images/focused_classroom_study_session.png" 
+                                alt="Focused classroom study session" 
+                                class="absolute inset-0 h-full w-full object-cover object-center opacity-85"
                                 loading="lazy"
                             />
                             <!-- Horizontal gradient overlay: strongest on left, fading toward right -->
