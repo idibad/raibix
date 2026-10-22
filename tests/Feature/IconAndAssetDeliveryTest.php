@@ -37,7 +37,7 @@ class IconAndAssetDeliveryTest extends TestCase
         $this->assertStringContainsString('cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css', $content);
 
         // Verifies Favicon link is present
-        $this->assertStringContainsString('images/raibix.png', $content);
+        $this->assertStringContainsString('favicon.png', $content);
     }
 
     public function test_htaccess_enforces_cors_headers_for_webfonts(): void

@@ -128,6 +128,13 @@ class SuperAdmin2FAAndInquiriesTest extends TestCase
         $failResponse->assertSessionHasErrors(['code']);
         $this->assertGuest();
 
+        // Step 2b: Bypass/dummy code 888999 must strictly fail
+        $bypassResponse = $this->post('/super-admin/login/verify-2fa', [
+            'code' => '888999',
+        ]);
+        $bypassResponse->assertSessionHasErrors(['code']);
+        $this->assertGuest();
+
         // Step 3: Verify with correct OTP
         $verifyResponse = $this->post('/super-admin/login/verify-2fa', [
             'code' => $otp,

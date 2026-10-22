@@ -59,6 +59,9 @@ Strict multi-tenant data isolation and production-grade security across school m
 - **Compatibility:** Must maintain backwards compatibility with existing school tenants and SQLite local development workflows while supporting MySQL/PostgreSQL in production.
 - **Tenancy Guardrails:** Tenant-specific database operations must never execute against the central database and vice-versa.
 - **Performance:** Bulk operations must not block HTTP request cycles; queue worker failures must be retryable.
+- **UI & Security Rules:** 
+  - NEVER use unnecessary badges, labels, or pills in the UI (e.g., '2FA Active via Resend' or dev-style debug badges). Adhere to clean enterprise typography with subtle status dots.
+  - Strict zero-backdoor policy: NEVER use dummy/bypass OTP codes in production (e.g. 888999). Authentication must strictly verify against genuine session-stored OTPs.
 
 ## Key Decisions
 

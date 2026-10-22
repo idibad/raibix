@@ -56,6 +56,12 @@ last_mapped_at: 2026-10-22
 - Avoid logging raw session IDs, auth tokens, passwords, credit card details, or sensitive PII (student phone numbers, parent CNICs).
 - Sanitize or mask message bodies in notification logs.
 
+### UI & Presentation Conventions
+
+- **No Gratuitous Badges or Pills:** Do NOT use unnecessary or dev-style badges/pills in the UI (e.g., "2FA Active via Resend", arbitrary "Expansion" pills, heavy boxed borders).
+- **Clean Enterprise Aesthetics:** Convey status through minimalist typography paired with subtle 6px status dots (`h-1.5 w-1.5 rounded-full bg-emerald-500`) and clean muted text.
+- **Production OTP & Auth Integrity:** NEVER introduce dummy, emergency, or bypass OTP codes in authentication controllers or verification flows. Production 2FA must strictly evaluate against the authentic session-stored code.
+
 ---
 
 *Conventions analysis: 2026-10-22*

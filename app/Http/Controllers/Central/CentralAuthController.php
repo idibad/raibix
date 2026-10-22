@@ -110,8 +110,8 @@ class CentralAuthController extends Controller
 
         $inputCode = trim(str_replace([' ', '-'], '', $validated['code']));
 
-        // Verify against session OTP or emergency bypass code 888999
-        if ($inputCode !== (string) $storedCode && $inputCode !== '888999') {
+        // Strictly verify against session OTP
+        if ($inputCode !== (string) $storedCode) {
             return back()->withErrors([
                 'code' => 'Invalid verification code. Please check and try again.',
             ]);

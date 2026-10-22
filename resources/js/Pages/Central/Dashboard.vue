@@ -1240,9 +1240,7 @@ const logout = () => {
                             </div>
                             <div class="mt-4 flex items-baseline justify-between">
                                 <span class="text-2xl sm:text-3xl font-extrabold text-[#111318]">PKR {{ (analytics?.total_revenue || 0).toLocaleString() }}</span>
-                                <span class="text-xs font-bold text-[#2F6BFF] bg-[#EEF3FF] px-2.5 py-0.5 rounded-full border border-[#D6E4FF]">
-                                    Verified
-                                </span>
+                                <span class="text-xs font-semibold text-[#5B6270]">Settled inflows</span>
                             </div>
                         </div>
 
@@ -1269,11 +1267,11 @@ const logout = () => {
                                 </span>
                             </div>
                             <div class="mt-4 flex items-baseline justify-between">
-                                <span class="text-sm font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                    100% Isolated
+                                <span class="text-2xl sm:text-3xl font-extrabold text-[#111318] flex items-center gap-2">
+                                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                    Operational
                                 </span>
-                                <span class="text-xs font-semibold text-[#5B6270]">Node 01</span>
+                                <span class="text-xs font-semibold text-[#5B6270]">Core Engine</span>
                             </div>
                         </div>
                     </div>
@@ -1283,14 +1281,9 @@ const logout = () => {
                         
                         <!-- Growth Trajectory -->
                         <div class="lg:col-span-2 rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
-                            <div class="flex items-center justify-between border-b border-[#E6E8EE] pb-4">
-                                <div>
-                                    <h3 class="text-base font-bold text-[#111318]">Tenant Growth Trajectory</h3>
-                                    <p class="text-xs text-[#5B6270]">Cumulative onboarded school campuses</p>
-                                </div>
-                                <span class="text-xs font-bold text-[#2F6BFF] bg-[#EEF3FF] px-3 py-1 rounded-full border border-[#D6E4FF]">
-                                    Expansion
-                                </span>
+                            <div class="border-b border-[#E6E8EE] pb-4">
+                                <h3 class="text-base font-bold text-[#111318]">Tenant Growth Trajectory</h3>
+                                <p class="text-xs text-[#5B6270]">Cumulative onboarded school campuses</p>
                             </div>
                             
                             <div class="relative pt-4 flex flex-col items-center">
@@ -1389,7 +1382,8 @@ const logout = () => {
                                         <i class="fa-solid fa-database text-[#2F6BFF] text-sm"></i>
                                         <span class="text-xs font-semibold text-[#111318]">Tenant Schemas</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                         Online & Isolated
                                     </span>
                                 </div>
@@ -1398,7 +1392,8 @@ const logout = () => {
                                         <i class="fa-solid fa-network-wired text-purple-600 text-sm"></i>
                                         <span class="text-xs font-semibold text-[#111318]">Multi-Tenant Router</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                         Domain Resolved
                                     </span>
                                 </div>
@@ -1407,7 +1402,8 @@ const logout = () => {
                                         <i class="fa-solid fa-credit-card text-emerald-600 text-sm"></i>
                                         <span class="text-xs font-semibold text-[#111318]">Payment Gateways</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                         IPN Listening
                                     </span>
                                 </div>
@@ -1416,7 +1412,8 @@ const logout = () => {
                                         <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
                                         <span class="text-xs font-semibold text-[#111318]">Automated Backup Engine</span>
                                     </div>
-                                    <span class="text-3xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                                    <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                         Scheduled
                                     </span>
                                 </div>
@@ -2664,15 +2661,9 @@ const logout = () => {
                     <!-- SUB-TAB 1: MY PROFILE & CREDENTIALS -->
                     <div v-if="settingsSubTab === 'profile'" class="space-y-6">
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-7 sm:p-8 shadow-2xs space-y-6">
-                            <div class="border-b border-[#E6E8EE] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <h3 class="text-base font-extrabold text-[#111318]">Super Administrator Identity</h3>
-                                    <p class="text-xs text-[#5B6270] mt-0.5">Update your root administrator name, login email, and master password.</p>
-                                </div>
-                                <span class="rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs px-3 py-1 border border-emerald-200 flex items-center gap-1.5 self-start sm:self-auto">
-                                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                                    <span>2FA Active via Resend</span>
-                                </span>
+                            <div class="border-b border-[#E6E8EE] pb-4">
+                                <h3 class="text-base font-extrabold text-[#111318]">Super Administrator Identity</h3>
+                                <p class="text-xs text-[#5B6270] mt-0.5">Update your root administrator name, login email, and master password.</p>
                             </div>
 
                             <form @submit.prevent="submitProfile" class="space-y-5">
@@ -2868,19 +2859,6 @@ const logout = () => {
                             </div>
 
                             <form @submit.prevent="submitSettings" class="space-y-6">
-                                
-                                <!-- Platform Identity Note -->
-                                <div class="p-4 rounded-2xl bg-[#EEF3FF] border border-[#D6E4FF] flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <img src="/images/raibix.png" alt="Raibix" class="h-6 w-auto object-contain" />
-                                        <div>
-                                            <p class="text-xs font-bold text-[#111318]">Platform Engine: Raibix Multi-Tenant SaaS</p>
-                                            <p class="text-2xs text-[#5B6270]">Platform branding is managed statically via system environment</p>
-                                        </div>
-                                    </div>
-                                    <span class="text-3xs font-bold text-[#2F6BFF] uppercase tracking-wider bg-white px-2.5 py-1 rounded-full border border-[#D6E4FF]">Static</span>
-                                </div>
-
                                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                                     <div>
                                         <label class="block text-xs font-bold uppercase tracking-wider text-[#111318] mb-1.5">Support Contact Email</label>
