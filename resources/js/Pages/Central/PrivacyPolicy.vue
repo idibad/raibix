@@ -228,7 +228,7 @@ const scrollTo = (id) => {
                     <div class="border border-[#E7E9EE] rounded-xl p-5 bg-[#FAFAFC] text-xs text-[#5B6270] space-y-1">
                         <div class="font-bold text-[#111318]">Raibix Data Protection Office</div>
                         <div>Email: <a href="mailto:privacy@raibix.com" class="text-[#2F6BFF] font-semibold hover:underline">privacy@raibix.com</a></div>
-                        <div>General Inquiries: <a href="mailto:admin@lmscloud.pk" class="text-[#2F6BFF] hover:underline">admin@lmscloud.pk</a></div>
+                        <div>General Inquiries: <a :href="'mailto:' + ($page.props.platformContact?.email || 'support@raibix.com')" class="text-[#2F6BFF] hover:underline">{{ $page.props.platformContact?.email || 'support@raibix.com' }}</a></div>
                         <div>Operations Center: Islamabad, Pakistan</div>
                     </div>
                 </section>

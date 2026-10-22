@@ -53,9 +53,22 @@ class HandleInertiaRequests extends Middleware
 
         $platformName = config('app.name', 'Raibix');
 
+        $settings = null;
+        if (!function_exists('tenancy') || !tenancy()->initialized) {
+            try {
+                $settings = \App\Models\SaaSSetting::first();
+            } catch (\Throwable $e) {
+                // Ignore if database is temporarily unavailable during setup
+            }
+        }
+
         return array_merge(parent::share($request), [
             'platformName' => $platformName,
             'appName' => $platformName,
+            'platformContact' => [
+                'email' => $settings?->contact_email ?: config('mail.from.address', 'support@raibix.com'),
+                'phone' => $settings?->support_phone ?: '+92 300 1234567',
+            ],
             'auth' => [
                 'user' => $request->user() ? [
                     'id' => $request->user()->id,

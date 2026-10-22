@@ -11,8 +11,19 @@ const props = defineProps({
     stats: {
         type: Object,
         default: () => ({ total_schools: 48 })
+    },
+    contact: {
+        type: Object,
+        default: () => ({
+            email: 'support@raibix.com',
+            phone: '+92 300 1234567'
+        })
     }
 });
+
+const contactEmail = computed(() => props.contact?.email || 'support@raibix.com');
+const supportPhone = computed(() => props.contact?.phone || '+92 300 1234567');
+const supportPhoneClean = computed(() => supportPhone.value.replace(/[^0-9+]/g, ''));
 
 // =============================================================================
 // 1. BOTTOM NAVIGATION & ACTIVE SECTION OBSERVER
@@ -1093,8 +1104,19 @@ onUnmounted(() => {
                                     Let's Talk About Your Campus.
                                 </h2>
                                 <p class="mt-2 text-xs sm:text-sm text-[#5B6270]">
-                                    Have a question or need help choosing a plan? Send us a message.
+                                    Have a question or need help choosing a plan? Send us a message or reach out directly.
                                 </p>
+                                <div class="mt-3 flex flex-wrap items-center gap-3 text-xs font-medium text-[#111318]">
+                                    <a :href="'mailto:' + contactEmail" class="inline-flex items-center gap-1.5 text-[#2F6BFF] hover:underline">
+                                        <i class="fa-regular fa-envelope"></i>
+                                        <span>{{ contactEmail }}</span>
+                                    </a>
+                                    <span class="text-[#D1D5DB]">•</span>
+                                    <a :href="'tel:' + supportPhoneClean" class="inline-flex items-center gap-1.5 text-[#2F6BFF] hover:underline">
+                                        <i class="fa-solid fa-phone"></i>
+                                        <span>{{ supportPhone }}</span>
+                                    </a>
+                                </div>
                             </div>
 
                             <form @submit.prevent="submitContact" class="space-y-5">
@@ -1218,8 +1240,8 @@ onUnmounted(() => {
                         </div>
                         <ul class="space-y-2 text-xs text-[#5B6270]">
                             <li><Link href="/super-admin/login" class="font-semibold text-[#111318] hover:text-[#2F6BFF]">Super Admin Console</Link></li>
-                            <li>Direct Inquiries: <a href="mailto:admin@lmscloud.pk" class="hover:text-[#111318]">admin@lmscloud.pk</a></li>
-                            <li>Phone: <a href="tel:+923001234567" class="hover:text-[#111318]">+92 300 1234567</a></li>
+                            <li>Direct Inquiries: <a :href="'mailto:' + contactEmail" class="hover:text-[#111318] transition-colors">{{ contactEmail }}</a></li>
+                            <li>Phone: <a :href="'tel:' + supportPhoneClean" class="hover:text-[#111318] transition-colors">{{ supportPhone }}</a></li>
                             <li>Operations: Islamabad, Pakistan</li>
                         </ul>
                     </div>

@@ -1,2 +1,0 @@
-﻿C:\Users\Personal\Desktop\LMS\resources\js\Pages\Tenant\Admin\Dashboard.vue (Line 2109):                                     <span>{{ isExtractingColors ? 'Extracting Colors...' : '✨ Auto-Extract from Logo' }}</span>
-C:\Users\Personal\Desktop\LMS\resources\js\Pages\Tenant\Landing.vue (Line 465):                             <p class="text-3xl sm:text-4xl font-black text-slate-900">4.9<span class="text-purple-600">★</span></p>

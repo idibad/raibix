@@ -33,11 +33,16 @@ class SuperAdminController extends Controller
         }
 
         $totalSchools = Tenant::count();
+        $settings = SaaSSetting::first();
 
         return Inertia::render('Central/Landing', [
             'plans' => $plans,
             'stats' => [
                 'total_schools' => $totalSchools > 10 ? $totalSchools : 48, // display baseline if new
+            ],
+            'contact' => [
+                'email' => $settings?->contact_email ?: config('mail.from.address', 'support@raibix.com'),
+                'phone' => $settings?->support_phone ?: '+92 300 1234567',
             ],
         ]);
     }
