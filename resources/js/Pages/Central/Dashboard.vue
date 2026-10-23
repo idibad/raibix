@@ -436,6 +436,56 @@ const showPlanModal = ref(false);
 const isEditingPlan = ref(false);
 const selectedPlan = ref(null);
 const featureInput = ref('');
+const planSearch = ref('');
+const planStatusFilter = ref('all');
+const planViewMode = ref('table');
+
+const publishedPlansCount = computed(() => (props.plans || []).filter(p => Boolean(p.is_active)).length);
+const hiddenPlansCount = computed(() => (props.plans || []).filter(p => !Boolean(p.is_active)).length);
+const totalSubscribedSchools = computed(() => {
+    return (props.plans || []).reduce((sum, p) => sum + (p.tenants_count || p.subscriptions_count || 0), 0);
+});
+
+const filteredPlans = computed(() => {
+    let list = props.plans || [];
+    if (planStatusFilter.value === 'published') {
+        list = list.filter(p => Boolean(p.is_active));
+    } else if (planStatusFilter.value === 'hidden') {
+        list = list.filter(p => !Boolean(p.is_active));
+    }
+    if (planSearch.value && planSearch.value.trim()) {
+        const q = planSearch.value.toLowerCase().trim();
+        list = list.filter(p => 
+            (p.name && p.name.toLowerCase().includes(q)) ||
+            (p.code && p.code.toLowerCase().includes(q)) ||
+            (p.tagline && p.tagline.toLowerCase().includes(q)) ||
+            (p.summary && p.summary.toLowerCase().includes(q))
+        );
+    }
+    return list;
+});
+
+const getPlanPricingDisplay = (plan) => {
+    if (plan.pricing_type === 'custom') {
+        return {
+            primary: 'Custom Pricing',
+            secondary: 'Enterprise consultation',
+            badge: 'Custom',
+        };
+    }
+    if (plan.pricing_type === 'flat') {
+        return {
+            primary: `PKR ${(plan.price_monthly || 0).toLocaleString()} / mo`,
+            secondary: plan.price_yearly ? `PKR ${(plan.price_yearly).toLocaleString()} / yr` : 'Flat monthly fee',
+            badge: 'Flat Fee',
+        };
+    }
+    return {
+        primary: `PKR ${Number(plan.price_per_student || 20).toLocaleString()} / student / mo`,
+        secondary: `Min. bill: PKR ${Number(plan.minimum_monthly_bill || 2000).toLocaleString()} / mo`,
+        badge: 'Per Student',
+    };
+};
 
 const planForm = useForm({
     name: '',
@@ -2219,118 +2269,352 @@ const logout = () => {
 
                 <!-- ================= TAB 4: PLANS & PACKAGES ================= -->
                 <div v-if="activeTab === 'plans'" class="space-y-6">
-                    <div class="flex justify-between items-center bg-white p-6 rounded-2xl border border-[#E6E8EE] shadow-2xs">
-                        <div>
-                            <h3 class="text-base font-extrabold text-[#111318]">Subscription Tiers & Packages</h3>
-                            <p class="text-xs text-[#5B6270]">Define package pricing, student caps, and module feature sets.</p>
+                    
+                    <!-- Top Summary Metric Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 sm:p-6 shadow-2xs flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Total Packages</p>
+                                <h4 class="mt-2 text-2xl font-black text-[#111318]">{{ plans.length }}</h4>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">{{ publishedPlansCount }} Published • {{ hiddenPlansCount }} Hidden</p>
+                            </div>
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF3FF] text-[#2F6BFF] shadow-2xs">
+                                <i class="fa-solid fa-layer-group text-xl"></i>
+                            </div>
                         </div>
-                        <button @click="openAddPlanModal" class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all cursor-pointer">
-                            + Add New Plan
-                        </button>
+
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 sm:p-6 shadow-2xs flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Subscribed Schools</p>
+                                <h4 class="mt-2 text-2xl font-black text-emerald-600">{{ totalSubscribedSchools }}</h4>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Active across all subscription tiers</p>
+                            </div>
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-2xs">
+                                <i class="fa-solid fa-school text-xl"></i>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 sm:p-6 shadow-2xs flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Pricing Engine</p>
+                                <h4 class="mt-2 text-2xl font-black text-purple-600">Dynamic</h4>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Per-Student, Flat & Custom Tiers</p>
+                            </div>
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 shadow-2xs">
+                                <i class="fa-solid fa-sliders text-xl"></i>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    <!-- Search & Filter Controls Bar -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E6E8EE] shadow-2xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+                            <div class="relative flex-1 max-w-md">
+                                <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6270]"></i>
+                                <input 
+                                    v-model="planSearch" 
+                                    type="text" 
+                                    placeholder="Search packages by name, code, tagline..."
+                                    class="w-full rounded-xl border border-[#E6E8EE] bg-[#F8F9FA] pl-9 pr-4 py-2.5 text-xs text-[#111318] placeholder-[#8F94A0] focus:border-[#2F6BFF] focus:bg-white focus:outline-none transition-all font-medium"
+                                />
+                            </div>
+
+                            <!-- Filter Pills -->
+                            <div class="flex items-center gap-1.5 overflow-x-auto">
+                                <button 
+                                    @click="planStatusFilter = 'all'"
+                                    :class="planStatusFilter === 'all' ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
+                                >
+                                    All ({{ plans.length }})
+                                </button>
+                                <button 
+                                    @click="planStatusFilter = 'published'"
+                                    :class="planStatusFilter === 'published' ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
+                                >
+                                    Published ({{ publishedPlansCount }})
+                                </button>
+                                <button 
+                                    @click="planStatusFilter = 'hidden'"
+                                    :class="planStatusFilter === 'hidden' ? 'bg-[#111318] text-white' : 'bg-[#F8F9FA] text-[#5B6270] hover:text-[#111318] border border-[#E6E8EE]'"
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0"
+                                >
+                                    Hidden ({{ hiddenPlansCount }})
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- View Toggle & Primary CTA -->
+                        <div class="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                            <div class="inline-flex rounded-xl border border-[#E6E8EE] p-1 bg-[#F8F9FA]">
+                                <button 
+                                    @click="planViewMode = 'table'"
+                                    :class="planViewMode === 'table' ? 'bg-white shadow-2xs text-[#111318]' : 'text-[#5B6270] hover:text-[#111318]'"
+                                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                    title="Table View"
+                                >
+                                    <i class="fa-solid fa-table-list"></i>
+                                    <span class="hidden md:inline">Table</span>
+                                </button>
+                                <button 
+                                    @click="planViewMode = 'cards'"
+                                    :class="planViewMode === 'cards' ? 'bg-white shadow-2xs text-[#111318]' : 'text-[#5B6270] hover:text-[#111318]'"
+                                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                    title="Cards View"
+                                >
+                                    <i class="fa-solid fa-grip"></i>
+                                    <span class="hidden md:inline">Cards</span>
+                                </button>
+                            </div>
+
+                            <button 
+                                @click="openAddPlanModal" 
+                                class="rounded-full bg-[#111318] hover:bg-[#2F6BFF] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-all cursor-pointer flex items-center gap-2"
+                            >
+                                <i class="fa-solid fa-plus text-xs"></i>
+                                <span>Create Plan</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 1: DATA TABLE (Default, Clean, High Usability) -->
+                    <div v-if="planViewMode === 'table'" class="overflow-hidden rounded-2xl border border-[#E6E8EE] bg-white shadow-2xs">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm min-w-[950px]">
+                                <thead>
+                                    <tr class="border-b border-[#E6E8EE] bg-[#F8F9FA] text-xs font-bold uppercase tracking-wider text-[#5B6270]">
+                                        <th class="py-4 px-6">Package Name & Code</th>
+                                        <th class="py-4 px-6">Pricing Structure</th>
+                                        <th class="py-4 px-6">Capacity Cap</th>
+                                        <th class="py-4 px-6">Included Modules & Features</th>
+                                        <th class="py-4 px-6">Subscribed</th>
+                                        <th class="py-4 px-6">Status</th>
+                                        <th class="py-4 px-6 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#E6E8EE]">
+                                    <tr v-if="filteredPlans.length === 0">
+                                        <td colspan="7" class="py-12 text-center text-sm text-[#5B6270]">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <i class="fa-solid fa-box-open text-3xl text-[#D6E4FF]"></i>
+                                                <span class="font-semibold text-[#111318]">No subscription plans match your filter.</span>
+                                                <span class="text-xs text-[#5B6270]">Try adjusting your search query or status filter.</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <tr v-for="plan in filteredPlans" :key="plan.id" class="hover:bg-[#F8F9FA]/80 transition-colors">
+                                        <!-- Name & Code -->
+                                        <td class="py-4 px-6">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="font-extrabold text-[#111318] text-sm">{{ plan.name }}</span>
+                                                <span class="rounded-full bg-[#EEF3FF] px-2 py-0.5 text-3xs font-mono font-bold text-[#2F6BFF] uppercase border border-[#D6E4FF]">
+                                                    {{ plan.code }}
+                                                </span>
+                                                <span v-if="plan.tagline" class="rounded-full bg-[#F4F5F8] px-2 py-0.5 text-3xs font-bold text-[#5B6270]">
+                                                    {{ plan.tagline }}
+                                                </span>
+                                            </div>
+                                            <p v-if="plan.summary" class="text-xs text-[#5B6270] mt-1 line-clamp-1 max-w-sm">
+                                                {{ plan.summary }}
+                                            </p>
+                                        </td>
+
+                                        <!-- Pricing Structure -->
+                                        <td class="py-4 px-6">
+                                            <div class="font-extrabold text-[#111318]">
+                                                {{ getPlanPricingDisplay(plan).primary }}
+                                            </div>
+                                            <div class="text-xs text-[#5B6270] mt-0.5">
+                                                {{ getPlanPricingDisplay(plan).secondary }}
+                                            </div>
+                                        </td>
+
+                                        <!-- Capacity -->
+                                        <td class="py-4 px-6">
+                                            <span class="rounded-lg bg-[#F8F9FA] border border-[#E6E8EE] px-2.5 py-1 text-xs font-bold text-[#111318] inline-flex items-center gap-1.5">
+                                                <i class="fa-solid fa-users text-2xs text-[#5B6270]"></i>
+                                                <span>{{ (plan.max_students || 500).toLocaleString() }} Students</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Included Modules / Features -->
+                                        <td class="py-4 px-6">
+                                            <div class="flex items-center gap-1.5 flex-wrap max-w-xs">
+                                                <span 
+                                                    v-for="feat in (Array.isArray(plan.features) ? plan.features.slice(0, 3) : ['Core SIS', 'Attendance'])" 
+                                                    :key="feat"
+                                                    class="rounded-md bg-[#F4F5F8] border border-[#E6E8EE] px-2 py-0.5 text-3xs font-medium text-[#111318] truncate max-w-[120px]"
+                                                >
+                                                    {{ feat }}
+                                                </span>
+                                                <span 
+                                                    v-if="Array.isArray(plan.features) && plan.features.length > 3" 
+                                                    class="rounded-md bg-[#EEF3FF] text-[#2F6BFF] px-1.5 py-0.5 text-3xs font-bold"
+                                                    :title="plan.features.slice(3).join(', ')"
+                                                >
+                                                    +{{ plan.features.length - 3 }} more
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        <!-- Subscribed Schools -->
+                                        <td class="py-4 px-6">
+                                            <div class="font-extrabold text-[#111318]">
+                                                {{ plan.tenants_count || plan.subscriptions_count || 0 }}
+                                                <span class="text-xs font-normal text-[#5B6270]">schools</span>
+                                            </div>
+                                        </td>
+
+                                        <!-- Visibility Status -->
+                                        <td class="py-4 px-6">
+                                            <span 
+                                                :class="plan.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'" 
+                                                class="px-3 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5"
+                                            >
+                                                <span class="h-1.5 w-1.5 rounded-full" :class="plan.is_active ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                                                <span>{{ plan.is_active ? 'Published' : 'Hidden' }}</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Actions -->
+                                        <td class="py-4 px-6 text-right">
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                <!-- Edit -->
+                                                <button 
+                                                    @click="openEditPlanModal(plan)"
+                                                    title="Edit Plan"
+                                                    class="rounded-lg border border-[#E6E8EE] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111318] hover:bg-[#F8F9FA] hover:border-[#111318] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                                    <span>Edit</span>
+                                                </button>
+
+                                                <!-- Toggle Publish/Unpublish -->
+                                                <button 
+                                                    @click="togglePlanStatus(plan)"
+                                                    :title="plan.is_active ? 'Hide from public landing' : 'Publish to public landing'"
+                                                    :class="plan.is_active ? 'text-amber-700 hover:bg-amber-50 border-amber-200' : 'text-emerald-700 hover:bg-emerald-50 border-emerald-200'"
+                                                    class="rounded-lg border bg-white px-2.5 py-1.5 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i :class="plan.is_active ? 'fa-solid fa-eye-slash text-xs' : 'fa-solid fa-eye text-xs'"></i>
+                                                    <span>{{ plan.is_active ? 'Hide' : 'Publish' }}</span>
+                                                </button>
+
+                                                <!-- Delete -->
+                                                <button 
+                                                    @click="confirmDeletePlan(plan)"
+                                                    title="Delete Plan"
+                                                    class="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 2: STREAMLINED CARDS (Clean & Restrained) -->
+                    <div v-else class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
                         <div 
-                            v-for="plan in plans" 
+                            v-for="plan in filteredPlans" 
                             :key="plan.id" 
-                            :class="[
-                                'rounded-2xl border bg-white p-6 shadow-2xs flex flex-col justify-between relative overflow-hidden transition-all',
-                                plan.is_active ? 'border-[#E6E8EE] hover:border-[#2F6BFF]/40' : 'border-amber-200 bg-amber-50/20 opacity-80'
-                            ]"
+                            class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex flex-col justify-between transition-all hover:border-[#2F6BFF]/40"
                         >
                             <div>
                                 <div class="flex items-center justify-between gap-2">
                                     <div class="flex items-center gap-2">
-                                        <span class="rounded-full bg-[#EEF3FF] px-2.5 py-0.5 text-2xs font-bold text-[#2F6BFF] uppercase tracking-wider border border-[#D6E4FF]">
+                                        <span class="rounded-full bg-[#EEF3FF] px-2.5 py-0.5 text-2xs font-mono font-bold text-[#2F6BFF] uppercase border border-[#D6E4FF]">
                                             {{ plan.code }}
                                         </span>
                                         <span 
-                                            :class="[
-                                                'rounded-full px-2 py-0.5 text-3xs font-black uppercase tracking-wider',
-                                                plan.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                            ]"
+                                            :class="plan.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'" 
+                                            class="rounded-full px-2 py-0.5 text-3xs font-bold border inline-flex items-center gap-1"
                                         >
-                                            {{ plan.is_active ? 'Published' : 'Hidden' }}
+                                            <span class="h-1 w-1 rounded-full" :class="plan.is_active ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                                            <span>{{ plan.is_active ? 'Published' : 'Hidden' }}</span>
                                         </span>
                                     </div>
-                                    <div class="flex items-center space-x-2">
-                                        <button 
-                                            type="button"
-                                            @click="togglePlanStatus(plan)" 
-                                            :class="[
-                                                'text-2xs font-bold hover:underline cursor-pointer',
-                                                plan.is_active ? 'text-amber-600' : 'text-emerald-600'
-                                            ]"
-                                        >
-                                            {{ plan.is_active ? 'Unpublish' : 'Publish' }}
-                                        </button>
-                                        <button @click="openEditPlanModal(plan)" class="text-2xs font-bold text-[#2F6BFF] hover:underline cursor-pointer">Edit</button>
-                                        <button @click="confirmDeletePlan(plan)" class="text-2xs font-bold text-red-600 hover:underline cursor-pointer">Delete</button>
-                                    </div>
-                                </div>
-
-                                <div class="mt-3 flex items-center justify-between">
-                                    <h3 class="text-lg font-extrabold text-[#111318]">{{ plan.name }}</h3>
-                                    <span v-if="plan.tagline" class="text-2xs font-bold text-[#5B6270] bg-[#F4F5F8] px-2 py-0.5 rounded-full">
+                                    <span v-if="plan.tagline" class="rounded-full bg-[#F4F5F8] px-2.5 py-0.5 text-3xs font-bold text-[#5B6270]">
                                         {{ plan.tagline }}
                                     </span>
                                 </div>
 
-                                <!-- Dynamic Pricing Summary -->
-                                <div v-if="plan.pricing_type === 'custom'" class="mt-3">
-                                    <div class="text-2xl font-black text-[#111318]">Custom</div>
-                                    <p class="text-2xs text-[#5B6270]">Volume Negotiated Pricing</p>
-                                </div>
-                                <div v-else-if="plan.pricing_type === 'flat'" class="mt-3">
-                                    <div class="flex items-baseline space-x-1">
-                                        <span class="text-2xl font-black text-[#111318]">PKR {{ (plan.price_monthly || 0).toLocaleString() }}</span>
-                                        <span class="text-xs font-semibold text-[#5B6270]">/ month</span>
-                                    </div>
-                                    <p class="text-2xs text-[#5B6270]">Fixed flat fee (Yearly: PKR {{ (plan.price_yearly || 0).toLocaleString() }})</p>
-                                </div>
-                                <div v-else class="mt-3">
-                                    <div class="flex items-baseline space-x-1">
-                                        <span class="text-2xl font-black text-[#111318]">PKR {{ Number(plan.price_per_student || 20).toLocaleString() }}</span>
-                                        <span class="text-xs font-semibold text-[#5B6270]">/ student / mo</span>
-                                    </div>
-                                    <p class="text-2xs font-semibold text-[#5B6270]">
-                                        Min. bill: PKR {{ Number(plan.minimum_monthly_bill || 2000).toLocaleString() }}/month
+                                <div class="mt-3">
+                                    <h3 class="text-base font-extrabold text-[#111318]">{{ plan.name }}</h3>
+                                    <p v-if="plan.summary" class="text-xs text-[#5B6270] mt-1 line-clamp-2 leading-relaxed">
+                                        {{ plan.summary }}
                                     </p>
                                 </div>
 
-                                <p v-if="plan.summary" class="mt-2 text-2xs text-[#5B6270] leading-relaxed line-clamp-2">
-                                    {{ plan.summary }}
-                                </p>
-                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">
-                                    Enrollment Cap: {{ (plan.max_students || 500).toLocaleString() }} Students
-                                </p>
+                                <div class="mt-4 p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
+                                    <div class="text-lg font-black text-[#111318]">
+                                        {{ getPlanPricingDisplay(plan).primary }}
+                                    </div>
+                                    <div class="text-2xs text-[#5B6270] font-medium mt-0.5">
+                                        {{ getPlanPricingDisplay(plan).secondary }}
+                                    </div>
+                                </div>
 
-                                <div class="mt-4 border-t border-[#E6E8EE] pt-3 space-y-1.5">
-                                    <p class="text-3xs font-bold uppercase tracking-wider text-[#5B6270]">Package Inclusions:</p>
-                                    <ul class="space-y-1 text-2xs">
-                                        <li 
-                                            v-for="feature in (Array.isArray(plan.features) ? plan.features.slice(0, 5) : ['Core SIS', 'Attendance'])" 
-                                            :key="feature" 
-                                            class="flex items-center space-x-2 text-[#111318]"
+                                <div class="mt-4 flex items-center justify-between text-xs text-[#5B6270]">
+                                    <span class="font-medium">Capacity Cap:</span>
+                                    <span class="font-bold text-[#111318]">{{ (plan.max_students || 500).toLocaleString() }} Students</span>
+                                </div>
+
+                                <div class="mt-2 flex items-center justify-between text-xs text-[#5B6270]">
+                                    <span class="font-medium">Subscribed Schools:</span>
+                                    <span class="font-bold text-[#111318]">{{ plan.tenants_count || plan.subscriptions_count || 0 }} Schools</span>
+                                </div>
+
+                                <div class="mt-4 pt-3 border-t border-[#E6E8EE] space-y-1.5">
+                                    <p class="text-3xs font-bold uppercase tracking-wider text-[#5B6270]">Modules & Features:</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span 
+                                            v-for="feat in (Array.isArray(plan.features) ? plan.features.slice(0, 4) : ['Core SIS'])" 
+                                            :key="feat"
+                                            class="rounded-md bg-[#F4F5F8] border border-[#E6E8EE] px-2 py-0.5 text-3xs font-medium text-[#111318]"
                                         >
-                                            <i class="fa-solid fa-check text-emerald-600 text-3xs"></i>
-                                            <span class="font-medium truncate">{{ feature }}</span>
-                                        </li>
-                                        <li v-if="Array.isArray(plan.features) && plan.features.length > 5" class="text-3xs text-[#2F6BFF] font-bold">
-                                            + {{ plan.features.length - 5 }} more features...
-                                        </li>
-                                    </ul>
+                                            {{ feat }}
+                                        </span>
+                                        <span 
+                                            v-if="Array.isArray(plan.features) && plan.features.length > 4"
+                                            class="rounded-md bg-[#EEF3FF] text-[#2F6BFF] px-1.5 py-0.5 text-3xs font-bold"
+                                        >
+                                            +{{ plan.features.length - 4 }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="mt-4 pt-3 border-t border-[#E6E8EE] flex items-center justify-between text-2xs">
-                                <span class="font-bold text-[#5B6270]">
-                                    {{ plan.tenants_count || plan.subscriptions_count || 0 }} Schools Subscribed
-                                </span>
-                                <span :class="plan.is_active ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'">
-                                    <i :class="plan.is_active ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'" class="mr-1"></i>
-                                    {{ plan.is_active ? 'On Landing' : 'Hidden' }}
-                                </span>
+                            <div class="mt-5 pt-3 border-t border-[#E6E8EE] flex items-center justify-between gap-2">
+                                <button 
+                                    @click="togglePlanStatus(plan)"
+                                    :class="plan.is_active ? 'text-amber-700 hover:bg-amber-50 border-amber-200' : 'text-emerald-700 hover:bg-emerald-50 border-emerald-200'"
+                                    class="rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                >
+                                    <i :class="plan.is_active ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="text-xs"></i>
+                                    <span>{{ plan.is_active ? 'Hide' : 'Publish' }}</span>
+                                </button>
+
+                                <div class="flex items-center gap-1.5">
+                                    <button 
+                                        @click="openEditPlanModal(plan)"
+                                        class="rounded-lg border border-[#E6E8EE] bg-white px-3 py-1.5 text-xs font-semibold text-[#111318] hover:bg-[#F8F9FA] hover:border-[#111318] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                    >
+                                        <i class="fa-solid fa-pen-to-square text-xs"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button 
+                                        @click="confirmDeletePlan(plan)"
+                                        class="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 hover:border-red-300 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
