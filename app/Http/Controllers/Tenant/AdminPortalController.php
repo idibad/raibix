@@ -27,114 +27,148 @@ class AdminPortalController extends Controller
      */
     public function index(): Response
     {
-        $totalStudents = Student::where('status', 'active')->count();
+        $user = auth()->user();
+        $userType = strtolower((string) ($user->user_type ?? ''));
+        $roleName = strtolower((string) (method_exists($user, 'getRoleNames') && $user->getRoleNames()->isNotEmpty() ? $user->getRoleNames()->first() : $userType));
+        $isAdminOrPrincipal = in_array($roleName, ['admin', 'principal', 'vice_principal'], true) || in_array($userType, ['admin', 'principal', 'vice_principal'], true);
+        $isAccountant = $roleName === 'accountant' || $userType === 'accountant';
+        $isLibrarian = $roleName === 'librarian' || $userType === 'librarian';
+        $isRegistrar = in_array($roleName, ['registrar', 'receptionist'], true) || in_array($userType, ['registrar', 'receptionist'], true);
+
         $today = date('Y-m-d');
-        
+        $totalStudents = Student::where('status', 'active')->count();
         $presentToday = Attendance::where('date', $today)->where('status', 'present')->count();
         $attendanceRate = $totalStudents > 0 ? round(($presentToday / $totalStudents) * 100, 1) : 100.0;
 
-        $totalFeeCollection = FeeChallan::where('month_year', date('Y-m'))->sum('paid_amount');
-        $outstandingFees = FeeChallan::whereIn('status', ['unpaid', 'overdue'])->sum('total_amount');
-
-        $defaulters = FeeChallan::whereIn('status', ['unpaid', 'overdue'])
-            ->with(['student.user', 'student.currentClass', 'student.currentSection'])
-            ->latest()
-            ->take(10)
-            ->get();
-
-        $classes = SchoolClass::with(['sections.classTeacher', 'subjects'])->withCount('students')->get();
-        $sections = Section::with(['schoolClass', 'classTeacher'])->get();
         $recentNotices = Notice::latest()->take(10)->get();
 
-        // P0 Staff / User management list
-        $users = User::latest()->get();
+        // Financial metrics (restricted from librarian, registrar)
+        $totalFeeCollection = 0;
+        $outstandingFees = 0;
+        $monthlyTarget = 0;
+        $collectionPercentage = 100.0;
+        $totalCollectedYtd = 0;
+        $defaulters = collect();
+        $recentTransactions = collect();
+        $pendingPayments = collect();
+        $feeStructures = collect();
+        $feeOverrides = collect();
 
-        // P0 Student management list with status logs & document vault
-        $students = Student::with(['user', 'parent', 'currentClass', 'currentSection', 'statusLogs.changedBy', 'documents.uploadedBy'])->latest()->get();
+        if ($isAdminOrPrincipal || $isAccountant) {
+            $totalFeeCollection = FeeChallan::where('month_year', date('Y-m'))->sum('paid_amount');
+            $outstandingFees = FeeChallan::whereIn('status', ['unpaid', 'overdue'])->sum('total_amount');
+            $monthlyTarget = FeeChallan::where('month_year', date('Y-m'))->sum('total_amount');
+            $collectionPercentage = $monthlyTarget > 0 ? round(($totalFeeCollection / $monthlyTarget) * 100, 1) : 100.0;
+            $totalCollectedYtd = FeeChallan::sum('paid_amount');
 
-        // P0 Admissions Pipeline & Inquiries
-        $inquiries = AdmissionInquiry::with('desiredClass')->latest()->take(25)->get();
-        $applications = AdmissionApplication::with('schoolClass')->latest()->take(25)->get();
+            $defaulters = FeeChallan::whereIn('status', ['unpaid', 'overdue'])
+                ->with(['student.user', 'student.currentClass', 'student.currentSection'])
+                ->latest()
+                ->take(10)
+                ->get();
 
-        // P1 #5 Timetable matrix across sections
-        $timetables = \App\Models\Timetable::with(['section.schoolClass', 'subject', 'teacher'])->orderBy('day_of_week')->orderBy('start_time')->get();
+            $recentTransactions = FeeChallan::where('status', 'paid')->with(['student.user', 'student.currentClass'])->latest()->take(20)->get();
 
-        // P1 #6 Fee structures & student overrides
-        $feeStructures = \App\Models\FeeStructure::with('schoolClass')->get();
-        $feeOverrides = \Illuminate\Support\Facades\DB::table('student_fee_overrides')
-            ->join('students', 'student_fee_overrides.student_id', '=', 'students.id')
-            ->join('users', 'students.user_id', '=', 'users.id')
-            ->select('student_fee_overrides.*', 'users.name as student_name', 'students.roll_number', 'students.admission_number')
-            ->get();
+            $feeStructures = \App\Models\FeeStructure::with('schoolClass')->get();
+            $feeOverrides = \Illuminate\Support\Facades\DB::table('student_fee_overrides')
+                ->join('students', 'student_fee_overrides.student_id', '=', 'students.id')
+                ->join('users', 'students.user_id', '=', 'users.id')
+                ->select('student_fee_overrides.*', 'users.name as student_name', 'students.roll_number', 'students.admission_number')
+                ->get();
 
-        // P1 #7 Staff daily attendance logs & leaves
-        $staffAttendanceLogs = \Illuminate\Support\Facades\DB::table('staff_attendances')->where('date', $today)->get()->keyBy('user_id');
-        $staffLeaves = \Illuminate\Support\Facades\DB::table('staff_leaves')
-            ->join('users', 'staff_leaves.user_id', '=', 'users.id')
-            ->select('staff_leaves.*', 'users.name as staff_name', 'users.user_type as role')
-            ->orderBy('created_at', 'desc')
-            ->take(25)
-            ->get();
+            $pendingPayments = \App\Models\FeeTransaction::where('status', 'pending')
+                ->with(['feeChallan.student.user', 'feeChallan.student.currentClass', 'feeChallan.student.currentSection'])
+                ->latest()
+                ->get()
+                ->map(function ($txn) {
+                    return [
+                        'id' => $txn->id,
+                        'challan_id' => $txn->fee_challan_id,
+                        'challan_number' => $txn->feeChallan?->challan_number,
+                        'month_year' => $txn->feeChallan?->month_year,
+                        'amount' => (float) $txn->amount,
+                        'payment_date' => $txn->payment_date ? $txn->payment_date->format('Y-m-d') : null,
+                        'transaction_reference' => $txn->transaction_reference,
+                        'receipt_path' => $txn->receipt_path,
+                        'status' => $txn->status,
+                        'student_name' => $txn->feeChallan?->student?->user?->name,
+                        'roll_number' => $txn->feeChallan?->student?->roll_number,
+                        'class_name' => $txn->feeChallan?->student?->currentClass?->name,
+                        'section_name' => $txn->feeChallan?->student?->currentSection?->name,
+                    ];
+                });
+        }
 
-        // Student leave requests from parent/student portals
-        $studentLeaves = Leave::with(['student.user', 'student.currentClass', 'student.currentSection', 'approvedBy'])
-            ->orderBy('created_at', 'desc')
-            ->take(50)
-            ->get();
+        // Student and Class Rosters (Restricted from librarian)
+        $classes = ($isAdminOrPrincipal || $isRegistrar || $isAccountant) 
+            ? SchoolClass::with(['sections.classTeacher', 'subjects'])->withCount('students')->get() 
+            : collect();
+        $sections = ($isAdminOrPrincipal || $isRegistrar || $isAccountant)
+            ? Section::with(['schoolClass', 'classTeacher'])->get()
+            : collect();
+        $students = ($isAdminOrPrincipal || $isRegistrar)
+            ? Student::with(['user', 'parent', 'currentClass', 'currentSection', 'statusLogs.changedBy', 'documents.uploadedBy'])->latest()->get()
+            : collect();
 
-        // P1 #9 Exams & Subject list
-        $exams = \App\Models\Exam::orderBy('start_date', 'desc')->get();
-        $subjects = \App\Models\Subject::with('schoolClass')->get();
+        // Admissions (Restricted from accountant, librarian)
+        $inquiries = ($isAdminOrPrincipal || $isRegistrar)
+            ? AdmissionInquiry::with('desiredClass')->latest()->take(25)->get()
+            : collect();
+        $applications = ($isAdminOrPrincipal || $isRegistrar)
+            ? AdmissionApplication::with('schoolClass')->latest()->take(25)->get()
+            : collect();
 
-        // Sports & Extracurricular Activities
-        $sportsActivities = \App\Models\SportsActivity::with('coach')->latest()->get();
+        // Staff / Users, Timetables, Staff Leaves (Restricted to Admin / Principal)
+        $users = $isAdminOrPrincipal ? User::latest()->get() : collect();
+        $timetables = $isAdminOrPrincipal 
+            ? \App\Models\Timetable::with(['section.schoolClass', 'subject', 'teacher'])->orderBy('day_of_week')->orderBy('start_time')->get()
+            : collect();
+        $staffAttendanceLogs = $isAdminOrPrincipal
+            ? \Illuminate\Support\Facades\DB::table('staff_attendances')->where('date', $today)->get()->keyBy('user_id')
+            : collect();
+        $staffLeaves = $isAdminOrPrincipal
+            ? \Illuminate\Support\Facades\DB::table('staff_leaves')
+                ->join('users', 'staff_leaves.user_id', '=', 'users.id')
+                ->select('staff_leaves.*', 'users.name as staff_name', 'users.user_type as role')
+                ->orderBy('created_at', 'desc')
+                ->take(25)
+                ->get()
+            : collect();
+        $studentLeaves = ($isAdminOrPrincipal || $isRegistrar)
+            ? Leave::with(['student.user', 'student.currentClass', 'student.currentSection', 'approvedBy'])->orderBy('created_at', 'desc')->take(50)->get()
+            : collect();
 
-        // Student Disciplinary Penalties & Fines
-        $penalties = \App\Models\StudentPenalty::with(['student.user', 'issuedBy'])->latest()->get();
+        // Exams (Restricted from accountant, librarian)
+        $exams = $isAdminOrPrincipal ? \App\Models\Exam::orderBy('start_date', 'desc')->get() : collect();
+        $subjects = ($isAdminOrPrincipal || $isRegistrar) ? \App\Models\Subject::with('schoolClass')->get() : collect();
 
-        // Comprehensive Finance & Accounts Metrics (P0 #5)
-        $monthlyTarget = FeeChallan::where('month_year', date('Y-m'))->sum('total_amount');
-        $collectionPercentage = $monthlyTarget > 0 ? round(($totalFeeCollection / $monthlyTarget) * 100, 1) : 100.0;
-        $totalCollectedYtd = FeeChallan::sum('paid_amount');
-        $recentTransactions = FeeChallan::where('status', 'paid')->with(['student.user', 'student.currentClass'])->latest()->take(20)->get();
+        // Sports & Penalties
+        $sportsActivities = ($isAdminOrPrincipal || $isRegistrar) ? \App\Models\SportsActivity::with('coach')->latest()->get() : collect();
+        $penalties = ($isAdminOrPrincipal || $isRegistrar) ? \App\Models\StudentPenalty::with(['student.user', 'issuedBy'])->latest()->get() : collect();
 
-        // Billing & Subscription (Central DB)
+        // Library Books (accessible to Librarian and Admin)
+        $libraryStats = ($isAdminOrPrincipal || $isLibrarian) ? [
+            'total_books' => \App\Models\LibraryBook::count(),
+            'issued_books' => \App\Models\BookIssue::where('status', 'issued')->count(),
+        ] : null;
+
+        // Billing & Subscription (Central DB - Admin/Principal only)
         $tenant = tenancy()->tenant;
         $tenantData = is_array($tenant->data) ? $tenant->data : (json_decode($tenant->data ?? '[]', true) ?? []);
         
-        $centralBillingData = tenancy()->central(function() use ($tenant) {
-            return [
-                'plans' => \App\Models\SubscriptionPlan::where('is_active', true)->get(),
-                'transactions' => \App\Models\SaaSTransaction::where('tenant_id', $tenant->id)->latest()->get(),
-                'referrals' => \App\Models\Referral::where('referrer_tenant_id', $tenant->id)->with('referred:id,name')->get(),
-            ];
-        });
+        $centralBillingData = ['plans' => [], 'transactions' => [], 'referrals' => []];
+        if ($isAdminOrPrincipal) {
+            $centralBillingData = tenancy()->central(function() use ($tenant) {
+                return [
+                    'plans' => \App\Models\SubscriptionPlan::where('is_active', true)->get(),
+                    'transactions' => \App\Models\SaaSTransaction::where('tenant_id', $tenant->id)->latest()->get(),
+                    'referrals' => \App\Models\Referral::where('referrer_tenant_id', $tenant->id)->with('referred:id,name')->get(),
+                ];
+            });
+        }
 
         $currentPlanId = $tenant->plan_id ?? $tenantData['plan_id'] ?? null;
         $currentPlan = $tenant->plan ?? collect($centralBillingData['plans'])->firstWhere('id', $currentPlanId) ?? collect($centralBillingData['plans'])->first();
-
-        // Fetch student pending manual fee payments
-        $pendingPayments = \App\Models\FeeTransaction::where('status', 'pending')
-            ->with(['feeChallan.student.user', 'feeChallan.student.currentClass', 'feeChallan.student.currentSection'])
-            ->latest()
-            ->get()
-            ->map(function ($txn) {
-                return [
-                    'id' => $txn->id,
-                    'challan_id' => $txn->fee_challan_id,
-                    'challan_number' => $txn->feeChallan?->challan_number,
-                    'month_year' => $txn->feeChallan?->month_year,
-                    'amount' => (float) $txn->amount,
-                    'payment_date' => $txn->payment_date ? $txn->payment_date->format('Y-m-d') : null,
-                    'transaction_reference' => $txn->transaction_reference,
-                    'receipt_path' => $txn->receipt_path,
-                    'status' => $txn->status,
-                    'student_name' => $txn->feeChallan?->student?->user?->name,
-                    'roll_number' => $txn->feeChallan?->student?->roll_number,
-                    'class_name' => $txn->feeChallan?->student?->currentClass?->name,
-                    'section_name' => $txn->feeChallan?->student?->currentSection?->name,
-                ];
-            });
 
         return Inertia::render('Tenant/Admin/Dashboard', [
             'tenant' => $tenant,
@@ -145,7 +179,7 @@ class AdminPortalController extends Controller
             'referral_code' => $tenantData['referral_code'] ?? null,
             'trial_ends_at' => $tenant->trial_ends_at,
             'current_user' => auth()->user(),
-            'current_role' => auth()->user()?->roles?->first()?->name ?? (auth()->user()?->user_type === 'admin' ? 'Principal' : auth()->user()?->user_type),
+            'current_role' => auth()->user()?->roles?->first()?->name ?? (auth()->user()?->user_type === 'admin' ? 'Principal' : ucfirst(auth()->user()?->user_type ?? 'Staff')),
             'kpis' => [
                 'total_students' => $totalStudents,
                 'attendance_rate' => $attendanceRate,
@@ -159,6 +193,7 @@ class AdminPortalController extends Controller
                 'collection_percentage' => $collectionPercentage,
                 'total_outstanding' => $outstandingFees,
             ],
+            'library_stats' => $libraryStats,
             'recent_transactions' => $recentTransactions,
             'defaulters' => $defaulters,
             'classes' => $classes,
@@ -178,6 +213,7 @@ class AdminPortalController extends Controller
             'exams' => $exams,
             'sports_activities' => $sportsActivities,
             'penalties' => $penalties,
+            'pending_payments' => $pendingPayments,
             'academic_years' => \App\Models\AcademicYear::with('terms')->get(),
             'pending_payments' => $pendingPayments,
         ]);

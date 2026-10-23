@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watchEffect } from 'vue';
 import { Link, useForm, usePage, router } from '@inertiajs/vue3';
+import TenantAppLayout from '@/Layouts/TenantAppLayout.vue';
 
 const props = defineProps({
     todayClasses: Array,
@@ -259,338 +260,256 @@ const submitTeacherPenalty = () => {
         onSuccess: () => { showTeacherPenaltyModal.value = false; teacherPenaltyForm.reset(); }
     });
 };
+
+const pendingSubmissionsCount = computed(() => {
+    let count = 0;
+    props.assignments?.forEach(a => {
+        const unreviewed = a.submissions?.filter(s => s.obtained_marks === null || s.obtained_marks === undefined)?.length || 0;
+        count += unreviewed;
+    });
+    return count;
+});
+
+const pendingStudentLeavesCount = computed(() => {
+    return props.student_leaves?.filter(l => l.status === 'pending')?.length || 0;
+});
+
+const navItems = computed(() => [
+    { id: 'timetable', label: "Today's Timetable", icon: 'fa-solid fa-calendar-day' },
+    { id: 'classes', label: 'My Classes & Attendance', icon: 'fa-solid fa-chalkboard-user', href: '/teacher/attendance' },
+    { 
+        id: 'assignments', 
+        label: 'Assignments & Grading', 
+        icon: 'fa-solid fa-clipboard-check',
+        badge: pendingSubmissionsCount.value > 0 ? `${pendingSubmissionsCount.value} to grade` : null,
+        badgeClass: 'bg-[#FEF3C7] text-[#92400E] font-semibold'
+    },
+    { id: 'materials', label: 'Learning Materials (LMS)', icon: 'fa-solid fa-book-open' },
+    { id: 'gradebook', label: 'Exam Gradebook', icon: 'fa-solid fa-award' },
+    { id: 'observations', label: 'Student Observations', icon: 'fa-solid fa-eye' },
+    { 
+        id: 'leaves', 
+        label: 'Leave Requests', 
+        icon: 'fa-solid fa-calendar-minus',
+        badge: pendingStudentLeavesCount.value > 0 ? `${pendingStudentLeavesCount.value} pending` : null,
+        badgeClass: 'bg-[#FEF3C7] text-[#92400E] font-semibold'
+    },
+    { id: 'notices', label: 'School Notices', icon: 'fa-solid fa-bullhorn' },
+    { id: 'sports', label: 'Sports & Clubs', icon: 'fa-solid fa-trophy' },
+    { id: 'penalties', label: 'Penalties & Fines', icon: 'fa-solid fa-gavel' },
+    { id: 'chat', label: 'Parent Chat', icon: 'fa-solid fa-comments', href: '/teacher/chat' },
+    { id: 'settings', label: 'Account Settings', icon: 'fa-solid fa-gear' },
+]);
+
+const currentTabTitle = computed(() => {
+    switch (activeTab.value) {
+        case 'timetable': return 'Daily Classroom Schedule';
+        case 'materials': return 'Learning Materials (LMS)';
+        case 'assignments': return 'Active Assignments & Grading';
+        case 'gradebook': return 'Examination Gradebook & Marks';
+        case 'observations': return 'Student Behavioral Observations';
+        case 'leaves': return 'Leave Management';
+        case 'sports': return 'Sports & Extracurriculars';
+        case 'penalties': return 'Student Disciplinary Penalties';
+        case 'notices': return 'School Notice Board';
+        case 'settings': return 'Teacher Account Settings';
+        default: return 'Teaching Workspace';
+    }
+});
+
+const currentTabDescription = computed(() => {
+    switch (activeTab.value) {
+        case 'timetable': return 'Your scheduled periods, room assignments, and daily teaching rhythm.';
+        case 'materials': return 'Upload lectures, notes, syllabus guides, and worksheets for your classes.';
+        case 'assignments': return 'Create coursework, review student submissions, and trigger AI grading evaluation.';
+        case 'gradebook': return 'Input Theory, Practical, and Viva exam marks for automated GPA reports.';
+        case 'observations': return 'Log behavioral commendations or warnings visible to parents and administration.';
+        case 'leaves': return 'Submit personal leave requests and authorize student absence applications.';
+        case 'sports': return 'Manage extracurricular sports teams and club rosters.';
+        case 'penalties': return 'Record student disciplinary warnings and violation fines.';
+        case 'notices': return 'Official announcements and institutional circulars posted by school administration.';
+        case 'settings': return 'Manage your login credentials, profile details, and account password.';
+        default: return '';
+    }
+});
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-[#F8F9FA] text-[#202124] selection:bg-[#E8F0FE] selection:text-[#1A73E8] font-sans">
-        <!-- Mobile Sidebar Backdrop -->
-        <div 
-            v-if="isMobileMenuOpen" 
-            @click="isMobileMenuOpen = false"
-            class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden transition-opacity duration-300"
-        ></div>
+    <TenantAppLayout
+        :title="currentTabTitle"
+        :description="currentTabDescription"
+        :nav-items="navItems"
+        :active-tab="activeTab"
+        role-title="Teacher"
+        @tab-change="tab => activeTab = tab"
+    >
+        <template #header-actions>
+            <Link 
+                href="/teacher/attendance"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-camera text-2xs"></i>
+                <span>Mark Attendance</span>
+            </Link>
+            <button 
+                v-if="activeTab === 'materials'"
+                @click="showMaterialModal = true"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-plus text-2xs"></i>
+                <span>Upload Material</span>
+            </button>
+            <button 
+                v-if="activeTab === 'assignments'"
+                @click="showAssignmentModal = true"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-plus text-2xs"></i>
+                <span>New Assignment</span>
+            </button>
+            <button 
+                v-if="activeTab === 'observations'"
+                @click="showObservationModal = true"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-plus text-2xs"></i>
+                <span>Log Observation</span>
+            </button>
+            <button 
+                v-if="activeTab === 'leaves'"
+                @click="showLeaveModal = true"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-plus text-2xs"></i>
+                <span>Apply for Leave</span>
+            </button>
+            <button 
+                v-if="activeTab === 'sports'"
+                @click="showTeacherSportsModal = true"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-plus text-2xs"></i>
+                <span>New Activity</span>
+            </button>
+            <button 
+                v-if="activeTab === 'penalties'"
+                @click="showTeacherPenaltyModal = true"
+                class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+                <i class="fa-solid fa-plus text-2xs"></i>
+                <span>Issue Penalty</span>
+            </button>
+        </template>
 
-        <!-- Sidebar Navigation -->
-        <aside 
-            :class="[
-                isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
-                isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0',
-                'fixed lg:sticky top-0 z-50 h-screen border-r border-[#DADCE0] bg-white flex flex-col justify-between flex-shrink-0 transition-all duration-300 shadow-xl lg:shadow-none'
-            ]"
-        >
-            <div class="flex flex-col min-h-0 flex-1">
-                <!-- Brand Header -->
-                <div class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-[#DADCE0] min-h-[73px]">
-                    <div class="flex items-center space-x-3 min-w-0 overflow-hidden">
-                        <div v-if="$page.props.tenant?.logo" class="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-0.5 border border-[#DADCE0] shadow-sm">
-                            <img :src="$page.props.tenant.logo" :alt="$page.props.tenant.name" class="max-h-full max-w-full object-contain" />
-                        </div>
-                        <div v-else class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#F3E8FD] font-bold text-[#8430CE] text-lg border border-[#E9D2FD] shadow-sm">
-                            <i class="fa-solid fa-chalkboard-user"></i>
-                        </div>
-                        <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 transition-all duration-200">
-                            <h1 class="font-bold text-base tracking-tight text-[#202124] truncate">{{ $page.props.tenant?.name || 'Teacher Portal' }}</h1>
-                            <p class="text-xs text-[#5F6368] truncate">Classroom Workspace</p>
+        <!-- ================= TAB: TIMETABLE ================= -->
+                <div v-if="activeTab === 'timetable'" class="space-y-6">
+                    <!-- Action Required Banner for Teacher -->
+                    <div v-if="pendingSubmissionsCount > 0 || pendingStudentLeavesCount > 0" class="rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] p-4 sm:p-5 shadow-2xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="h-8 w-8 rounded-xl bg-[#F59E0B] text-white flex items-center justify-center flex-shrink-0 text-xs shadow-2xs">
+                                    <i class="fa-solid fa-bell"></i>
+                                </span>
+                                <div>
+                                    <h3 class="text-xs font-bold text-[#92400E] uppercase tracking-wider">Classroom Tasks Pending Attention</h3>
+                                    <p class="text-xs text-[#B45309] mt-0.5">You have active submissions or student absence requests awaiting your review.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button 
+                                    v-if="pendingSubmissionsCount > 0" 
+                                    @click="activeTab = 'assignments'" 
+                                    class="px-3 py-1.5 rounded-lg bg-white border border-[#FDE68A] text-[#92400E] hover:bg-[#FEF3C7] text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <span class="raibix-dot h-1.5 w-1.5"></span>
+                                    <span>{{ pendingSubmissionsCount }} Submission(s) to Grade</span>
+                                </button>
+                                <button 
+                                    v-if="pendingStudentLeavesCount > 0" 
+                                    @click="activeTab = 'leaves'" 
+                                    class="px-3 py-1.5 rounded-lg bg-white border border-[#FDE68A] text-[#92400E] hover:bg-[#FEF3C7] text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <span class="raibix-dot h-1.5 w-1.5"></span>
+                                    <span>{{ pendingStudentLeavesCount }} Student Leave(s)</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <!-- Collapse / Close Button -->
-                    <button 
-                        @click="isMobileMenuOpen ? (isMobileMenuOpen = false) : (isSidebarCollapsed = !isSidebarCollapsed)"
-                        class="h-8 w-8 rounded-lg flex items-center justify-center text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors flex-shrink-0"
-                        :title="isMobileMenuOpen ? 'Close Menu' : (isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar')"
-                    >
-                        <span v-if="isMobileMenuOpen" class="text-lg font-bold"><i class="fa-solid fa-xmark"></i></span>
-                        <span v-else class="text-base font-bold hidden lg:inline-block">{{ isSidebarCollapsed ? '→' : '←' }}</span>
-                        <span v-if="!isMobileMenuOpen" class="text-lg font-bold lg:hidden"><i class="fa-solid fa-xmark"></i></span>
-                    </button>
-                </div>
 
-                <!-- Side Menu Links -->
-                <nav class="p-3 sm:p-4 space-y-1 overflow-y-auto flex-1">
-                    <button 
-                        @click="activeTab = 'timetable'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'My Timetable' : ''"
-                        :class="[
-                            activeTab === 'timetable' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-calendar-days"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">My Timetable</span>
+                    <!-- Teacher Metric Overview -->
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div class="rounded-2xl p-5 bg-white border border-[#E5E7EB] shadow-2xs flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xs font-bold uppercase tracking-wider text-[#5B6270]">Today's Periods</span>
+                                <span class="h-8 w-8 rounded-xl bg-[#F8F9FA] text-[#0B0D14] border border-[#E5E7EB] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-calendar-day"></i>
+                                </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-2xl font-bold tracking-tight text-[#0B0D14]">{{ todayClasses?.length || 0 }}</span>
+                                <span class="text-3xs font-semibold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-2 py-0.5 rounded-full">Scheduled</span>
+                            </div>
+                            <div class="mt-2 text-3xs text-[#5B6270]">
+                                Across assigned sections
+                            </div>
                         </div>
-                    </button>
 
-                    <Link 
-                        href="/teacher/attendance"
-                        @click="isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Mark Attendance' : ''"
-                        :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'"
-                        class="w-full flex items-center rounded-xl text-sm text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium transition-all"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-camera"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Mark Attendance</span>
+                        <div class="rounded-2xl p-5 bg-white border border-[#E5E7EB] shadow-2xs flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xs font-bold uppercase tracking-wider text-[#5B6270]">My Classes</span>
+                                <span class="h-8 w-8 rounded-xl bg-[#F8F9FA] text-[#0B0D14] border border-[#E5E7EB] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-chalkboard-user"></i>
+                                </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-2xl font-bold tracking-tight text-[#0B0D14]">{{ sections?.length || 0 }}</span>
+                                <span class="text-3xs font-semibold text-[#2F6BFF] bg-[#EEF3FF] border border-[#D2E3FC] px-2 py-0.5 rounded-full">Sections</span>
+                            </div>
+                            <div class="mt-2 text-3xs text-[#5B6270]">
+                                {{ subjects?.length || 0 }} subject curriculum(s)
+                            </div>
                         </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="text-xs text-[#8430CE]">↗</span>
-                    </Link>
 
-                    <button 
-                        @click="activeTab = 'materials'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Course Materials' : ''"
-                        :class="[
-                            activeTab === 'materials' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-folder"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Course Materials</span>
+                        <div class="rounded-2xl p-5 bg-white border border-[#E5E7EB] shadow-2xs flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xs font-bold uppercase tracking-wider text-[#5B6270]">Coursework Tasks</span>
+                                <span class="h-8 w-8 rounded-xl bg-[#F8F9FA] text-[#0B0D14] border border-[#E5E7EB] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-clipboard-check"></i>
+                                </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-2xl font-bold tracking-tight text-[#0B0D14]">{{ assignments?.length || 0 }}</span>
+                                <span class="text-3xs font-semibold text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] px-2 py-0.5 rounded-full">{{ pendingSubmissionsCount }} To Grade</span>
+                            </div>
+                            <div class="mt-2 text-3xs text-[#5B6270]">
+                                Active student assignments
+                            </div>
                         </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F1F3F4] text-[#3C4043] text-xs font-semibold px-2 py-0.5 rounded-full">{{ materials?.length || 0 }}</span>
-                        <span v-else-if="materials?.length" class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#8430CE]"></span>
-                    </button>
 
-                    <button 
-                        @click="activeTab = 'assignments'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Assignments' : ''"
-                        :class="[
-                            activeTab === 'assignments' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-pen-to-square"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Assignments</span>
+                        <div class="rounded-2xl p-5 bg-white border border-[#E5E7EB] shadow-2xs flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-2xs font-bold uppercase tracking-wider text-[#5B6270]">LMS Materials</span>
+                                <span class="h-8 w-8 rounded-xl bg-[#F8F9FA] text-[#0B0D14] border border-[#E5E7EB] flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-book-open"></i>
+                                </span>
+                            </div>
+                            <div class="mt-4 flex items-baseline justify-between">
+                                <span class="text-2xl font-bold tracking-tight text-[#0B0D14]">{{ materials?.length || 0 }}</span>
+                                <span class="text-3xs font-semibold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-2 py-0.5 rounded-full">Uploaded</span>
+                            </div>
+                            <div class="mt-2 text-3xs text-[#5B6270]">
+                                Lectures, guides & worksheets
+                            </div>
                         </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F1F3F4] text-[#3C4043] text-xs font-semibold px-2 py-0.5 rounded-full">{{ assignments?.length || 0 }}</span>
-                        <span v-else-if="assignments?.length" class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#8430CE]"></span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'gradebook'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Exam Gradebook' : ''"
-                        :class="[
-                            activeTab === 'gradebook' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-medal"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Exam Gradebook</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'observations'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Student Observations' : ''"
-                        :class="[
-                            activeTab === 'observations' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-comments"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Observations & Notes</span>
-                        </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F1F3F4] text-[#3C4043] text-xs font-semibold px-2 py-0.5 rounded-full">{{ observations?.length || 0 }}</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'leaves'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Leave Requests' : ''"
-                        :class="[
-                            activeTab === 'leaves' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-plane-departure"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">My Leaves</span>
-                        </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F1F3F4] text-[#3C4043] text-xs font-semibold px-2 py-0.5 rounded-full">{{ myLeaves?.length || 0 }}</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'sports'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Sports & Activities' : ''"
-                        :class="[
-                            activeTab === 'sports' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#F59E0B]"><i class="fa-solid fa-trophy"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Sports & Activities</span>
-                        </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#FEF7E0] text-[#B06000] text-xs font-semibold px-2 py-0.5 rounded-full">{{ sports_activities?.length || 0 }}</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'penalties'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Student Penalties' : ''"
-                        :class="[
-                            activeTab === 'penalties' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#E11D48]"><i class="fa-solid fa-gavel"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Disciplinary Penalties</span>
-                        </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#FCE8E6] text-[#C5221F] text-xs font-semibold px-2 py-0.5 rounded-full">{{ penalties?.length || 0 }}</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'notices'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'School Notice Board' : ''"
-                        :class="[
-                            activeTab === 'notices' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#8430CE]"><i class="fa-solid fa-bullhorn"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Notice Board</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'settings'; isMobileMenuOpen = false"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Account Settings' : ''"
-                        :class="[
-                            activeTab === 'settings' ? 'bg-[#F3E8FD] text-[#8430CE] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-gray-500"><i class="fa-solid fa-gear"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Account Settings</span>
-                        </div>
-                    </button>
-                </nav>
-            </div>
-
-            <!-- Sidebar Footer / Sign Out -->
-            <div class="p-3 sm:p-4 border-t border-[#DADCE0] bg-[#F8F9FA] space-y-3">
-                <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3 px-2'">
-                    <div class="h-9 w-9 rounded-full bg-[#8430CE] text-white flex-shrink-0 flex items-center justify-center font-bold text-sm shadow-sm">
-                        TC
                     </div>
-                    <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-[#202124] truncate">Faculty Staff</p>
-                        <p class="text-2xs text-[#5F6368] truncate">Classroom Teacher</p>
-                    </div>
-                </div>
-                <button 
-                    @click="logout"
-                    :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Sign Out' : ''"
-                    :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'py-2.5 px-2' : 'py-2 space-x-1.5'"
-                    class="w-full rounded-xl bg-white border border-[#DADCE0] text-xs font-semibold text-[#C5221F] hover:bg-[#FCE8E6]/50 transition-colors shadow-2xs flex items-center justify-center"
-                >
-                    <span class="text-sm"><i class="fa-solid fa-right-from-bracket"></i></span>
-                    <span v-if="!isSidebarCollapsed || isMobileMenuOpen">Sign Out</span>
-                </button>
-            </div>
-        </aside>
 
-        <!-- Main Workspace -->
-        <main class="flex-1 overflow-x-hidden min-h-screen flex flex-col min-w-0">
-            <!-- Top Bar Header -->
-            <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DADCE0] px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="flex items-center min-w-0">
-                    <button 
-                        @click="isMobileMenuOpen = true"
-                        class="lg:hidden mr-3 p-2 rounded-xl text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors border border-[#DADCE0] shadow-2xs flex items-center justify-center"
-                        aria-label="Open Sidebar Menu"
-                    >
-                        <span class="text-lg"><i class="fa-solid fa-bars"></i></span>
-                    </button>
-                    <div class="min-w-0">
-                        <h2 class="text-lg sm:text-xl font-bold text-[#202124] capitalize truncate">
-                            {{ activeTab === 'timetable' ? 'Daily Classroom Schedule' : activeTab === 'materials' ? 'Learning Materials (LMS)' : activeTab === 'assignments' ? 'Active Assignments & Grading' : activeTab === 'gradebook' ? 'Examination Gradebook & Marks' : activeTab === 'observations' ? 'Student Observations & Parent Notes' : activeTab === 'leaves' ? 'Staff Leave Applications' : activeTab === 'sports' ? 'Sports & Extracurricular Activities' : activeTab === 'notices' ? 'School Circulars & Notice Feed' : activeTab === 'settings' ? 'Personal Account Settings' : 'Disciplinary Penalties & Fines' }}
-                        </h2>
-                        <p class="text-xs text-[#5F6368] hidden sm:block">
-                            {{ activeTab === 'timetable' ? 'Your scheduled periods and room assignments for today.' : activeTab === 'materials' ? 'Upload lectures, notes, and study guides for your classes.' : activeTab === 'assignments' ? 'Create tasks and view AI grading feedback for students.' : activeTab === 'gradebook' ? 'Input Theory, Practical, and Viva exam marks for automated GPA reports.' : activeTab === 'observations' ? 'Log behavioral commendations or warnings directly visible to parents.' : activeTab === 'leaves' ? 'Submit leave applications to the Principal and check approval status.' : activeTab === 'sports' ? 'Manage extracurricular sports teams and club rosters.' : activeTab === 'notices' ? 'View official announcements and school bulletins posted by administration.' : activeTab === 'settings' ? 'Manage your own login details and change account password.' : 'Issue and review disciplinary penalties for student violations.' }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-3 self-end sm:self-auto flex-shrink-0">
-                    <button 
-                        v-if="activeTab === 'materials'"
-                        @click="showMaterialModal = true"
-                        class="rounded-full bg-[#8430CE] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#6e23B0] transition-all flex items-center space-x-2"
-                    >
-                        <span>+</span>
-                        <span>Upload Material</span>
-                    </button>
-                    <button 
-                        v-if="activeTab === 'assignments'"
-                        @click="showAssignmentModal = true"
-                        class="rounded-full bg-[#8430CE] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#6e23B0] transition-all flex items-center space-x-2"
-                    >
-                        <span>+</span>
-                        <span>Create Assignment</span>
-                    </button>
-                    <button 
-                        v-if="activeTab === 'observations'"
-                        @click="showObservationModal = true"
-                        class="rounded-full bg-[#137333] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#0d5324] transition-all flex items-center space-x-2"
-                    >
-                        <span>+</span>
-                        <span>Log Observation</span>
-                    </button>
-                    <button 
-                        v-if="activeTab === 'leaves'"
-                        @click="showLeaveModal = true"
-                        class="rounded-full bg-[#B06000] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#8c4c00] transition-all flex items-center space-x-2"
-                    >
-                        <span>+</span>
-                        <span>Request Leave</span>
-                    </button>
-                    <button 
-                        v-if="activeTab === 'sports'"
-                        @click="showTeacherSportsModal = true"
-                        class="rounded-full bg-[#F59E0B] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#D97706] transition-all flex items-center space-x-2"
-                    >
-                        <span>+</span>
-                        <span>Create Activity / Team</span>
-                    </button>
-                    <button 
-                        v-if="activeTab === 'penalties'"
-                        @click="showTeacherPenaltyModal = true"
-                        class="rounded-full bg-[#E11D48] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#BE123C] transition-all flex items-center space-x-2"
-                    >
-                        <span>+</span>
-                        <span>Issue Penalty</span>
-                    </button>
-                    <Link 
-                        href="/teacher/attendance"
-                        class="rounded-full bg-[#1A73E8] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#1557B0] transition-all inline-flex items-center gap-1.5"
-                    >
-                        <i class="fa-solid fa-camera"></i>
-                        <span>Take Attendance Grid</span>
-                    </Link>
-                </div>
-            </header>
-
-            <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 flex-1">
-                <!-- ================= TAB: TIMETABLE ================= -->
-                <div v-if="activeTab === 'timetable'" class="space-y-6 animate-fadeIn">
-                    <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#DADCE0]">
-                        <span class="text-sm font-bold text-[#202124]">Today's Sessions</span>
-                        <span class="rounded-full bg-[#F8F9FA] border border-[#DADCE0] px-3 py-1 text-xs font-semibold text-[#5F6368]">
+                    <!-- Timetable Sessions Header -->
+                    <div class="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#E5E7EB] shadow-2xs">
+                        <div class="flex items-center gap-2">
+                            <span class="raibix-dot h-2 w-2"></span>
+                            <span class="text-xs font-bold text-[#0B0D14]">Today's Teaching Schedule</span>
+                        </div>
+                        <span class="rounded-full bg-[#F8F9FA] border border-[#E5E7EB] px-3 py-1 text-2xs font-semibold text-[#5B6270]">
                             {{ new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) }}
                         </span>
                     </div>
@@ -1125,8 +1044,6 @@ const submitTeacherPenalty = () => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
 
         <!-- Upload Material Modal -->
         <div v-if="showMaterialModal" class="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs overflow-hidden">
@@ -1614,5 +1531,5 @@ const submitTeacherPenalty = () => {
                 <button @click="showSuccessToast = false" class="ml-2 opacity-70 hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
-    </div>
+    </TenantAppLayout>
 </template>

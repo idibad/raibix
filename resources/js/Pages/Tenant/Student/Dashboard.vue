@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
+import TenantAppLayout from '@/Layouts/TenantAppLayout.vue';
 
 const props = defineProps({
     student: Object,
@@ -295,325 +296,132 @@ const notificationsList = computed(() => {
     }
     return list;
 });
+
+const navItems = computed(() => [
+    {
+        id: 'overview',
+        label: 'Overview & Due',
+        icon: 'fa-solid fa-gauge-high',
+    },
+    {
+        id: 'timetable',
+        label: 'Timetable',
+        icon: 'fa-solid fa-calendar-days',
+        badge: currentPeriod.value ? 'In Class' : null,
+        badgeClass: 'bg-emerald-50 text-emerald-700 font-semibold',
+    },
+    {
+        id: 'assignments',
+        label: 'Assignments',
+        icon: 'fa-solid fa-pen-to-square',
+        badge: props.assignments?.filter(a => a.status_flag === 'pending').length || null,
+        badgeClass: 'bg-purple-50 text-purple-700 font-semibold',
+    },
+    {
+        id: 'materials',
+        label: 'Study Notes',
+        icon: 'fa-solid fa-book-open',
+    },
+    {
+        id: 'attendance',
+        label: 'Attendance',
+        icon: 'fa-solid fa-calendar-check',
+        badge: (props.attendanceSummary?.percentage ?? 100) + '%',
+        badgeClass: (props.attendanceSummary?.percentage ?? 100) < 75 ? 'bg-red-50 text-red-700 font-bold' : 'bg-emerald-50 text-emerald-700 font-semibold',
+    },
+    {
+        id: 'exams',
+        label: 'Exams & Results',
+        icon: 'fa-solid fa-award',
+    },
+    {
+        id: 'fees',
+        label: 'Fee Status',
+        icon: 'fa-solid fa-credit-card',
+        badge: props.feeChallans?.filter(f => f.status !== 'paid').length || null,
+        badgeClass: 'bg-amber-50 text-amber-700 font-semibold',
+    },
+    {
+        id: 'certificates',
+        label: 'Certificates',
+        icon: 'fa-solid fa-certificate',
+        badge: props.certificates?.length || null,
+    },
+    {
+        id: 'notices',
+        label: 'Notice Board',
+        icon: 'fa-solid fa-bullhorn',
+        badge: props.notices?.filter(n => !n.is_read).length || null,
+        badgeClass: 'bg-red-50 text-red-700 font-semibold',
+    },
+    {
+        id: 'profile',
+        label: 'Profile & ID',
+        icon: 'fa-solid fa-user',
+    },
+]);
+
+const currentTabTitle = computed(() => {
+    switch (activeTab.value) {
+        case 'overview': return "Academic Summary & What's Due";
+        case 'timetable': return 'My Timetable & Weekly Schedule';
+        case 'assignments': return 'Assignments & Homework';
+        case 'materials': return 'Study Notes & Course Syllabus';
+        case 'attendance': return 'Attendance & Leave Requests';
+        case 'exams': return 'Official Exam Results & Gradebook';
+        case 'fees': return 'Fee Challans & Status';
+        case 'certificates': return 'My Awarded Certificates';
+        case 'notices': return 'School Notice Board';
+        case 'profile': return 'Profile, Digital ID & Security';
+        default: return 'Student Portal';
+    }
+});
+
+const currentTabDescription = computed(() => {
+    switch (activeTab.value) {
+        case 'overview': return "Personalized overview of today's schedule, upcoming deadlines, and academic alerts.";
+        case 'timetable': return 'Live period tracking, classroom locations, and assigned subject teachers.';
+        case 'assignments': return 'Track pending coursework, submit files, and review teacher grading and feedback.';
+        case 'materials': return 'Download teacher lecture slides, worksheets, and syllabus resources.';
+        case 'attendance': return 'Monitor exam eligibility rates, daily attendance records, and submit leave applications.';
+        case 'exams': return 'View official examination date sheets, subject score breakdown, and report cards.';
+        case 'fees': return 'Review challan balances and payment status (fee payments handled via parent portal).';
+        case 'certificates': return 'Verified school achievement awards and merit certificates.';
+        case 'notices': return 'Institutional announcements, holiday schedules, and academic circulars.';
+        case 'profile': return 'Manage contact information, access digital student identity card, and account settings.';
+        default: return '';
+    }
+});
+
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-[#F8F9FA] text-[#202124] selection:bg-[#E8F0FE] selection:text-[#1A73E8] font-sans">
-        <!-- Mobile Sidebar Backdrop -->
-        <div 
-            v-if="isMobileMenuOpen" 
-            @click="isMobileMenuOpen = false"
-            class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden transition-opacity duration-300"
-        ></div>
+    <TenantAppLayout
+        :nav-items="navItems"
+        :current-tab="activeTab"
+        :page-title="currentTabTitle"
+        :page-description="currentTabDescription"
+        @select-tab="activeTab = $event"
+    >
+        <template #header-actions>
+            <button 
+                @click="showIdCardModal = true"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-white text-xs font-semibold text-[#0B0D14] hover:bg-[#F8F9FA] transition-colors shadow-xs"
+            >
+                <i class="fa-solid fa-id-card text-[#8B5CF6]"></i>
+                <span>Digital ID</span>
+            </button>
+            <button 
+                @click="activeTab = 'assignments'"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0B0D14] text-white text-xs font-semibold hover:bg-[#202124] transition-colors shadow-xs"
+            >
+                <i class="fa-solid fa-pen-to-square text-[#8B5CF6]"></i>
+                <span>View Homework</span>
+            </button>
+        </template>
 
-        <!-- Sidebar Navigation -->
-        <aside 
-            :class="[
-                isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
-                isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0',
-                'fixed lg:sticky top-0 z-50 h-screen border-r border-[#DADCE0] bg-white flex flex-col justify-between flex-shrink-0 transition-all duration-300 shadow-xl lg:shadow-none'
-            ]"
-        >
-            <div class="flex flex-col min-h-0 flex-1">
-                <!-- Brand Header -->
-                <div class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-[#DADCE0] min-h-[73px]">
-                    <div class="flex items-center space-x-3 min-w-0 overflow-hidden">
-                        <div v-if="$page.props.tenant?.logo" class="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-0.5 border border-[#DADCE0] shadow-sm">
-                            <img :src="$page.props.tenant.logo" :alt="$page.props.tenant.name" class="max-h-full max-w-full object-contain" />
-                        </div>
-                        <div v-else class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F0FE] font-bold text-[#1A73E8] text-lg border border-[#D2E3FC] shadow-sm">
-                            <i class="fa-solid fa-graduation-cap"></i>
-                        </div>
-                        <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 transition-all duration-200">
-                            <h1 class="font-bold text-base tracking-tight text-[#202124] truncate">{{ $page.props.tenant?.name || 'Student Portal' }}</h1>
-                            <p class="text-xs text-[#5F6368] truncate">{{ student?.current_class?.name || 'Academic Suite' }} — Sec {{ student?.current_section?.name || 'A' }}</p>
-                        </div>
-                    </div>
-                    <button 
-                        @click="isMobileMenuOpen ? (isMobileMenuOpen = false) : (isSidebarCollapsed = !isSidebarCollapsed)"
-                        class="h-8 w-8 rounded-lg flex items-center justify-center text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors flex-shrink-0"
-                    >
-                        <span v-if="isMobileMenuOpen" class="text-lg font-bold"><i class="fa-solid fa-xmark"></i></span>
-                        <span v-else class="text-base font-bold hidden lg:inline-block">{{ isSidebarCollapsed ? '→' : '←' }}</span>
-                        <span v-if="!isMobileMenuOpen" class="text-lg font-bold lg:hidden"><i class="fa-solid fa-xmark"></i></span>
-                    </button>
-                </div>
-
-                <!-- Side Menu Links -->
-                <nav class="p-3 sm:p-4 space-y-1 overflow-y-auto flex-1">
-                    <button 
-                        @click="activeTab = 'overview'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'overview' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-house"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Overview & What's Due</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'timetable'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'timetable' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-calendar-days"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">My Timetable</span>
-                        </div>
-                        <span v-if="(!isSidebarCollapsed || isMobileMenuOpen) && currentPeriod" class="bg-[#E6F4EA] text-[#137333] text-2xs font-extrabold px-2 py-0.5 rounded-full border border-[#CEEAD6]">In Class</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'notices'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'notices' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-bullhorn"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Notice Board</span>
-                        </div>
-                        <span v-if="(!isSidebarCollapsed || isMobileMenuOpen) && notices?.filter(n => !n.is_read).length > 0" class="bg-[#FCE8E6] text-[#C5221F] text-xs font-bold px-2 py-0.5 rounded-full">{{ notices.filter(n => !n.is_read).length }}</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'assignments'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'assignments' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-pen-to-square"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Assignments</span>
-                        </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="bg-[#F3E8FD] text-[#8430CE] text-xs font-bold px-2 py-0.5 rounded-full">{{ assignments?.filter(a => a.status_flag === 'pending').length || 0 }}</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'materials'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'materials' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-folder"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Study Notes & Syllabus</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'attendance'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'attendance' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-calendar-check"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Attendance & Leaves</span>
-                        </div>
-                        <span v-if="!isSidebarCollapsed || isMobileMenuOpen" :class="attendanceSummary?.percentage < 75 ? 'bg-[#FCE8E6] text-[#C5221F]' : 'bg-[#E6F4EA] text-[#137333]'" class="text-xs font-bold px-2 py-0.5 rounded-full">{{ attendanceSummary?.percentage || 100 }}%</span>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'exams'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'exams' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-chart-column"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Exams & Report Cards</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'fees'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'fees' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-credit-card"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">My Fee Status</span>
-                        </div>
-                    </button>
-
-                    <button 
-                        @click="activeTab = 'profile'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'profile' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-gear"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Profile & ID Card</span>
-                        </div>
-                    </button>
-
-                    <!-- Certificates Nav Item -->
-                    <button 
-                        @click="activeTab = 'certificates'; isMobileMenuOpen = false"
-                        :class="[
-                            activeTab === 'certificates' ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-2xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
-                        ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all relative"
-                    >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 text-[#1A73E8]"><i class="fa-solid fa-award"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">My Certificates</span>
-                        </div>
-                        <span v-if="(!isSidebarCollapsed || isMobileMenuOpen) && certificates?.length > 0" class="bg-[#E6F4EA] text-[#137333] text-xs font-bold px-2 py-0.5 rounded-full">{{ certificates.length }}</span>
-                    </button>
-                </nav>
-            </div>
-
-            <!-- Sidebar Footer / Sign Out -->
-            <div class="p-3 sm:p-4 border-t border-[#DADCE0] bg-[#F8F9FA] space-y-3">
-                <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3 px-2'">
-                    <div v-if="student?.photo_url" class="h-9 w-9 rounded-full overflow-hidden border border-[#DADCE0] flex-shrink-0">
-                        <img :src="student.photo_url" alt="Avatar" class="h-full w-full object-cover" />
-                    </div>
-                    <div v-else class="h-9 w-9 rounded-full bg-[#1A73E8] text-white flex-shrink-0 flex items-center justify-center font-bold text-sm shadow-sm">
-                        {{ student?.user?.name?.slice(0, 2)?.toUpperCase() || 'ST' }}
-                    </div>
-                    <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-[#202124] truncate">{{ student?.user?.name || 'Student Name' }}</p>
-                        <p class="text-2xs text-[#5F6368] truncate">Roll #: {{ student?.roll_number || '101' }}</p>
-                    </div>
-                </div>
-                <button 
-                    @click="logout"
-                    :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'py-2.5 px-2' : 'py-2 space-x-1.5'"
-                    class="w-full rounded-xl bg-white border border-[#DADCE0] text-xs font-semibold text-[#C5221F] hover:bg-[#FCE8E6]/50 transition-colors shadow-2xs flex items-center justify-center"
-                >
-                    <span class="text-sm"><i class="fa-solid fa-right-from-bracket"></i></span>
-                    <span v-if="!isSidebarCollapsed || isMobileMenuOpen">Sign Out</span>
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Workspace -->
-        <main class="flex-1 overflow-x-hidden min-h-screen flex flex-col min-w-0">
-            <!-- Top Bar Header -->
-            <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DADCE0] px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
-                <div class="flex items-center min-w-0">
-                    <button 
-                        @click="isMobileMenuOpen = true"
-                        class="lg:hidden mr-3 p-2 rounded-xl text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors border border-[#DADCE0] shadow-2xs flex items-center justify-center"
-                    >
-                        <span class="text-lg"><i class="fa-solid fa-bars"></i></span>
-                    </button>
-                    <div class="min-w-0">
-                        <h2 class="text-lg sm:text-xl font-bold text-[#202124] capitalize truncate">
-                            {{ activeTab === 'overview' ? 'Academic Summary & What\'s Due' : 
-                               activeTab === 'timetable' ? 'My Timetable & Weekly Schedule' :
-                               activeTab === 'notices' ? 'Notice Board & Announcements' :
-                               activeTab === 'assignments' ? 'Assignment Portfolio & Submission History' : 
-                               activeTab === 'materials' ? 'Study Notes & Course Syllabus' : 
-                               activeTab === 'attendance' ? 'Self-Service Attendance & Leave Requests' : 
-                               activeTab === 'exams' ? 'Official Exam Gradebook & Report Cards' :
-                               activeTab === 'fees' ? 'Read-Only Fee Visibility & Challans' :
-                               activeTab === 'certificates' ? 'My Awarded Certificates' :
-                               'Profile, Digital ID & Account Settings' }}
-                        </h2>
-                        <p class="text-xs text-[#5F6368] hidden sm:block">
-                            {{ activeTab === 'overview' ? 'Unified dashboard of upcoming deadlines, live CGPA, and critical school updates.' : 
-                               activeTab === 'timetable' ? 'Live period tracking, room numbers, and assigned subject teachers.' :
-                               activeTab === 'notices' ? 'Circulars, holiday schedules, and targeted school announcements with unread indicators.' :
-                               activeTab === 'assignments' ? 'Track pending homework, upload solution files, request re-evaluations, and ask teachers questions.' : 
-                               activeTab === 'materials' ? 'Download teacher slides, worksheets, bookmark study items, and explore curriculum units.' : 
-                               activeTab === 'attendance' ? 'Monitor eligibility rates, review daily check-ins, and submit leave requests online.' : 
-                               activeTab === 'exams' ? 'View date sheets, detailed subject marks breakdowns, and download term PDF report cards.' :
-                               activeTab === 'fees' ? 'Review challan status and upcoming due dates (payment actions managed via Parent portal).' :
-                               'Manage personal contact details, account security, passwords, and preview digital ID card.' }}
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Top Bar Quick Actions -->
-                <div class="flex items-center space-x-3">
-                    <button 
-                        @click="showIdCardModal = true"
-                        class="hidden sm:flex items-center space-x-1.5 rounded-xl bg-[#E8F0FE] border border-[#D2E3FC] px-3.5 py-2 text-xs font-bold text-[#1A73E8] hover:bg-[#D2E3FC] transition-colors shadow-2xs"
-                    >
-                        <span><i class="fa-solid fa-id-card mr-1"></i> Digital ID</span>
-                    </button>
-
-                    <!-- Notifications Bell Dropdown -->
-                    <div class="relative">
-                        <button 
-                            @click="isNotificationsOpen = !isNotificationsOpen"
-                            class="h-10 w-10 rounded-xl border border-[#DADCE0] bg-white flex items-center justify-center text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors relative shadow-2xs"
-                        >
-                            <span class="text-lg"><i class="fa-solid fa-bell"></i></span>
-                            <span v-if="notificationsList.length > 0" class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#C5221F] text-2xs font-bold text-white shadow-sm">
-                                {{ notificationsList.length }}
-                            </span>
-                        </button>
-
-                        <div v-if="isNotificationsOpen" class="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[#DADCE0] bg-white p-4 shadow-2xl z-50 space-y-3">
-                            <div class="flex justify-between items-center border-b border-[#DADCE0] pb-2">
-                                <h4 class="font-bold text-sm text-[#202124] flex items-center gap-1.5"><i class="fa-solid fa-bell text-[#1A73E8]"></i> <span>In-App Notifications Center</span></h4>
-                                <span class="text-2xs font-semibold text-[#5F6368]">{{ notificationsList.length }} Alerts</span>
-                            </div>
-                            <div v-if="notificationsList.length === 0" class="py-6 text-center text-xs text-[#5F6368]">
-                                You're all caught up! No urgent alerts right now.
-                            </div>
-                            <div v-else class="max-h-80 overflow-y-auto space-y-2">
-                                <div 
-                                    v-for="n in notificationsList" 
-                                    :key="n.id" 
-                                    @click="activeTab = n.actionTab; isNotificationsOpen = false"
-                                    class="p-3 rounded-xl cursor-pointer transition-all border text-xs space-y-1"
-                                    :class="{
-                                        'bg-[#FEF7E0]/60 border-[#FEEFC3] text-[#B06000]': n.type === 'warning',
-                                        'bg-[#FCE8E6]/60 border-[#FAD2CF] text-[#C5221F]': n.type === 'danger',
-                                        'bg-[#E8F0FE]/60 border-[#D2E3FC] text-[#1A73E8]': n.type === 'info' || n.type === 'primary',
-                                        'bg-[#E6F4EA]/60 border-[#CEEAD6] text-[#137333]': n.type === 'success',
-                                    }"
-                                >
-                                    <div class="flex justify-between font-extrabold items-center">
-                                        <span class="flex items-center gap-1.5">
-                                            <i :class="n.type === 'warning' ? 'fa-solid fa-triangle-exclamation' : n.type === 'danger' ? 'fa-solid fa-circle-exclamation' : n.type === 'info' ? 'fa-solid fa-bullhorn' : 'fa-solid fa-calendar-days'"></i>
-                                            <span>{{ n.title }}</span>
-                                        </span>
-                                        <span class="text-2xs font-mono opacity-80">{{ n.time }}</span>
-                                    </div>
-                                    <p class="font-medium opacity-90">{{ n.message }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Main Content Container -->
-            <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 flex-1">
-                
-                <!-- ================= TAB: OVERVIEW & WHAT'S DUE ================= -->
-                <div v-if="activeTab === 'overview'" class="space-y-8 animate-fadeIn">
+        <div class="space-y-6">
+            <div v-if="activeTab === 'overview'" class="space-y-8 animate-fadeIn">
                     <!-- Critical Low Attendance Banner (P0 #3) -->
                     <div v-if="attendanceSummary?.percentage < 75" class="rounded-2xl bg-[#FCE8E6] border-2 border-[#C5221F] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[#C5221F] shadow-sm animate-pulse">
                         <div class="flex items-center space-x-3.5">
@@ -1579,7 +1387,7 @@ const notificationsList = computed(() => {
                 </div>
 
             </div>
-        </main>
+        
 
         <!-- ================= MODALS ================= -->
 
@@ -1809,5 +1617,5 @@ const notificationsList = computed(() => {
             </div>
         </div>
 
-    </div>
+    </TenantAppLayout>
 </template>

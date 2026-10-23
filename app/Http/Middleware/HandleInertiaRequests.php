@@ -39,6 +39,17 @@ class HandleInertiaRequests extends Middleware
         if (function_exists('tenancy') && tenancy()->initialized && tenancy()->tenant) {
             $t = tenancy()->tenant;
             $dataBag = is_array($t->data) ? $t->data : (json_decode($t->data ?? '{}', true) ?? []);
+
+            $academicSession = 'Session 2026-2027';
+            try {
+                $activeYear = \App\Models\AcademicYear::where('is_active', true)->first();
+                if ($activeYear && $activeYear->name) {
+                    $academicSession = $activeYear->name;
+                }
+            } catch (\Throwable $e) {
+                // Fallback to default
+            }
+
             $tenantData = [
                 'id' => $t->id,
                 'name' => $t->name,
@@ -48,6 +59,7 @@ class HandleInertiaRequests extends Middleware
                 'secondary_color' => $t->secondary_color ?? ($dataBag['secondary_color'] ?? '#0F172A'),
                 'accent_color' => $t->accent_color ?? ($dataBag['accent_color'] ?? '#3B82F6'),
                 'domain' => $t->domains()->first()?->domain ?? null,
+                'academic_session' => $academicSession,
                 'plan' => $t->plan ? [
                     'id' => $t->plan->id,
                     'code' => $t->plan->code,
@@ -84,7 +96,15 @@ class HandleInertiaRequests extends Middleware
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
                     'user_type' => $request->user()->user_type,
+                    'role' => method_exists($request->user(), 'getRoleNames') && $request->user()->getRoleNames()->isNotEmpty()
+                        ? $request->user()->getRoleNames()->first()
+                        : ($request->user()->user_type === 'admin' ? 'Principal' : ucfirst($request->user()->user_type ?? 'User')),
                 ] : null,
+                'role' => $request->user()
+                    ? (method_exists($request->user(), 'getRoleNames') && $request->user()->getRoleNames()->isNotEmpty()
+                        ? $request->user()->getRoleNames()->first()
+                        : ($request->user()->user_type === 'admin' ? 'Principal' : ucfirst($request->user()->user_type ?? 'User')))
+                    : null,
             ],
             'tenant' => $tenantData,
             'flash' => [

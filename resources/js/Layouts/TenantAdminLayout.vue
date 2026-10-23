@@ -5,7 +5,14 @@ import { Link, usePage, router } from '@inertiajs/vue3';
 const page = usePage();
 const tenant = computed(() => page.props.tenant || {});
 const current_user = computed(() => page.props.auth?.user || {});
-const current_role = computed(() => page.props.auth?.role || 'Principal');
+const current_role = computed(() => {
+    const r = page.props.auth?.role || current_user.value?.role || current_user.value?.user_type || 'Principal';
+    return r.charAt(0).toUpperCase() + r.slice(1);
+});
+
+const academicSession = computed(() => {
+    return tenant.value.academic_session || 'Session 2026-2027';
+});
 
 const isMobileMenuOpen = ref(false);
 const isSidebarCollapsed = ref(false);
@@ -18,7 +25,7 @@ const isActive = (path, tab = null) => {
 };
 
 const canAccess = (moduleName) => {
-    const role = current_user.value.user_type || 'admin';
+    const role = (current_user.value.user_type || 'admin').toLowerCase();
     if (['admin', 'principal', 'vice_principal'].includes(role)) {
         return true;
     }
@@ -34,68 +41,92 @@ const canAccess = (moduleName) => {
     return true;
 };
 
+const userInitials = computed(() => {
+    const name = current_user.value?.name || current_role.value || 'Admin';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+});
+
 const logout = () => {
-    router.post('/admin/logout');
+    router.post('/logout');
 };
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-[#F8F9FA] text-[#202124] selection:bg-[#E8F0FE] selection:text-[#1A73E8] font-sans">
+    <div class="flex min-h-screen bg-[#F8F9FA] text-[#0B0D14] font-sans antialiased selection:bg-[#EEF3FF] selection:text-[#2F6BFF]">
         <!-- Mobile Sidebar Backdrop -->
-        <div 
-            v-if="isMobileMenuOpen" 
-            @click="isMobileMenuOpen = false"
-            class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden transition-opacity duration-300"
-        ></div>
+        <transition
+            enter-active-class="transition-opacity duration-200"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity duration-200"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div 
+                v-if="isMobileMenuOpen" 
+                @click="isMobileMenuOpen = false"
+                class="fixed inset-0 z-40 bg-black/30 backdrop-blur-xs lg:hidden"
+                aria-hidden="true"
+            ></div>
+        </transition>
 
         <!-- Sidebar Navigation -->
         <aside 
             :class="[
-                isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
+                isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-64',
                 isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0',
-                'fixed lg:sticky top-0 z-50 h-screen border-r border-[#DADCE0] bg-white flex flex-col justify-between flex-shrink-0 transition-all duration-300 shadow-xl lg:shadow-none'
+                'fixed lg:sticky top-0 z-50 h-screen border-r border-[#E5E7EB] bg-white flex flex-col justify-between flex-shrink-0 transition-all duration-200'
             ]"
         >
             <div class="flex flex-col min-h-0 flex-1">
                 <!-- Brand Header -->
-                <div class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-[#DADCE0] min-h-[73px]">
-                    <div class="flex items-center space-x-3 min-w-0 overflow-hidden">
-                        <div v-if="tenant?.logo" class="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-0.5 border border-[#DADCE0] shadow-sm">
-                            <img :src="tenant?.logo" :alt="tenant?.name" class="max-h-full max-w-full object-contain" />
+                <div class="h-16 flex items-center justify-between px-4 border-b border-[#E5E7EB]">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div v-if="tenant?.logo" class="h-9 w-9 rounded-xl border border-[#E5E7EB] bg-white p-1 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-2xs">
+                            <img :src="tenant?.logo" :alt="tenant?.name || 'School Logo'" class="max-h-full max-w-full object-contain" />
                         </div>
-                        <div v-else class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#E8F0FE] font-bold text-[#1A73E8] text-lg border border-[#D2E3FC] shadow-sm">
-                            <i class="fa-solid fa-graduation-cap"></i>
+                        <div v-else class="h-9 w-9 rounded-xl border border-[#E5E7EB] bg-[#F8F9FA] flex items-center justify-center flex-shrink-0 text-[#0B0D14] shadow-2xs">
+                            <span class="raibix-dot h-3 w-3"></span>
                         </div>
-                        <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 transition-all duration-200">
-                            <h1 class="font-bold text-base tracking-tight text-[#202124] truncate">{{ tenant?.name || 'School Portal' }}</h1>
-                            <p class="text-xs text-[#5F6368] truncate capitalize">{{ current_role || 'Principal' }} Dashboard</p>
+                        <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 truncate">
+                            <h1 class="text-xs font-semibold tracking-tight text-[#0B0D14] truncate">{{ tenant?.name || 'School Portal' }}</h1>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="raibix-dot h-1.5 w-1.5"></span>
+                                <p class="text-3xs font-medium text-[#5B6270] uppercase tracking-wider truncate">{{ current_role }}</p>
+                            </div>
                         </div>
                     </div>
-                    <!-- Collapse / Close Button -->
+                    <!-- Collapse Button -->
                     <button 
                         @click="isMobileMenuOpen ? (isMobileMenuOpen = false) : (isSidebarCollapsed = !isSidebarCollapsed)"
-                        class="h-8 w-8 rounded-lg flex items-center justify-center text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors flex-shrink-0"
+                        class="h-7 w-7 rounded-lg text-[#5B6270] hover:text-[#0B0D14] hover:bg-[#F8F9FA] transition-colors flex items-center justify-center flex-shrink-0"
                         :title="isMobileMenuOpen ? 'Close Menu' : (isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar')"
                     >
-                        <span class="text-base font-bold"><i :class="isSidebarCollapsed ? 'fa-solid fa-arrow-right' : 'fa-solid fa-arrow-left'"></i></span>
+                        <i :class="isMobileMenuOpen ? 'fa-solid fa-xmark' : (isSidebarCollapsed ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left')" class="text-xs"></i>
                     </button>
                 </div>
 
                 <!-- Side Menu Links -->
-                <nav class="p-3 sm:p-4 space-y-1 overflow-y-auto flex-1">
+                <nav class="p-2 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
                     <!-- Overview -->
                     <Link 
                         v-if="canAccess('dashboard')"
                         href="/admin/dashboard?tab=overview"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Overview' : ''"
                         :class="[
-                            isActive('/admin/dashboard', 'overview') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/dashboard', 'overview') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-house text-base"></i></span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/dashboard', 'overview')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-house"></i></span>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Overview</span>
                         </div>
                     </Link>
@@ -106,13 +137,15 @@ const logout = () => {
                         href="/admin/dashboard?tab=users"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'User Management' : ''"
                         :class="[
-                            isActive('/admin/dashboard', 'users') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/dashboard', 'users') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-users text-base"></i></span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/dashboard', 'users')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-users"></i></span>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">User Management</span>
                         </div>
                     </Link>
@@ -123,14 +156,16 @@ const logout = () => {
                         href="/admin/dashboard?tab=students"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Student Management' : ''"
                         :class="[
-                            isActive('/admin/dashboard', 'students') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/dashboard', 'students') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-graduation-cap text-base"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Student Management</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/dashboard', 'students')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-graduation-cap"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Students</span>
                         </div>
                     </Link>
 
@@ -140,14 +175,16 @@ const logout = () => {
                         href="/admin/dashboard?tab=admissions"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Admissions' : ''"
                         :class="[
-                            isActive('/admin/dashboard', 'admissions') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/dashboard', 'admissions') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-clipboard-list text-base"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Admissions Pipeline</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/dashboard', 'admissions')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-clipboard-list"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Admissions</span>
                         </div>
                     </Link>
 
@@ -157,14 +194,16 @@ const logout = () => {
                         href="/admin/dashboard?tab=classes"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Classes & Sections' : ''"
                         :class="[
-                            isActive('/admin/dashboard', 'classes') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/dashboard', 'classes') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-chalkboard-user text-base"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Classes & Sections</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/dashboard', 'classes')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-chalkboard-user"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Classes</span>
                         </div>
                     </Link>
 
@@ -174,13 +213,15 @@ const logout = () => {
                         href="/admin/hr"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'HR & Payroll' : ''"
                         :class="[
-                            isActive('/admin/hr') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/hr') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-users-gear text-base text-[#1A73E8]"></i></span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/hr')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-users-gear"></i></span>
                             <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">HR & Payroll</span>
                         </div>
                     </Link>
@@ -189,16 +230,18 @@ const logout = () => {
                     <Link 
                         v-if="canAccess('finance')"
                         href="/admin/finance-reports"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Finance & Refunds' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Finance & Accounts' : ''"
                         :class="[
-                            isActive('/admin/finance-reports') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/finance-reports') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-vault text-base text-[#10B981]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Finance & Refunds</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/finance-reports')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-vault"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Finance</span>
                         </div>
                     </Link>
 
@@ -206,16 +249,18 @@ const logout = () => {
                     <Link 
                         v-if="canAccess('certificates')"
                         href="/admin/certificates"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'ID Cards & Certificates' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Certificates' : ''"
                         :class="[
-                            isActive('/admin/certificates') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/certificates') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-id-card text-base text-[#8430CE]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Certificates & ID Cards</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/certificates')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-id-card"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Certificates</span>
                         </div>
                     </Link>
 
@@ -223,16 +268,18 @@ const logout = () => {
                     <Link 
                         v-if="canAccess('library')"
                         href="/admin/library"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Library Management' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Library' : ''"
                         :class="[
-                            isActive('/admin/library') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/library') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-book-open text-base text-[#F59E0B]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Library Management</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/library')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-book-open"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Library</span>
                         </div>
                     </Link>
 
@@ -240,16 +287,18 @@ const logout = () => {
                     <Link 
                         v-if="canAccess('transport')"
                         href="/admin/transport"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Transport Management' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Transport' : ''"
                         :class="[
-                            isActive('/admin/transport') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/transport') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-bus text-base text-[#3C4043]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Transport Management</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/transport')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-bus"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Transport</span>
                         </div>
                     </Link>
 
@@ -257,16 +306,18 @@ const logout = () => {
                     <Link 
                         v-if="canAccess('hostels')"
                         href="/admin/hostels"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Hostel Management' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Hostels' : ''"
                         :class="[
-                            isActive('/admin/hostels') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/hostels') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-bed text-base text-[#137333]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Hostel Management</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/hostels')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-bed"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Hostels</span>
                         </div>
                     </Link>
 
@@ -274,16 +325,18 @@ const logout = () => {
                     <Link 
                         v-if="canAccess('inventory')"
                         href="/admin/inventory"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Inventory & Assets' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Inventory' : ''"
                         :class="[
-                            isActive('/admin/inventory') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/inventory') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-boxes-stacked text-base text-[#0284C7]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Inventory & Assets</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/inventory')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-boxes-stacked"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Inventory</span>
                         </div>
                     </Link>
 
@@ -293,100 +346,139 @@ const logout = () => {
                         href="/admin/calendar"
                         :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Academic Calendar' : ''"
                         :class="[
-                            isActive('/admin/calendar') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/calendar') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-calendar-check text-base text-[#D946EF]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Academic Calendar</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/calendar')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-calendar-days"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Calendar</span>
                         </div>
                     </Link>
 
-                    <!-- Settings (RBAC, Localization) -->
+                    <!-- Settings -->
                     <Link 
                         v-if="canAccess('settings')"
                         href="/admin/settings-erp"
-                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'System Settings' : ''"
+                        :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Settings' : ''"
                         :class="[
-                            isActive('/admin/settings-erp') ? 'bg-[#E8F0FE] text-[#1A73E8] font-bold shadow-xs' : 'text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] font-medium',
-                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-3' : 'justify-between px-4 py-3'
+                            isActive('/admin/settings-erp') ? 'bg-[#F4F5F8] text-[#0B0D14] font-semibold' : 'text-[#5B6270] hover:bg-[#F8F9FA] hover:text-[#0B0D14] font-normal',
+                            (isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center px-2 py-2.5' : 'justify-between px-3 py-2'
                         ]"
-                        class="w-full flex items-center rounded-xl text-sm transition-all"
+                        class="w-full flex items-center rounded-xl text-xs transition-colors group cursor-pointer"
                     >
-                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3'">
-                            <span class="text-lg flex-shrink-0 flex items-center justify-center w-6"><i class="fa-solid fa-gear text-base text-[#475569]"></i></span>
-                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">System Settings</span>
+                        <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'gap-2.5 min-w-0'">
+                            <span v-if="isActive('/admin/settings-erp')" class="raibix-dot h-1.5 w-1.5 flex-shrink-0"></span>
+                            <span v-else-if="!isSidebarCollapsed || isMobileMenuOpen" class="h-1.5 w-1.5 flex-shrink-0 opacity-0"></span>
+                            <span class="flex-shrink-0 flex items-center justify-center w-4 text-xs"><i class="fa-solid fa-gear"></i></span>
+                            <span v-if="!isSidebarCollapsed || isMobileMenuOpen" class="truncate">Settings</span>
                         </div>
                     </Link>
-
                 </nav>
             </div>
 
-            <!-- Sidebar Footer / Sign Out -->
-            <div class="p-3 sm:p-4 border-t border-[#DADCE0] bg-[#F8F9FA] space-y-3">
-                <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'space-x-3 px-2'">
-                    <div class="h-9 w-9 rounded-full bg-[#E8F0FE] text-[#1A73E8] flex-shrink-0 flex items-center justify-center font-bold text-sm shadow-sm border border-[#D2E3FC] uppercase">
-                        {{ (current_user?.name || current_role || 'P').substring(0, 2) }}
+            <!-- Sidebar Footer User Profile -->
+            <div class="p-3 border-t border-[#E5E7EB] bg-white">
+                <div class="flex items-center" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'justify-center' : 'justify-between gap-2'">
+                    <div class="flex items-center min-w-0" :class="(isSidebarCollapsed && !isMobileMenuOpen) ? '' : 'gap-2.5'">
+                        <div class="h-8 w-8 rounded-full bg-[#111318] text-white flex-shrink-0 flex items-center justify-center text-2xs font-bold tracking-tight shadow-2xs">
+                            {{ userInitials }}
+                        </div>
+                        <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 truncate">
+                            <p class="text-xs font-semibold text-[#0B0D14] truncate">{{ current_user?.name || 'Administrator' }}</p>
+                            <p class="text-3xs text-[#5B6270] truncate capitalize">{{ current_role }}</p>
+                        </div>
                     </div>
-                    <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-[#202124] truncate">{{ current_user?.name || 'Management Office' }}</p>
-                        <p class="text-2xs text-[#5F6368] truncate capitalize">{{ current_role || 'Principal' }} Portal</p>
-                    </div>
+
+                    <button 
+                        @click="logout"
+                        :title="'Sign Out'"
+                        class="h-7 w-7 rounded-lg text-[#5B6270] hover:text-[#DC2626] hover:bg-[#FEE2E2]/40 transition-colors flex items-center justify-center flex-shrink-0"
+                    >
+                        <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+                    </button>
                 </div>
-                <button 
-                    @click="logout"
-                    :title="(isSidebarCollapsed && !isMobileMenuOpen) ? 'Sign Out' : ''"
-                    :class="(isSidebarCollapsed && !isMobileMenuOpen) ? 'py-2.5 px-2' : 'py-2 space-x-1.5'"
-                    class="w-full rounded-xl bg-white border border-[#DADCE0] text-xs font-semibold text-[#C5221F] hover:bg-[#FCE8E6]/50 transition-colors shadow-2xs flex items-center justify-center"
-                >
-                    <i class="fa-solid fa-arrow-right-from-bracket text-base"></i>
-                    <span v-if="!isSidebarCollapsed || isMobileMenuOpen">Sign Out</span>
-                </button>
             </div>
         </aside>
 
         <!-- Main Workspace -->
         <main class="flex-1 overflow-x-hidden min-h-screen flex flex-col min-w-0">
             <!-- Top Bar Header -->
-            <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DADCE0] px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="flex items-center min-w-0">
+            <header class="sticky top-0 z-30 h-16 bg-white/95 backdrop-blur-md border-b border-[#E5E7EB] px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3 min-w-0">
                     <button 
                         @click="isMobileMenuOpen = true"
-                        class="lg:hidden mr-3 p-2 rounded-xl text-[#5F6368] hover:bg-[#F8F9FA] hover:text-[#202124] transition-colors border border-[#DADCE0] shadow-2xs flex items-center justify-center"
-                        aria-label="Open Sidebar Menu"
+                        class="lg:hidden h-8 w-8 rounded-lg text-[#5B6270] hover:text-[#0B0D14] hover:bg-[#F8F9FA] transition-colors border border-[#E5E7EB] flex items-center justify-center flex-shrink-0"
+                        aria-label="Open navigation menu"
                     >
-                        <i class="fa-solid fa-bars text-lg"></i>
+                        <i class="fa-solid fa-bars text-sm"></i>
                     </button>
+
+                    <div class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-2xs font-medium bg-[#F8F9FA] text-[#0B0D14] border border-[#E5E7EB]">
+                        <span class="raibix-dot h-1.5 w-1.5"></span>
+                        <span>{{ academicSession }}</span>
+                    </div>
+
                     <div class="min-w-0">
-                        <slot name="header">
-                            <h2 class="text-lg sm:text-xl font-bold text-[#202124] capitalize truncate">
-                                School Portal
-                            </h2>
-                        </slot>
+                        <slot name="header"></slot>
                     </div>
                 </div>
 
-                <div class="flex items-center space-x-3 self-end sm:self-auto flex-shrink-0">
+                <div class="flex items-center gap-3 flex-shrink-0">
                     <slot name="actions"></slot>
                 </div>
             </header>
 
             <!-- Flash Notification Banner -->
             <div v-if="$page.props.flash?.success || $page.props.flash?.error" class="px-4 sm:px-6 lg:px-8 pt-4">
-                <div :class="$page.props.flash?.success ? 'bg-[#E6F4EA] border-[#CEEAD6] text-[#137333]' : 'bg-[#FCE8E6] border-[#FAD2CF] text-[#C5221F]'" class="rounded-2xl border p-4 shadow-xs flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <i :class="$page.props.flash?.success ? 'fa-solid fa-check' : 'fa-solid fa-triangle-exclamation'" class="text-lg"></i>
-                        <span class="text-sm font-bold">{{ $page.props.flash?.success || $page.props.flash?.error }}</span>
+                <div :class="$page.props.flash?.success ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#166534]' : 'bg-[#FEF2F2] border-[#FCA5A5] text-[#991B1B]'" class="rounded-xl border px-4 py-3 shadow-2xs flex items-center justify-between text-xs font-medium">
+                    <div class="flex items-center gap-2.5">
+                        <i :class="$page.props.flash?.success ? 'fa-solid fa-circle-check' : 'fa-solid fa-triangle-exclamation'" class="text-sm"></i>
+                        <span>{{ $page.props.flash?.success || $page.props.flash?.error }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Main Content Area -->
-            <div class="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 flex-1">
+            <div class="p-4 sm:p-6 lg:p-8 space-y-6 flex-1 max-w-[1440px] w-full mx-auto">
                 <slot></slot>
             </div>
+
+            <!-- Clean Footer -->
+            <footer class="border-t border-[#E5E7EB] bg-white py-4 px-4 sm:px-6 lg:px-8 mt-auto text-2xs text-[#5B6270]">
+                <div class="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+                    <div class="flex items-center gap-2">
+                        <span>{{ tenant?.name || 'Raibix' }}</span>
+                        <span>•</span>
+                        <span class="inline-flex items-center gap-1">
+                            <span class="raibix-dot h-1 w-1"></span>
+                            <span>Powered by Raibix</span>
+                        </span>
+                    </div>
+                    <div class="text-[#5B6270]">
+                        Academic Year {{ academicSession }}
+                    </div>
+                </div>
+            </footer>
         </main>
     </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #E5E7EB;
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #D1D5DB;
+}
+</style>

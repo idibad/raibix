@@ -119,4 +119,60 @@ class AuthorizationRBACSecurityTest extends TestCase
         $response = $this->actingAs($adminUser)->get("http://{$domain}/admin/dashboard");
         $response->assertStatus(200);
     }
+
+    /**
+     * Test librarian can access library catalogue but cannot access finance or payroll.
+     */
+    public function test_librarian_can_access_library_but_forbidden_from_finance_and_hr(): void
+    {
+        $domain = $this->tenant->domains->first()->domain;
+        $librarianUser = User::create([
+            'name' => 'Campus Librarian',
+            'email' => 'librarian.rbac@test.com',
+            'user_type' => 'librarian',
+            'password' => Hash::make('password'),
+        ]);
+
+        // Can access library
+        $libResponse = $this->actingAs($librarianUser)->get("http://{$domain}/admin/library");
+        $libResponse->assertStatus(200);
+
+        // Forbidden from finance reports
+        $finResponse = $this->actingAs($librarianUser)->get("http://{$domain}/admin/finance-reports");
+        $finResponse->assertStatus(403);
+
+        // Forbidden from HR & Payroll
+        $hrResponse = $this->actingAs($librarianUser)->get("http://{$domain}/admin/hr");
+        $hrResponse->assertStatus(403);
+    }
+
+    /**
+     * Test accountant can access finance reports but cannot access library or system user management.
+     */
+    public function test_accountant_can_access_finance_but_forbidden_from_library_and_users(): void
+    {
+        $domain = $this->tenant->domains->first()->domain;
+        $accountantUser = User::create([
+            'name' => 'Campus Accountant',
+            'email' => 'accountant.rbac@test.com',
+            'user_type' => 'accountant',
+            'password' => Hash::make('password'),
+        ]);
+
+        // Can access finance
+        $finResponse = $this->actingAs($accountantUser)->get("http://{$domain}/admin/finance-reports");
+        $finResponse->assertStatus(200);
+
+        // Forbidden from library
+        $libResponse = $this->actingAs($accountantUser)->get("http://{$domain}/admin/library");
+        $libResponse->assertStatus(403);
+
+        // Forbidden from creating users
+        $userResponse = $this->actingAs($accountantUser)->post("http://{$domain}/admin/users", [
+            'name' => 'Hacker Staff',
+            'email' => 'hacker@test.com',
+            'user_type' => 'teacher',
+        ]);
+        $userResponse->assertStatus(403);
+    }
 }
