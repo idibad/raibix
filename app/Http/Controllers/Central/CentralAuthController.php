@@ -18,9 +18,25 @@ class CentralAuthController extends Controller
 {
     /**
      * Display the Central Super Admin Login view.
+     * When an active Super Admin session exists, immediately redirect to the Super Admin dashboard.
      */
-    public function showLoginForm(Request $request): Response
+    public function showLoginForm(Request $request)
     {
+        if (Auth::guard('web')->check()) {
+            $isTenantSession = $request->session()->has('_tenant_id') || $request->session()->get('auth_context') === 'tenant';
+            $user = Auth::guard('web')->user();
+            $isTenantUserType = isset($user->user_type) && in_array($user->user_type, ['student', 'parent', 'teacher', 'staff', 'librarian', 'accountant', 'registrar']);
+
+            if ($isTenantSession || $isTenantUserType) {
+                // Clear any leftover tenant session so central super admin can sign in cleanly
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            } else {
+                return redirect()->route('central.dashboard');
+            }
+        }
+
         $requires2fa = (bool) $request->session()->has('2fa_user_id');
         $twoFactorEmail = $request->session()->get('2fa_user_email');
 
@@ -35,6 +51,10 @@ class CentralAuthController extends Controller
      */
     public function login(Request $request)
     {
+        if (Auth::guard('web')->check() && !$request->session()->has('_tenant_id') && $request->session()->get('auth_context') !== 'tenant') {
+            return redirect()->route('central.dashboard');
+        }
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
@@ -135,7 +155,12 @@ class CentralAuthController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
-        return redirect()->intended('/super-admin')->with('success', 'Two-Factor Authentication verified. Welcome back!');
+        $intended = $request->session()->pull('url.intended', '/super-admin');
+        if ($intended === route('login') || str_contains($intended, '/super-admin/login')) {
+            $intended = route('central.dashboard');
+        }
+
+        return redirect()->to($intended)->with('success', 'Two-Factor Authentication verified. Welcome back!');
     }
 
     /**

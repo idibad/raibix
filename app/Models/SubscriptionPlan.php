@@ -36,6 +36,10 @@ class SubscriptionPlan extends Model
             return 0.00;
         }
 
+        if ($this->pricing_type === 'flat') {
+            return (float) ($this->price_monthly ?: 0.00);
+        }
+
         $calculated = $studentCount * ($this->price_per_student ?: 20.00);
         $minimum = (float) ($this->minimum_monthly_bill ?: 2000.00);
 

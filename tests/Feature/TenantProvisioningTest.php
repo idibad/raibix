@@ -81,4 +81,37 @@ class TenantProvisioningTest extends TestCase
 
         tenancy()->end();
     }
+
+    /**
+     * Test that tenant provisioning strictly creates only the requested admin and NO dummy users.
+     */
+    public function test_provision_school_does_not_create_dummy_users(): void
+    {
+        $id = 'clean' . uniqid();
+        $provisioningService = app(\App\Services\TenantProvisioningService::class);
+        $tenant = $provisioningService->provisionSchool([
+            'id' => $id,
+            'name' => 'Clean Slate Academy',
+            'admin_name' => 'Principal Farhan',
+            'admin_email' => "principal.farhan@{$id}.com",
+            'admin_phone' => '03009998877',
+            'admin_password' => 'SecurePass123!',
+        ]);
+
+        tenancy()->initialize($tenant);
+
+        // Verify only the designated principal user exists
+        $users = \App\Models\User::all();
+        $this->assertCount(1, $users, 'Tenant should only have 1 designated school admin user, no dummy users.');
+        $this->assertEquals("principal.farhan@{$id}.com", $users->first()->email);
+        $this->assertEquals('Principal Farhan', $users->first()->name);
+        $this->assertEquals('admin', $users->first()->user_type);
+
+        // Verify no dummy students, parents, or teachers exist
+        $this->assertEquals(0, \App\Models\Student::count(), 'Zero dummy students should be created.');
+        $this->assertEquals(0, \App\Models\ParentsProfile::count(), 'Zero dummy parents should be created.');
+        $this->assertEquals(0, \App\Models\User::where('user_type', '!=', 'admin')->count(), 'Zero non-admin dummy users.');
+
+        tenancy()->end();
+    }
 }

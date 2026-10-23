@@ -174,14 +174,15 @@ class TenantProvisioningService
     }
 
     /**
-     * Create the default Principal user inside the tenant database along with demo teacher, student, and parent accounts.
+     * Create the designated Principal/School Admin user inside the tenant database.
+     * Strictly creates only the requested school administrator account without any dummy or demo users.
      */
     protected function createDefaultSchoolAdmin(array $data): void
     {
         $tenantId = $data['id'] ?? 'school';
         
-        // 1. Create the user-defined Principal Admin
-        $adminEmail = $data['admin_email'] ?? "principal@{$tenantId}.lmscloud.test";
+        // 1. Create the user-defined Principal Admin only
+        $adminEmail = $data['admin_email'] ?? "principal@{$tenantId}." . Tenant::getDomainSuffix();
         $adminPass = $data['admin_password'] ?? 'Secret@123';
         $admin = User::firstOrCreate(
             ['email' => $adminEmail],
@@ -195,134 +196,9 @@ class TenantProvisioningService
         );
         $admin->assignRole('Principal');
 
-        // 2. Also ensure demo admin email exists for the Login.vue quick-tab
-        $demoAdminEmail = "principal@{$tenantId}.lmscloud.test";
-        if ($adminEmail !== $demoAdminEmail) {
-            $demoAdmin = User::firstOrCreate(
-                ['email' => $demoAdminEmail],
-                [
-                    'name' => 'Demo Principal',
-                    'phone' => '03001111111',
-                    'user_type' => 'admin',
-                    'status' => 'active',
-                    'password' => Hash::make('Secret@123'),
-                ]
-            );
-            $demoAdmin->assignRole('Principal');
-        }
-
-        // 3. Create Demo Teacher account
-        $teacherEmail = "teacher@{$tenantId}.lmscloud.test";
-        $teacher = User::firstOrCreate(
-            ['email' => $teacherEmail],
-            [
-                'name' => 'Ms. Ayesha Siddiqui (Demo Teacher)',
-                'phone' => '03002222222',
-                'user_type' => 'teacher',
-                'status' => 'active',
-                'password' => Hash::make('Teacher@123'),
-            ]
-        );
-        $teacher->assignRole('Junior Section Teachers');
-
-        // Create sample academic structure for demo users (Standard & British O/A Levels)
-        $class = \App\Models\SchoolClass::firstOrCreate(
-            ['name' => 'Grade 5', 'level' => 'primary'],
-            ['numeric_grade' => 5]
-        );
-        $section = \App\Models\Section::firstOrCreate(
-            ['class_id' => $class->id, 'name' => 'A'],
-            ['room_number' => '101', 'class_teacher_id' => $teacher->id]
-        );
-        $subject = \App\Models\Subject::firstOrCreate(
-            ['class_id' => $class->id, 'name' => 'Mathematics'],
-            ['code' => 'MATH-501', 'type' => 'theory', 'total_marks' => 100]
-        );
-
-        // Provision O/A Level demo classes right out of the box
-        $oLevelClass = \App\Models\SchoolClass::firstOrCreate(
-            ['name' => 'O-Level Year 1 (I-GCSE)', 'level' => 'o_levels'],
-            ['numeric_grade' => 9]
-        );
-        \App\Models\Section::firstOrCreate(
-            ['class_id' => $oLevelClass->id, 'name' => 'Cambridge Blue'],
-            ['room_number' => 'CB-101', 'class_teacher_id' => $teacher->id]
-        );
-        \App\Models\Subject::firstOrCreate(
-            ['class_id' => $oLevelClass->id, 'name' => 'Physics (OL-PHY)'],
-            ['code' => 'PHY-901', 'type' => 'theory', 'total_marks' => 100]
-        );
-
-        $aLevelClass = \App\Models\SchoolClass::firstOrCreate(
-            ['name' => 'A-Level AS (Year 1)', 'level' => 'a_levels'],
-            ['numeric_grade' => 12]
-        );
-        \App\Models\Section::firstOrCreate(
-            ['class_id' => $aLevelClass->id, 'name' => 'Pre-Medical'],
-            ['room_number' => 'AL-201', 'class_teacher_id' => $teacher->id]
-        );
-
-        // 4. Create Demo Parent account
-        $parentEmail = "parent@{$tenantId}.lmscloud.test";
-        $parentUser = User::firstOrCreate(
-            ['email' => $parentEmail],
-            [
-                'name' => 'Mr. Tariq Mahmood (Demo Parent)',
-                'phone' => '03003333333',
-                'user_type' => 'parent',
-                'status' => 'active',
-                'password' => Hash::make('Parent@123'),
-            ]
-        );
-        $parentUser->assignRole('Father');
-        $parentsProfile = \App\Models\ParentsProfile::firstOrCreate(
-            ['user_id' => $parentUser->id],
-            [
-                'father_name' => 'Mr. Tariq Mahmood',
-                'father_phone' => '03003333333',
-                'mother_name' => 'Mrs. Fatima Mahmood',
-            ]
-        );
-
-        // 5. Create Demo Student account
-        $studentEmail = "student@{$tenantId}.lmscloud.test";
-        $studentUser = User::firstOrCreate(
-            ['email' => $studentEmail],
-            [
-                'name' => 'Ali Tariq (Demo Student)',
-                'phone' => '03004444444',
-                'user_type' => 'student',
-                'status' => 'active',
-                'password' => Hash::make('Student@123'),
-            ]
-        );
-        $studentUser->assignRole('Primary (1-5)');
-        $student = \App\Models\Student::firstOrCreate(
-            ['user_id' => $studentUser->id],
-            [
-                'parent_id' => $parentsProfile->id,
-                'admission_number' => "ADM-2026-001",
-                'roll_number' => "G5A-01",
-                'admission_date' => now(),
-                'current_class_id' => $class->id,
-                'current_section_id' => $section->id,
-                'status' => 'active',
-            ]
-        );
-
-        // Create sample timetable & notice so dashboards have rich initial data
-        \App\Models\Timetable::firstOrCreate(
-            ['section_id' => $section->id, 'day_of_week' => date('l')],
-            [
-                'subject_id' => $subject->id,
-                'teacher_id' => $teacher->id,
-                'start_time' => '08:30:00',
-                'end_time' => '09:15:00',
-                'room_number' => '101',
-            ]
-        );
+        // 2. Initial official announcement for the school portal
         \App\Models\Notice::firstOrCreate(
-            ['title' => 'Welcome to ' . ($data['name'] ?? config('app.name', 'LMS Cloud'))],
+            ['title' => 'Welcome to ' . ($data['name'] ?? config('app.name', 'School Portal'))],
             [
                 'content' => 'Your school cloud portal is now active and ready for administrators, teachers, students, and parents.',
                 'target_audience' => 'all',

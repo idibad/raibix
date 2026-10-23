@@ -249,11 +249,21 @@ class SaaSCheckoutController extends Controller
             $tModel = \App\Models\Tenant::with('domains')->find($request->query('tenant_id'));
             if ($tModel) {
                 $domainStr = $tModel->domains()->first()?->domain ?? ($tModel->id . '.' . \App\Models\Tenant::getDomainSuffix());
+                $adminEmail = null;
+                try {
+                    tenancy()->initialize($tModel);
+                    $adminEmail = \App\Models\User::where('user_type', 'admin')->first()?->email;
+                    tenancy()->end();
+                } catch (\Throwable $e) {
+                    if (function_exists('tenancy') && tenancy()->initialized) {
+                        tenancy()->end();
+                    }
+                }
                 $tenant = [
                     'id' => $tModel->id,
                     'name' => $tModel->name,
                     'domain' => $domainStr,
-                    'admin_email' => "principal@{$tModel->id}.lmscloud.test",
+                    'admin_email' => $adminEmail ?? ("admin@{$tModel->id}." . \App\Models\Tenant::getDomainSuffix()),
                     'admin_password' => null,
                     'plan_name' => 'Selected Subscription Tier',
                     'billing_cycle' => 'monthly',

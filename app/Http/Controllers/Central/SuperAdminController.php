@@ -31,104 +31,11 @@ class SuperAdminController extends Controller
         })->values();
 
         if ($plans->isEmpty()) {
-            SubscriptionPlan::create([
-                'name' => 'Starter',
-                'code' => 'starter',
-                'tagline' => 'Small schools',
-                'summary' => 'Best for schools digitizing their basic academic operations.',
-                'pricing_type' => 'per_student',
-                'price_per_student' => 20.00,
-                'minimum_monthly_bill' => 2000.00,
-                'price_monthly' => 2000.00,
-                'price_yearly' => 24000.00,
-                'max_students' => 5000,
-                'max_teachers' => 100,
-                'features' => [
-                    'Student and staff records',
-                    'Attendance management',
-                    'Classes, sections and timetables',
-                    'Exams, marks and report cards',
-                    'Homework and announcements',
-                    'Basic parent and student portals',
-                ],
-                'modules' => ['sis', 'attendance', 'academics', 'exams', 'homework', 'portals'],
-                'is_active' => true,
-            ]);
-            SubscriptionPlan::create([
-                'name' => 'Professional',
-                'code' => 'professional',
-                'tagline' => 'Recommended',
-                'summary' => 'Best for established schools wanting an integrated management system.',
-                'pricing_type' => 'per_student',
-                'price_per_student' => 35.00,
-                'minimum_monthly_bill' => 3500.00,
-                'price_monthly' => 3500.00,
-                'price_yearly' => 42000.00,
-                'max_students' => 10000,
-                'max_teachers' => 250,
-                'features' => [
-                    'Everything in Starter',
-                    'Fee management and payment records',
-                    'Parent–teacher communication',
-                    'Assignments and academic progress',
-                    'More detailed reports and analytics',
-                    'Role-based access and audit history',
-                    'Priority support',
-                ],
-                'modules' => ['sis', 'attendance', 'academics', 'exams', 'homework', 'portals', 'fees', 'chat', 'reports', 'audit'],
-                'is_active' => true,
-            ]);
-            SubscriptionPlan::create([
-                'name' => 'Premium',
-                'code' => 'premium',
-                'tagline' => 'Advanced',
-                'summary' => 'Offer only when these advanced features and support services are ready.',
-                'pricing_type' => 'per_student',
-                'price_per_student' => 55.00,
-                'minimum_monthly_bill' => 5500.00,
-                'price_monthly' => 5500.00,
-                'price_yearly' => 66000.00,
-                'max_students' => 25000,
-                'max_teachers' => 500,
-                'features' => [
-                    'Everything in Professional',
-                    'Advanced academic and administrative analytics',
-                    'Configurable workflows and reports',
-                    'Advanced exam and assessment tools',
-                    'Data import assistance',
-                    'Priority onboarding and staff training',
-                    'Enhanced support arrangements',
-                ],
-                'modules' => [
-                    'sis', 'attendance', 'academics', 'exams', 'homework', 'portals',
-                    'fees', 'chat', 'reports', 'audit', 'advanced_analytics',
-                    'workflows', 'hr', 'payroll', 'library', 'transport', 'hostel', 'inventory'
-                ],
-                'is_active' => true,
-            ]);
-            SubscriptionPlan::create([
-                'name' => 'Enterprise',
-                'code' => 'enterprise',
-                'tagline' => 'Custom',
-                'summary' => 'For school chains and multi-campus institutions.',
-                'pricing_type' => 'custom',
-                'price_per_student' => 0.00,
-                'minimum_monthly_bill' => 0.00,
-                'price_monthly' => 0.00,
-                'price_yearly' => 0.00,
-                'max_students' => 999999,
-                'max_teachers' => 99999,
-                'features' => [
-                    'Central management across campuses',
-                    'Consolidated reporting',
-                    'Custom integrations and workflows',
-                    'Dedicated onboarding and service agreement',
-                    'Negotiated volume pricing',
-                ],
-                'modules' => ['all'],
-                'is_active' => true,
-            ]);
-            $plans = SubscriptionPlan::where('is_active', true)->get();
+            $this->ensureDefaultPlans();
+            $plans = SubscriptionPlan::where('is_active', true)->get()->sortBy(function ($plan) use ($orderedCodes) {
+                $idx = array_search($plan->code, $orderedCodes, true);
+                return $idx !== false ? $idx : 99;
+            })->values();
         }
 
         $totalSchools = Tenant::count();
@@ -215,12 +122,18 @@ class SuperAdminController extends Controller
             ];
         });
 
-        $plans = SubscriptionPlan::all();
+        $plans = SubscriptionPlan::withCount('subscriptions')
+            ->orderBy('is_active', 'desc')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->map(function ($plan) {
+                $plan->tenants_count = $plan->subscriptions_count;
+                return $plan;
+            });
+
         if ($plans->isEmpty()) {
-            SubscriptionPlan::create(['name' => 'Starter Plan', 'code' => 'starter', 'max_students' => 300, 'price_monthly' => 12000, 'features' => ['Admissions', 'Attendance', 'Fee Management']]);
-            SubscriptionPlan::create(['name' => 'Growth Plan', 'code' => 'growth', 'max_students' => 1000, 'price_monthly' => 25000, 'features' => ['Admissions', 'Attendance', 'AI Face Recognition', 'LMS', 'Examinations']]);
-            SubscriptionPlan::create(['name' => 'Enterprise Plan', 'code' => 'enterprise', 'max_students' => 5000, 'price_monthly' => 60000, 'features' => ['All 16 Modules', 'AI Automation Engine', 'Multi-Campus', 'Dedicated Support']]);
-            $plans = SubscriptionPlan::all();
+            $this->ensureDefaultPlans();
+            $plans = SubscriptionPlan::withCount('subscriptions')->orderBy('is_active', 'desc')->orderBy('id', 'asc')->get();
         }
 
         $activeTxnsSum = SaaSTransaction::where('status', 'paid')->sum('amount');
@@ -533,21 +446,45 @@ class SuperAdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:subscription_plans,code',
-            'price_monthly' => 'required|numeric|min:0',
+            'tagline' => 'nullable|string|max:255',
+            'summary' => 'nullable|string|max:1000',
+            'pricing_type' => 'required|string|in:per_student,flat,custom',
+            'price_per_student' => 'nullable|numeric|min:0',
+            'minimum_monthly_bill' => 'nullable|numeric|min:0',
+            'price_monthly' => 'nullable|numeric|min:0',
+            'price_yearly' => 'nullable|numeric|min:0',
             'max_students' => 'required|integer|min:1',
+            'is_active' => 'nullable|boolean',
             'features' => 'nullable|array',
             'features.*' => 'string',
         ]);
 
+        $pricingType = $validated['pricing_type'] ?? 'per_student';
+        $pricePerStudent = $pricingType === 'per_student' ? (float) ($validated['price_per_student'] ?? 20.00) : 0.00;
+        $minBill = $pricingType === 'per_student' ? (float) ($validated['minimum_monthly_bill'] ?? 2000.00) : 0.00;
+        
+        $priceMonthly = $pricingType === 'flat' 
+            ? (float) ($validated['price_monthly'] ?? 0.00) 
+            : ($pricingType === 'per_student' ? $minBill : 0.00);
+
+        $priceYearly = $pricingType === 'flat' 
+            ? (float) ($validated['price_yearly'] ?? ($priceMonthly * 10)) 
+            : ($pricingType === 'per_student' ? ($minBill * 12) : 0.00);
+
         SubscriptionPlan::create([
             'name' => $validated['name'],
             'code' => strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', $validated['code'])),
-            'price_monthly' => $validated['price_monthly'],
-            'price_yearly' => $validated['price_monthly'] * 10, // 2 months discount by default
+            'tagline' => $validated['tagline'] ?? null,
+            'summary' => $validated['summary'] ?? null,
+            'pricing_type' => $pricingType,
+            'price_per_student' => $pricePerStudent,
+            'minimum_monthly_bill' => $minBill,
+            'price_monthly' => $priceMonthly,
+            'price_yearly' => $priceYearly,
             'max_students' => $validated['max_students'],
             'max_teachers' => max(10, (int) ($validated['max_students'] / 10)),
             'features' => $validated['features'] ?? ['Admissions', 'Attendance', 'Fee Management', 'LMS'],
-            'is_active' => true,
+            'is_active' => $request->has('is_active') ? (bool) $request->input('is_active') : true,
         ]);
 
         return redirect()->back()->with('success', "Subscription Plan [{$validated['name']}] created successfully!");
@@ -560,22 +497,62 @@ class SuperAdminController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'price_monthly' => 'required|numeric|min:0',
+            'code' => 'required|string|max:50|unique:subscription_plans,code,' . $plan->id,
+            'tagline' => 'nullable|string|max:255',
+            'summary' => 'nullable|string|max:1000',
+            'pricing_type' => 'required|string|in:per_student,flat,custom',
+            'price_per_student' => 'nullable|numeric|min:0',
+            'minimum_monthly_bill' => 'nullable|numeric|min:0',
+            'price_monthly' => 'nullable|numeric|min:0',
+            'price_yearly' => 'nullable|numeric|min:0',
             'max_students' => 'required|integer|min:1',
+            'is_active' => 'nullable|boolean',
             'features' => 'nullable|array',
             'features.*' => 'string',
         ]);
 
+        $pricingType = $validated['pricing_type'] ?? $plan->pricing_type ?? 'per_student';
+        $pricePerStudent = $pricingType === 'per_student' ? (float) ($validated['price_per_student'] ?? 20.00) : 0.00;
+        $minBill = $pricingType === 'per_student' ? (float) ($validated['minimum_monthly_bill'] ?? 2000.00) : 0.00;
+
+        $priceMonthly = $pricingType === 'flat' 
+            ? (float) ($validated['price_monthly'] ?? 0.00) 
+            : ($pricingType === 'per_student' ? $minBill : 0.00);
+
+        $priceYearly = $pricingType === 'flat' 
+            ? (float) ($validated['price_yearly'] ?? ($priceMonthly * 10)) 
+            : ($pricingType === 'per_student' ? ($minBill * 12) : 0.00);
+
         $plan->update([
             'name' => $validated['name'],
-            'price_monthly' => $validated['price_monthly'],
-            'price_yearly' => $validated['price_monthly'] * 10,
+            'code' => strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', $validated['code'])),
+            'tagline' => $validated['tagline'] ?? null,
+            'summary' => $validated['summary'] ?? null,
+            'pricing_type' => $pricingType,
+            'price_per_student' => $pricePerStudent,
+            'minimum_monthly_bill' => $minBill,
+            'price_monthly' => $priceMonthly,
+            'price_yearly' => $priceYearly,
             'max_students' => $validated['max_students'],
             'max_teachers' => max(10, (int) ($validated['max_students'] / 10)),
             'features' => $validated['features'] ?? $plan->features,
+            'is_active' => $request->has('is_active') ? (bool) $request->input('is_active') : $plan->is_active,
         ]);
 
         return redirect()->back()->with('success', "Subscription Plan [{$plan->name}] updated successfully!");
+    }
+
+    /**
+     * Toggle a Subscription Plan's active status (Publish/Unpublish on Landing Page).
+     */
+    public function togglePlanStatus(SubscriptionPlan $plan)
+    {
+        $plan->update([
+            'is_active' => !$plan->is_active,
+        ]);
+
+        $statusStr = $plan->is_active ? 'Active & Published to Landing Page' : 'Inactive & Hidden from Landing Page';
+        return redirect()->back()->with('success', "Subscription Plan [{$plan->name}] is now {$statusStr}.");
     }
 
     /**
@@ -587,6 +564,110 @@ class SuperAdminController extends Controller
         $plan->delete();
 
         return redirect()->back()->with('success', "Subscription Plan [{$name}] removed successfully!");
+    }
+
+    /**
+     * Ensure default tiered subscription plans exist if table is empty.
+     */
+    protected function ensureDefaultPlans(): void
+    {
+        SubscriptionPlan::create([
+            'name' => 'Starter',
+            'code' => 'starter',
+            'tagline' => 'Small schools',
+            'summary' => 'Best for schools digitizing their basic academic operations.',
+            'pricing_type' => 'per_student',
+            'price_per_student' => 20.00,
+            'minimum_monthly_bill' => 2000.00,
+            'price_monthly' => 2000.00,
+            'price_yearly' => 24000.00,
+            'max_students' => 5000,
+            'max_teachers' => 100,
+            'features' => [
+                'Student and staff records',
+                'Attendance management',
+                'Classes, sections and timetables',
+                'Exams, marks and report cards',
+                'Homework and announcements',
+                'Basic parent and student portals',
+            ],
+            'modules' => ['sis', 'attendance', 'academics', 'exams', 'homework', 'portals'],
+            'is_active' => true,
+        ]);
+        SubscriptionPlan::create([
+            'name' => 'Professional',
+            'code' => 'professional',
+            'tagline' => 'Recommended',
+            'summary' => 'Best for established schools wanting an integrated management system.',
+            'pricing_type' => 'per_student',
+            'price_per_student' => 35.00,
+            'minimum_monthly_bill' => 3500.00,
+            'price_monthly' => 3500.00,
+            'price_yearly' => 42000.00,
+            'max_students' => 10000,
+            'max_teachers' => 250,
+            'features' => [
+                'Everything in Starter',
+                'Fee management and payment records',
+                'Parent–teacher communication',
+                'Assignments and academic progress',
+                'More detailed reports and analytics',
+                'Role-based access and audit history',
+                'Priority support',
+            ],
+            'modules' => ['sis', 'attendance', 'academics', 'exams', 'homework', 'portals', 'fees', 'chat', 'reports', 'audit'],
+            'is_active' => true,
+        ]);
+        SubscriptionPlan::create([
+            'name' => 'Premium',
+            'code' => 'premium',
+            'tagline' => 'Advanced',
+            'summary' => 'Offer only when these advanced features and support services are ready.',
+            'pricing_type' => 'per_student',
+            'price_per_student' => 55.00,
+            'minimum_monthly_bill' => 5500.00,
+            'price_monthly' => 5500.00,
+            'price_yearly' => 66000.00,
+            'max_students' => 25000,
+            'max_teachers' => 500,
+            'features' => [
+                'Everything in Professional',
+                'Advanced academic and administrative analytics',
+                'Configurable workflows and reports',
+                'Advanced exam and assessment tools',
+                'Data import assistance',
+                'Priority onboarding and staff training',
+                'Enhanced support arrangements',
+            ],
+            'modules' => [
+                'sis', 'attendance', 'academics', 'exams', 'homework', 'portals',
+                'fees', 'chat', 'reports', 'audit', 'advanced_analytics',
+                'workflows', 'hr', 'payroll', 'library', 'transport', 'hostel', 'inventory'
+            ],
+            'is_active' => true,
+        ]);
+        SubscriptionPlan::create([
+            'name' => 'Enterprise',
+            'code' => 'enterprise',
+            'tagline' => 'Custom',
+            'summary' => 'For school chains and multi-campus institutions.',
+            'pricing_type' => 'custom',
+            'price_per_student' => 0.00,
+            'minimum_monthly_bill' => 0.00,
+            'price_monthly' => 0.00,
+            'price_yearly' => 0.00,
+            'max_students' => 999999,
+            'max_teachers' => 99999,
+            'features' => [
+                'Central management across campuses',
+                'Consolidated reporting',
+                'Custom integrations and workflows',
+                'Dedicated onboarding and service agreement',
+                'Negotiated volume pricing',
+            ],
+            'modules' => ['all'],
+            'is_active' => true,
+        ]);
     }
 
     /**

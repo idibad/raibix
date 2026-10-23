@@ -82,6 +82,9 @@ const switchPlan = (plan) => {
 const monthlyCalculatedBase = computed(() => {
     if (!selectedPlan.value) return 2000;
     if (selectedPlan.value.pricing_type === 'custom') return 0;
+    if (selectedPlan.value.pricing_type === 'flat') {
+        return Number(selectedPlan.value.price_monthly || 0);
+    }
     const rate = Number(selectedPlan.value.price_per_student || 20);
     const minBill = Number(selectedPlan.value.minimum_monthly_bill || 2000);
     const count = Math.max(1, Number(estimatedStudents.value || 100));
@@ -89,7 +92,7 @@ const monthlyCalculatedBase = computed(() => {
 });
 
 const isMinimumFloorApplied = computed(() => {
-    if (!selectedPlan.value || selectedPlan.value.pricing_type === 'custom') return false;
+    if (!selectedPlan.value || selectedPlan.value.pricing_type !== 'per_student') return false;
     const rate = Number(selectedPlan.value.price_per_student || 20);
     const minBill = Number(selectedPlan.value.minimum_monthly_bill || 2000);
     const count = Number(estimatedStudents.value || 0);

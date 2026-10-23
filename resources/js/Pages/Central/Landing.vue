@@ -266,21 +266,77 @@ const defaultPlans = [
 ];
 
 const plansList = computed(() => {
-    if (props.plans && props.plans.length >= 4) {
+    if (props.plans && props.plans.length > 0) {
         return props.plans;
     }
     return defaultPlans;
 });
 
-const getDisplayRate = (plan) => {
-    if (plan.pricing_type === 'custom') {
-        return null;
+const plansGridClass = computed(() => {
+    const count = plansList.value.length;
+    if (count === 1) return 'grid grid-cols-1 max-w-md mx-auto gap-6';
+    if (count === 2) return 'grid grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto gap-6';
+    if (count === 3) return 'grid grid-cols-1 md:grid-cols-3 gap-6';
+    return 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6';
+});
+
+const isPlanRecommended = (plan) => {
+    if (plan.featured) return true;
+    const tag = (plan.tagline || '').toLowerCase();
+    const code = (plan.code || '').toLowerCase();
+    return tag.includes('recommended') || tag.includes('popular') || code === 'professional';
+};
+
+const getDisplayPrice = (plan) => {
+    if (plan.pricing_type === 'custom') return 'Custom';
+    if (plan.pricing_type === 'flat') {
+        const monthly = Number(plan.price_monthly || 0);
+        if (isAnnual.value) {
+            return 'PKR ' + Math.round(monthly * 0.8).toLocaleString();
+        }
+        return 'PKR ' + Math.round(monthly).toLocaleString();
     }
+    // per_student
     const rate = Number(plan.price_per_student || 20);
     if (isAnnual.value) {
-        return Math.round(rate * 0.8);
+        return 'PKR ' + Math.round(rate * 0.8).toLocaleString();
     }
-    return rate;
+    return 'PKR ' + Math.round(rate).toLocaleString();
+};
+
+const getPricingSubtext = (plan) => {
+    if (plan.pricing_type === 'custom') return 'Volume Pricing';
+    if (plan.pricing_type === 'flat') {
+        return isAnnual.value ? '/ month (billed yearly)' : '/ month';
+    }
+    return '/ student / mo';
+};
+
+const getMinimumBillText = (plan) => {
+    if (plan.pricing_type === 'custom') {
+        return 'For school chains and multi-campus institutions.';
+    }
+    if (plan.pricing_type === 'flat') {
+        const yearly = Number(plan.price_yearly || (plan.price_monthly * 10));
+        return isAnnual.value 
+            ? `Billed yearly: PKR ${yearly.toLocaleString()} (Save 20%)`
+            : `Standard billing per campus`;
+    }
+    const minBill = Number(plan.minimum_monthly_bill || 2000);
+    return `Min. bill: PKR ${minBill.toLocaleString()}/month per school`;
+};
+
+const getPlanFeatures = (plan) => {
+    if (Array.isArray(plan.features)) return plan.features;
+    if (typeof plan.features === 'string') {
+        try {
+            const parsed = JSON.parse(plan.features);
+            if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+            return plan.features.split(',').map(s => s.trim()).filter(Boolean);
+        }
+    }
+    return ['Core School Management System'];
 };
 
 // =============================================================================
@@ -975,15 +1031,15 @@ onUnmounted(() => {
                     <!-- ONE Large Enclosed Pricing Container (As specified) -->
                     <div class="rounded-3xl border border-[#E7E9EE] bg-[#F7F8FA] p-6 sm:p-10 space-y-10">
                         
-                        <!-- Four Plans Side by Side Inside Container -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
+                        <!-- Dynamic Plans Grid Inside Container -->
+                        <div :class="[plansGridClass, 'items-stretch']">
                             
                             <div 
                                 v-for="plan in plansList" 
                                 :key="plan.id || plan.code"
                                 :class="[
                                     'rounded-2xl p-7 flex flex-col justify-between text-left transition-all duration-200',
-                                    (plan.featured || plan.code === 'professional')
+                                    isPlanRecommended(plan)
                                         ? 'bg-white border-2 border-[#111318] shadow-md ring-1 ring-[#111318]' 
                                         : 'bg-[#FBFBFC] border border-[#E7E9EE]'
                                 ]"
@@ -996,8 +1052,8 @@ onUnmounted(() => {
                                             <!-- 2. Prominent Plan Name -->
                                             <span class="text-sm font-extrabold text-[#111318] tracking-tight">{{ plan.name }}</span>
                                         </div>
-                                        <span v-if="plan.featured || plan.code === 'professional'" class="text-[10px] font-bold uppercase tracking-wider text-[#2F6BFF] bg-[#2F6BFF]/10 px-2 py-0.5 rounded-full">
-                                            Recommended
+                                        <span v-if="isPlanRecommended(plan)" class="text-[10px] font-bold uppercase tracking-wider text-[#2F6BFF] bg-[#2F6BFF]/10 px-2 py-0.5 rounded-full">
+                                            {{ plan.tagline || 'Recommended' }}
                                         </span>
                                         <span v-else-if="plan.tagline" class="text-[11px] font-semibold text-[#5B6270]">
                                             {{ plan.tagline }}
@@ -1005,24 +1061,24 @@ onUnmounted(() => {
                                     </div>
 
                                     <!-- 3. Actual Price & Billing Frequency -->
-                                    <div v-if="plan.code === 'enterprise' || plan.pricing_type === 'custom'" class="mt-6">
+                                    <div v-if="plan.pricing_type === 'custom'" class="mt-6">
                                         <div class="text-3xl sm:text-4xl font-black text-[#111318] tracking-tight">Custom</div>
-                                        <div class="text-xs font-semibold text-[#6B7280] mt-1">Volume Pricing</div>
+                                        <div class="text-xs font-semibold text-[#6B7280] mt-1">{{ getPricingSubtext(plan) }}</div>
                                         <p class="mt-2 text-xs font-medium text-[#5B6270]">
-                                            For school chains and multi-campus institutions.
+                                            {{ getMinimumBillText(plan) }}
                                         </p>
                                     </div>
                                     <div v-else class="mt-6">
                                         <div class="flex items-baseline gap-1.5 flex-wrap">
                                             <span class="text-3xl sm:text-4xl font-black text-[#111318] tracking-tight">
-                                                PKR {{ getDisplayRate(plan) }}
+                                                {{ getDisplayPrice(plan) }}
                                             </span>
                                             <span class="text-xs font-semibold text-[#6B7280]">
-                                                / student / mo
+                                                {{ getPricingSubtext(plan) }}
                                             </span>
                                         </div>
                                         <p class="mt-2 text-xs font-medium text-[#5B6270]">
-                                            Min. bill: PKR {{ (plan.minimum_monthly_bill || 2000).toLocaleString() }}/month per school
+                                            {{ getMinimumBillText(plan) }}
                                         </p>
                                     </div>
 
@@ -1033,7 +1089,7 @@ onUnmounted(() => {
                                     <!-- 4. Concise List of Included Features -->
                                     <div class="mt-6 space-y-2.5 pt-5 border-t border-[#E7E9EE] flex-1">
                                         <div 
-                                            v-for="(feature, fIdx) in plan.features" 
+                                            v-for="(feature, fIdx) in getPlanFeatures(plan)" 
                                             :key="fIdx"
                                             class="flex items-start gap-2.5 text-xs text-[#111318]"
                                         >
@@ -1048,7 +1104,7 @@ onUnmounted(() => {
                                 <!-- 5. Clear CTA -->
                                 <div class="mt-8 pt-5 border-t border-[#E7E9EE]">
                                     <button 
-                                        v-if="plan.code === 'enterprise' || plan.pricing_type === 'custom'"
+                                        v-if="plan.pricing_type === 'custom'"
                                         type="button" 
                                         @click="expertModalOpen = true"
                                         class="w-full flex items-center justify-center gap-2 rounded-full py-3.5 text-xs font-bold transition-all duration-200 cursor-pointer bg-white hover:bg-[#111318] hover:text-white text-[#111318] border border-[#E7E9EE]"
@@ -1061,13 +1117,13 @@ onUnmounted(() => {
                                         :href="`/checkout/${plan.code}`"
                                         :class="[
                                             'w-full flex items-center justify-center gap-2 rounded-full py-3.5 text-xs font-bold transition-all duration-200 cursor-pointer',
-                                            (plan.featured || plan.code === 'professional')
+                                            isPlanRecommended(plan)
                                                 ? 'bg-[#111318] hover:bg-[#2F6BFF] text-white shadow-xs' 
                                                 : 'bg-white hover:bg-[#111318] hover:text-white text-[#111318] border border-[#E7E9EE]'
                                         ]"
                                     >
                                         <span>Get {{ plan.name }}</span>
-                                        <span v-if="plan.featured || plan.code === 'professional'" class="raibix-dot h-1.5 w-1.5"></span>
+                                        <span v-if="isPlanRecommended(plan)" class="raibix-dot h-1.5 w-1.5"></span>
                                     </Link>
                                 </div>
                             </div>

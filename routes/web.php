@@ -66,6 +66,7 @@ Route::domain($domain)->group(function () {
     Route::post('/checkout/add-user', [SaaSCheckoutController::class, 'addFirstUser'])->name('central.checkout.add_user');
 
     // Super Admin Authentication Routes (with 2FA)
+    Route::redirect('/login', '/super-admin/login');
     Route::get('/super-admin/login', [CentralAuthController::class, 'showLoginForm'])->name('login');
     Route::post('/super-admin/login', [CentralAuthController::class, 'login'])->name('central.login.post');
     Route::post('/super-admin/login/verify-2fa', [CentralAuthController::class, 'verify2fa'])->name('central.login.verify2fa');
@@ -81,6 +82,7 @@ Route::domain($domain)->group(function () {
         Route::post('/plans', [SuperAdminController::class, 'storePlan'])->name('central.plans.store');
         Route::put('/plans/{plan}', [SuperAdminController::class, 'updatePlan'])->name('central.plans.update');
         Route::delete('/plans/{plan}', [SuperAdminController::class, 'destroyPlan'])->name('central.plans.destroy');
+        Route::post('/plans/{plan}/toggle-status', [SuperAdminController::class, 'togglePlanStatus'])->name('central.plans.toggle');
 
         // Tenant Health & Lifecycle Management
         Route::put('/tenants/{tenant}', [SuperAdminController::class, 'updateTenant'])->name('central.tenants.update');

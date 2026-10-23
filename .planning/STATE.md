@@ -49,6 +49,7 @@ Recent decisions affecting current work:
 
 ### Quick Tasks Completed
 - `20261022-clean-db-noreply-emails`: Database cleanup, password reset & alert email setup, and UI placeholder normalization.
+- `20261023-dynamic-subscription-plans`: Made landing page plans dynamic, aligned dashboard packages with public landing page, added 1-click publish/unpublish toggle, and upgraded plan editor modal with per-student and flat pricing models.
 
 ### Pending Todos
 

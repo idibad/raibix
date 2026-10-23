@@ -440,8 +440,15 @@ const featureInput = ref('');
 const planForm = useForm({
     name: '',
     code: '',
+    tagline: '',
+    summary: '',
+    pricing_type: 'per_student',
+    price_per_student: 20,
+    minimum_monthly_bill: 2000,
     price_monthly: 0,
+    price_yearly: 0,
     max_students: 500,
+    is_active: true,
     features: ['Admissions & Enrollment', 'Daily Attendance', 'Fee Management', 'LMS & Assignments'],
 });
 
@@ -450,6 +457,17 @@ const openAddPlanModal = () => {
     selectedPlan.value = null;
     featureInput.value = '';
     planForm.reset();
+    planForm.name = '';
+    planForm.code = '';
+    planForm.tagline = '';
+    planForm.summary = '';
+    planForm.pricing_type = 'per_student';
+    planForm.price_per_student = 20;
+    planForm.minimum_monthly_bill = 2000;
+    planForm.price_monthly = 2000;
+    planForm.price_yearly = 24000;
+    planForm.max_students = 500;
+    planForm.is_active = true;
     planForm.features = ['Admissions & Enrollment', 'Daily Attendance', 'Fee Management', 'LMS & Assignments'];
     showPlanModal.value = true;
 };
@@ -458,12 +476,26 @@ const openEditPlanModal = (plan) => {
     isEditingPlan.value = true;
     selectedPlan.value = plan;
     featureInput.value = '';
-    planForm.name = plan.name;
-    planForm.code = plan.code;
-    planForm.price_monthly = plan.price_monthly;
-    planForm.max_students = plan.max_students;
+    planForm.name = plan.name || '';
+    planForm.code = plan.code || '';
+    planForm.tagline = plan.tagline || '';
+    planForm.summary = plan.summary || '';
+    planForm.pricing_type = plan.pricing_type || 'per_student';
+    planForm.price_per_student = plan.price_per_student !== null && plan.price_per_student !== undefined ? plan.price_per_student : 20;
+    planForm.minimum_monthly_bill = plan.minimum_monthly_bill !== null && plan.minimum_monthly_bill !== undefined ? plan.minimum_monthly_bill : 2000;
+    planForm.price_monthly = plan.price_monthly || 0;
+    planForm.price_yearly = plan.price_yearly || 0;
+    planForm.max_students = plan.max_students || 500;
+    planForm.is_active = plan.is_active !== undefined ? Boolean(plan.is_active) : true;
     planForm.features = Array.isArray(plan.features) ? [...plan.features] : ['Admissions & Enrollment', 'Daily Attendance', 'Fee Management', 'LMS & Assignments'];
     showPlanModal.value = true;
+};
+
+const togglePlanStatus = (plan) => {
+    router.post(`/plans/${plan.id}/toggle-status`, {}, {
+        preserveScroll: true,
+        onSuccess: () => triggerAlert(`Plan [${plan.name}] status toggled successfully.`)
+    });
 };
 
 const addFeatureToPlan = () => {
@@ -2197,40 +2229,107 @@ const logout = () => {
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                        <div v-for="plan in plans" :key="plan.id" class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex flex-col justify-between relative overflow-hidden transition-all hover:border-[#2F6BFF]/40">
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                        <div 
+                            v-for="plan in plans" 
+                            :key="plan.id" 
+                            :class="[
+                                'rounded-2xl border bg-white p-6 shadow-2xs flex flex-col justify-between relative overflow-hidden transition-all',
+                                plan.is_active ? 'border-[#E6E8EE] hover:border-[#2F6BFF]/40' : 'border-amber-200 bg-amber-50/20 opacity-80'
+                            ]"
+                        >
                             <div>
-                                <div class="flex items-center justify-between">
-                                    <span class="rounded-full bg-[#EEF3FF] px-3 py-1 text-xs font-bold text-[#2F6BFF] uppercase tracking-wider border border-[#D6E4FF]">
-                                        {{ plan.code }}
-                                    </span>
-                                    <div class="space-x-2">
-                                        <button @click="openEditPlanModal(plan)" class="text-xs font-bold text-[#2F6BFF] hover:underline cursor-pointer">Edit</button>
-                                        <button @click="confirmDeletePlan(plan)" class="text-xs font-bold text-red-600 hover:underline cursor-pointer">Delete</button>
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="rounded-full bg-[#EEF3FF] px-2.5 py-0.5 text-2xs font-bold text-[#2F6BFF] uppercase tracking-wider border border-[#D6E4FF]">
+                                            {{ plan.code }}
+                                        </span>
+                                        <span 
+                                            :class="[
+                                                'rounded-full px-2 py-0.5 text-3xs font-black uppercase tracking-wider',
+                                                plan.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                            ]"
+                                        >
+                                            {{ plan.is_active ? 'Published' : 'Hidden' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button 
+                                            type="button"
+                                            @click="togglePlanStatus(plan)" 
+                                            :class="[
+                                                'text-2xs font-bold hover:underline cursor-pointer',
+                                                plan.is_active ? 'text-amber-600' : 'text-emerald-600'
+                                            ]"
+                                        >
+                                            {{ plan.is_active ? 'Unpublish' : 'Publish' }}
+                                        </button>
+                                        <button @click="openEditPlanModal(plan)" class="text-2xs font-bold text-[#2F6BFF] hover:underline cursor-pointer">Edit</button>
+                                        <button @click="confirmDeletePlan(plan)" class="text-2xs font-bold text-red-600 hover:underline cursor-pointer">Delete</button>
                                     </div>
                                 </div>
 
-                                <h3 class="mt-4 text-xl font-extrabold text-[#111318]">{{ plan.name }}</h3>
-                                <div class="mt-2 flex items-baseline space-x-1">
-                                    <span class="text-3xl font-extrabold text-[#111318]">PKR {{ (plan.price_monthly || 0).toLocaleString() }}</span>
-                                    <span class="text-xs font-semibold text-[#5B6270]">/ month</span>
+                                <div class="mt-3 flex items-center justify-between">
+                                    <h3 class="text-lg font-extrabold text-[#111318]">{{ plan.name }}</h3>
+                                    <span v-if="plan.tagline" class="text-2xs font-bold text-[#5B6270] bg-[#F4F5F8] px-2 py-0.5 rounded-full">
+                                        {{ plan.tagline }}
+                                    </span>
                                 </div>
-                                <p class="mt-1 text-xs font-semibold text-[#5B6270]">Enrollment Cap: {{ (plan.max_students || 500).toLocaleString() }} Students</p>
 
-                                <div class="mt-6 border-t border-[#E6E8EE] pt-4 space-y-2">
-                                    <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Package Inclusions:</p>
-                                    <ul class="space-y-2 text-xs">
-                                        <li v-for="feature in (Array.isArray(plan.features) ? plan.features : ['Core SIS', 'Attendance', 'Fees', 'LMS'])" :key="feature" class="flex items-center space-x-2 text-[#111318]">
-                                            <i class="fa-solid fa-check text-emerald-600"></i>
-                                            <span class="font-medium">{{ feature }}</span>
+                                <!-- Dynamic Pricing Summary -->
+                                <div v-if="plan.pricing_type === 'custom'" class="mt-3">
+                                    <div class="text-2xl font-black text-[#111318]">Custom</div>
+                                    <p class="text-2xs text-[#5B6270]">Volume Negotiated Pricing</p>
+                                </div>
+                                <div v-else-if="plan.pricing_type === 'flat'" class="mt-3">
+                                    <div class="flex items-baseline space-x-1">
+                                        <span class="text-2xl font-black text-[#111318]">PKR {{ (plan.price_monthly || 0).toLocaleString() }}</span>
+                                        <span class="text-xs font-semibold text-[#5B6270]">/ month</span>
+                                    </div>
+                                    <p class="text-2xs text-[#5B6270]">Fixed flat fee (Yearly: PKR {{ (plan.price_yearly || 0).toLocaleString() }})</p>
+                                </div>
+                                <div v-else class="mt-3">
+                                    <div class="flex items-baseline space-x-1">
+                                        <span class="text-2xl font-black text-[#111318]">PKR {{ Number(plan.price_per_student || 20).toLocaleString() }}</span>
+                                        <span class="text-xs font-semibold text-[#5B6270]">/ student / mo</span>
+                                    </div>
+                                    <p class="text-2xs font-semibold text-[#5B6270]">
+                                        Min. bill: PKR {{ Number(plan.minimum_monthly_bill || 2000).toLocaleString() }}/month
+                                    </p>
+                                </div>
+
+                                <p v-if="plan.summary" class="mt-2 text-2xs text-[#5B6270] leading-relaxed line-clamp-2">
+                                    {{ plan.summary }}
+                                </p>
+                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">
+                                    Enrollment Cap: {{ (plan.max_students || 500).toLocaleString() }} Students
+                                </p>
+
+                                <div class="mt-4 border-t border-[#E6E8EE] pt-3 space-y-1.5">
+                                    <p class="text-3xs font-bold uppercase tracking-wider text-[#5B6270]">Package Inclusions:</p>
+                                    <ul class="space-y-1 text-2xs">
+                                        <li 
+                                            v-for="feature in (Array.isArray(plan.features) ? plan.features.slice(0, 5) : ['Core SIS', 'Attendance'])" 
+                                            :key="feature" 
+                                            class="flex items-center space-x-2 text-[#111318]"
+                                        >
+                                            <i class="fa-solid fa-check text-emerald-600 text-3xs"></i>
+                                            <span class="font-medium truncate">{{ feature }}</span>
+                                        </li>
+                                        <li v-if="Array.isArray(plan.features) && plan.features.length > 5" class="text-3xs text-[#2F6BFF] font-bold">
+                                            + {{ plan.features.length - 5 }} more features...
                                         </li>
                                     </ul>
                                 </div>
                             </div>
 
-                            <div class="mt-6 pt-4 border-t border-[#E6E8EE]">
-                                <span class="block text-center text-xs font-bold text-[#5B6270]">
-                                    {{ plan.tenants_count || 0 }} Schools Subscribed
+                            <div class="mt-4 pt-3 border-t border-[#E6E8EE] flex items-center justify-between text-2xs">
+                                <span class="font-bold text-[#5B6270]">
+                                    {{ plan.tenants_count || plan.subscriptions_count || 0 }} Schools Subscribed
+                                </span>
+                                <span :class="plan.is_active ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold'">
+                                    <i :class="plan.is_active ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'" class="mr-1"></i>
+                                    {{ plan.is_active ? 'On Landing' : 'Hidden' }}
                                 </span>
                             </div>
                         </div>
@@ -3175,7 +3274,7 @@ const logout = () => {
                                     v-model="planForm.name" 
                                     type="text" 
                                     required 
-                                    placeholder="Essential Plan"
+                                    placeholder="e.g. Professional"
                                     class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
                                 />
                             </div>
@@ -3185,13 +3284,64 @@ const logout = () => {
                                     v-model="planForm.code" 
                                     type="text" 
                                     required 
-                                    placeholder="ESSENTIAL"
-                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 uppercase font-mono focus:border-[#2F6BFF] focus:outline-none"
+                                    placeholder="professional"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 lowercase font-mono focus:border-[#2F6BFF] focus:outline-none"
                                 />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Tagline / Badge</label>
+                                <input 
+                                    v-model="planForm.tagline" 
+                                    type="text" 
+                                    placeholder="e.g. Recommended, Small schools"
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Pricing Model</label>
+                                <select 
+                                    v-model="planForm.pricing_type" 
+                                    required
+                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 bg-white font-medium focus:border-[#2F6BFF] focus:outline-none"
+                                >
+                                    <option value="per_student">Per Student / Mo (Usage-based)</option>
+                                    <option value="flat">Flat Fixed Fee / Mo</option>
+                                    <option value="custom">Custom / Enterprise (Sales Contact)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Per Student Pricing Inputs -->
+                        <div v-if="planForm.pricing_type === 'per_student'" class="grid grid-cols-2 gap-4 bg-[#F8F9FA] p-3 rounded-xl border border-[#E6E8EE]">
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Rate (PKR / student / mo)</label>
+                                <input 
+                                    v-model.number="planForm.price_per_student" 
+                                    type="number" 
+                                    min="0"
+                                    step="1"
+                                    required 
+                                    class="w-full rounded-xl border border-[#E6E8EE] bg-white px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Min. Monthly Bill (PKR)</label>
+                                <input 
+                                    v-model.number="planForm.minimum_monthly_bill" 
+                                    type="number" 
+                                    min="0"
+                                    step="100"
+                                    required 
+                                    class="w-full rounded-xl border border-[#E6E8EE] bg-white px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Flat Fee Pricing Inputs -->
+                        <div v-else-if="planForm.pricing_type === 'flat'" class="grid grid-cols-2 gap-4 bg-[#F8F9FA] p-3 rounded-xl border border-[#E6E8EE]">
                             <div>
                                 <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Monthly Price (PKR)</label>
                                 <input 
@@ -3199,19 +3349,58 @@ const logout = () => {
                                     type="number" 
                                     required 
                                     min="0"
-                                    class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                    class="w-full rounded-xl border border-[#E6E8EE] bg-white px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
                                 />
                             </div>
+                            <div>
+                                <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Yearly Price (PKR)</label>
+                                <input 
+                                    v-model.number="planForm.price_yearly" 
+                                    type="number" 
+                                    min="0"
+                                    placeholder="Leave empty for 10x monthly"
+                                    class="w-full rounded-xl border border-[#E6E8EE] bg-white px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Custom Pricing Notice -->
+                        <div v-else class="p-3 bg-[#EEF3FF] rounded-xl border border-[#D6E4FF] text-2xs text-[#2F6BFF]">
+                            <i class="fa-solid fa-circle-info mr-1"></i>
+                            Custom pricing packages display a "Talk to Sales" button that opens the direct consultation modal on the landing page.
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Max Student Cap</label>
                                 <input 
                                     v-model.number="planForm.max_students" 
                                     type="number" 
                                     required 
-                                    min="10"
+                                    min="1"
                                     class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2.5 focus:border-[#2F6BFF] focus:outline-none"
                                 />
                             </div>
+                            <div class="flex items-center pt-5">
+                                <label class="flex items-center space-x-2.5 cursor-pointer">
+                                    <input 
+                                        v-model="planForm.is_active" 
+                                        type="checkbox" 
+                                        class="h-4 w-4 rounded border-gray-300 text-[#2F6BFF] focus:ring-[#2F6BFF]"
+                                    />
+                                    <span class="text-xs font-bold text-[#111318]">Publish to Public Landing Page</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-2xs font-bold uppercase tracking-wider text-[#111318] mb-1">Plan Summary / Subtitle</label>
+                            <textarea 
+                                v-model="planForm.summary" 
+                                rows="2"
+                                placeholder="Brief value proposition for this plan..."
+                                class="w-full rounded-xl border border-[#E6E8EE] px-3.5 py-2 focus:border-[#2F6BFF] focus:outline-none"
+                            ></textarea>
                         </div>
 
                         <div class="border-t border-[#E6E8EE] pt-4 space-y-3">
@@ -3228,7 +3417,7 @@ const logout = () => {
                                     + Add
                                 </button>
                             </div>
-                            <div class="flex flex-wrap gap-2 pt-1">
+                            <div class="flex flex-wrap gap-2 pt-1 max-h-36 overflow-y-auto">
                                 <span 
                                     v-for="(feat, idx) in planForm.features" 
                                     :key="idx"

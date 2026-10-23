@@ -118,6 +118,100 @@ class TieredPerStudentSubscriptionTest extends TestCase
     {
         $response = $this->get('/');
         $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Central/Landing')
+            ->has('plans', 4)
+        );
+    }
+
+    public function test_flat_pricing_calculates_monthly_bill_correctly(): void
+    {
+        $flatPlan = SubscriptionPlan::create([
+            'name' => 'Campus Flat',
+            'code' => 'campus_flat',
+            'pricing_type' => 'flat',
+            'price_monthly' => 15000.00,
+            'price_yearly' => 150000.00,
+            'max_students' => 1000,
+            'is_active' => true,
+        ]);
+
+        $this->assertEquals(15000.00, $flatPlan->calculateMonthlyBill(100));
+        $this->assertEquals(15000.00, $flatPlan->calculateMonthlyBill(500));
+    }
+
+    public function test_super_admin_can_toggle_plan_status(): void
+    {
+        $user = \App\Models\User::create([
+            'name' => 'Super Admin',
+            'email' => 'superadmin@raibix.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        ]);
+
+        $starter = SubscriptionPlan::where('code', 'starter')->first();
+        $this->assertTrue($starter->is_active);
+
+        // Toggle from active to inactive
+        $response = $this->actingAs($user)->post("/plans/{$starter->id}/toggle-status");
+        $response->assertRedirect();
+
+        $starter->refresh();
+        $this->assertFalse($starter->is_active);
+
+        // Toggle back to active
+        $response = $this->actingAs($user)->post("/plans/{$starter->id}/toggle-status");
+        $response->assertRedirect();
+
+        $starter->refresh();
+        $this->assertTrue($starter->is_active);
+    }
+
+    public function test_super_admin_can_create_and_update_dynamic_plan(): void
+    {
+        $user = \App\Models\User::create([
+            'name' => 'Super Admin 2',
+            'email' => 'superadmin2@raibix.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        ]);
+
+        $createResponse = $this->actingAs($user)->post('/plans', [
+            'name' => 'Ultra Campus',
+            'code' => 'ultra_campus',
+            'tagline' => 'Best Value',
+            'summary' => 'Comprehensive multi-branch campus plan',
+            'pricing_type' => 'per_student',
+            'price_per_student' => 45.00,
+            'minimum_monthly_bill' => 4500.00,
+            'max_students' => 15000,
+            'is_active' => true,
+            'features' => ['Complete ERP', 'Hostel', 'Transport'],
+        ]);
+
+        $createResponse->assertRedirect();
+        $plan = SubscriptionPlan::where('code', 'ultra_campus')->first();
+        $this->assertNotNull($plan);
+        $this->assertEquals('Best Value', $plan->tagline);
+        $this->assertEquals(45.00, $plan->price_per_student);
+
+        // Update plan
+        $updateResponse = $this->actingAs($user)->put("/plans/{$plan->id}", [
+            'name' => 'Ultra Campus Pro',
+            'code' => 'ultra_campus',
+            'tagline' => 'Updated Value',
+            'summary' => 'Updated summary text',
+            'pricing_type' => 'flat',
+            'price_monthly' => 30000.00,
+            'price_yearly' => 300000.00,
+            'max_students' => 20000,
+            'is_active' => true,
+            'features' => ['All Features'],
+        ]);
+
+        $updateResponse->assertRedirect();
+        $plan->refresh();
+        $this->assertEquals('Ultra Campus Pro', $plan->name);
+        $this->assertEquals('flat', $plan->pricing_type);
+        $this->assertEquals(30000.00, $plan->price_monthly);
     }
 
     public function test_checkout_page_loads_for_all_tiers(): void

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useForm, Link, Head, usePage, router } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -14,6 +14,16 @@ const props = defineProps({
 });
 
 const page = usePage();
+
+// If user already has an active Central Super Admin session, immediately redirect to dashboard
+onMounted(() => {
+    if (page.props.auth?.user && !page.props.tenant) {
+        const userType = page.props.auth.user.user_type;
+        if (!userType || !['student', 'parent', 'teacher', 'staff', 'librarian', 'accountant', 'registrar'].includes(userType)) {
+            router.visit('/super-admin');
+        }
+    }
+});
 
 // Determine whether we are in credentials step or 2FA challenge step
 const step = ref(props.initialRequires2fa || page.props.flash?.requires_2fa ? '2fa' : 'credentials');

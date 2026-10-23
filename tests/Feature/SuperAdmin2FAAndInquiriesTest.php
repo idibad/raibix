@@ -160,4 +160,44 @@ class SuperAdmin2FAAndInquiriesTest extends TestCase
         $cancelResponse->assertSessionMissing('2fa_code');
         $this->assertGuest();
     }
+
+    public function test_active_super_admin_session_is_redirected_from_login_to_dashboard(): void
+    {
+        // When authenticated as super admin with central auth context
+        $response = $this->actingAs($this->adminUser)
+            ->withSession([
+                'auth_context' => 'central',
+                'is_super_admin' => true,
+            ])
+            ->get('/super-admin/login');
+
+        // Must redirect to super admin dashboard
+        $response->assertRedirect('/super-admin');
+
+        // Central /login route alias should also redirect
+        $aliasResponse = $this->actingAs($this->adminUser)
+            ->withSession([
+                'auth_context' => 'central',
+                'is_super_admin' => true,
+            ])
+            ->get('/login');
+
+        $aliasResponse->assertRedirect('/super-admin/login');
+    }
+
+    public function test_tenant_session_on_super_admin_login_is_cleared(): void
+    {
+        $tenantUser = \App\Models\User::factory()->create();
+
+        $response = $this->actingAs($tenantUser)
+            ->withSession([
+                'auth_context' => 'tenant',
+                '_tenant_id' => 'test-tenant',
+            ])
+            ->get('/super-admin/login');
+
+        // It should render login view (not redirect to dashboard) and clear the session
+        $response->assertStatus(200);
+        $this->assertGuest();
+    }
 }
