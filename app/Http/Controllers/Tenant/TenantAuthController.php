@@ -52,6 +52,12 @@ class TenantAuthController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
+            $tenantId = function_exists('tenant') && tenant() ? tenant('id') : null;
+            $request->session()->put('auth_context', 'tenant');
+            $request->session()->put('is_super_admin', false);
+            if ($tenantId) {
+                $request->session()->put('_tenant_id', $tenantId);
+            }
 
             return $this->redirectToDashboard(Auth::user());
         }
@@ -88,6 +94,7 @@ class TenantAuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
+        $request->session()->forget(['auth_context', 'is_super_admin', '_tenant_id']);
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

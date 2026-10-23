@@ -30,9 +30,11 @@ use App\Http\Controllers\Tenant\BillingController;
 */
 
 Route::middleware([
-    'web',
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
+    'web',
+    'tenant.session',
+    \Stancl\Tenancy\Middleware\ScopeSessions::class,
     \App\Http\Middleware\CheckTenantStatus::class,
     \App\Http\Middleware\LogTenantRequests::class,
 ])->group(function () {

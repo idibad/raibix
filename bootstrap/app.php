@@ -11,6 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(prepend: [
+            \App\Http\Middleware\ScopeSessionCookie::class,
+        ]);
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\CheckMaintenanceMode::class,
@@ -21,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'tenant.role' => \App\Http\Middleware\EnsureTenantUserRole::class,
+            'central.admin' => \App\Http\Middleware\EnsureCentralSuperAdmin::class,
+            'tenant.session' => \App\Http\Middleware\EnsureTenantSession::class,
         ]);
 
         $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {

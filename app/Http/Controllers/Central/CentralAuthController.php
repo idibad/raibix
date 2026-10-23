@@ -122,8 +122,10 @@ class CentralAuthController extends Controller
         // Authenticate the user
         Auth::guard('web')->loginUsingId($userId, $remember);
 
-        $request->session()->forget(['2fa_required', '2fa_user_id', '2fa_user_email', '2fa_code', '2fa_expires_at', '2fa_remember']);
+        $request->session()->forget(['2fa_required', '2fa_user_id', '2fa_user_email', '2fa_code', '2fa_expires_at', '2fa_remember', '_tenant_id']);
         $request->session()->regenerate();
+        $request->session()->put('auth_context', 'central');
+        $request->session()->put('is_super_admin', true);
 
         SaaSActivityLog::create([
             'event_title' => 'Super Admin Authenticated via 2FA',

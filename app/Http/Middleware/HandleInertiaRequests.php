@@ -83,6 +83,18 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
+        $getUserRole = function ($user) {
+            if (!$user) return null;
+            try {
+                if (method_exists($user, 'getRoleNames') && $user->getRoleNames()->isNotEmpty()) {
+                    return $user->getRoleNames()->first();
+                }
+            } catch (\Throwable $e) {
+                // Ignore connection exceptions if user was bound to a tenant connection
+            }
+            return ($user->user_type ?? null) === 'admin' ? 'Principal' : ucfirst($user->user_type ?? 'User');
+        };
+
         return array_merge(parent::share($request), [
             'platformName' => $platformName,
             'appName' => $platformName,
@@ -95,16 +107,10 @@ class HandleInertiaRequests extends Middleware
                     'id' => $request->user()->id,
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
-                    'user_type' => $request->user()->user_type,
-                    'role' => method_exists($request->user(), 'getRoleNames') && $request->user()->getRoleNames()->isNotEmpty()
-                        ? $request->user()->getRoleNames()->first()
-                        : ($request->user()->user_type === 'admin' ? 'Principal' : ucfirst($request->user()->user_type ?? 'User')),
+                    'user_type' => $request->user()->user_type ?? null,
+                    'role' => $getUserRole($request->user()),
                 ] : null,
-                'role' => $request->user()
-                    ? (method_exists($request->user(), 'getRoleNames') && $request->user()->getRoleNames()->isNotEmpty()
-                        ? $request->user()->getRoleNames()->first()
-                        : ($request->user()->user_type === 'admin' ? 'Principal' : ucfirst($request->user()->user_type ?? 'User')))
-                    : null,
+                'role' => $getUserRole($request->user()),
             ],
             'tenant' => $tenantData,
             'flash' => [

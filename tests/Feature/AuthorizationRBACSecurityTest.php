@@ -175,4 +175,46 @@ class AuthorizationRBACSecurityTest extends TestCase
         ]);
         $userResponse->assertStatus(403);
     }
+
+    /**
+     * Test active school tenant session cannot enter the Central Super Admin portal.
+     */
+    public function test_tenant_session_cannot_access_central_super_admin_dashboard(): void
+    {
+        $domain = $this->tenant->domains->first()->domain;
+        $adminUser = User::where('user_type', 'admin')->first() ?? User::create([
+            'name' => 'Campus Admin',
+            'email' => 'campus.admin@test.com',
+            'user_type' => 'admin',
+            'password' => Hash::make('password'),
+        ]);
+
+        if (tenancy()->initialized) {
+            tenancy()->end();
+        }
+
+        // When a tenant session is active, navigating to Central Super Admin must be strictly forbidden (403)
+        $response = $this->withSession([
+            'auth_context' => 'tenant',
+            '_tenant_id' => $this->tenant->id,
+        ])->actingAs($adminUser)->get(route('central.dashboard'));
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test central super admin session does not automatically authenticate as tenant principal.
+     */
+    public function test_central_session_does_not_auto_authenticate_into_tenant_portal(): void
+    {
+        $domain = $this->tenant->domains->first()->domain;
+
+        // Simulate central admin session hitting tenant domain
+        $response = $this->withSession([
+            'auth_context' => 'central',
+            'is_super_admin' => true,
+        ])->get("http://{$domain}/admin/dashboard");
+
+        $response->assertRedirect("http://{$domain}/login");
+    }
 }

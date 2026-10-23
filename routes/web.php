@@ -74,7 +74,7 @@ Route::domain($domain)->group(function () {
     Route::post('/super-admin/logout', [CentralAuthController::class, 'logout'])->name('central.logout');
 
     // Protected Super Admin Portal Routes
-    Route::middleware('auth:web')->group(function () {
+    Route::middleware(['auth:web', 'central.admin'])->group(function () {
         Route::get('/super-admin', [SuperAdminController::class, 'index'])->name('central.dashboard');
 
         // Subscription Plans Management
