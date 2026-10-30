@@ -120,6 +120,8 @@ Route::middleware([
 
                 Route::post('/payments/approve/{id}', [AdminPortalController::class, 'approveFeePayment'])->name('tenant.admin.payments.approve');
                 Route::post('/payments/reject/{id}', [AdminPortalController::class, 'rejectFeePayment'])->name('tenant.admin.payments.reject');
+                Route::post('/fees/approve-voucher/{id}', [AdminPortalController::class, 'approveFeePayment'])->name('tenant.admin.fees.approve_voucher');
+                Route::post('/fees/reject-voucher/{id}', [AdminPortalController::class, 'rejectFeePayment'])->name('tenant.admin.fees.reject_voucher');
                 Route::post('/defaulters/{id}/remind', [AdminPortalController::class, 'sendDefaulterReminder'])->name('tenant.admin.defaulters.remind');
                 Route::post('/defaulters/{id}/waive', [AdminPortalController::class, 'waiveDefaulterLateFee'])->name('tenant.admin.defaulters.waive');
             });

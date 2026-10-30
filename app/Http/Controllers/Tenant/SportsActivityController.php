@@ -64,6 +64,11 @@ class SportsActivityController extends Controller
                 'sport_type' => $request->input('category'),
                 'schedule_date' => $request->input('schedule'),
                 'coach_teacher_id' => $request->input('coach_user_id'),
+                'status' => $request->input('status', $activity->status ?? 'Upcoming'),
+            ]);
+        } elseif (!$request->has('status')) {
+            $request->merge([
+                'status' => $activity->status ?? 'Upcoming',
             ]);
         }
 

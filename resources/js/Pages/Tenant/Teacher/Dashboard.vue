@@ -128,6 +128,20 @@ const marksForm = useForm({
     marks: {},
 });
 
+watchEffect(() => {
+    if (props.students && props.students.length > 0) {
+        props.students.forEach(std => {
+            if (!marksForm.marks[std.id]) {
+                marksForm.marks[std.id] = {
+                    theory: 75,
+                    practical: 40,
+                    viva: 18,
+                };
+            }
+        });
+    }
+});
+
 const showSuccessToast = ref(false);
 const successToastMsg = ref('');
 
@@ -238,7 +252,8 @@ const teacherSportsForm = useForm({
     category: 'Sports',
     schedule: '',
     venue: '',
-    max_participants: 30
+    max_participants: 30,
+    status: 'Upcoming',
 });
 const submitTeacherSports = () => {
     teacherSportsForm.post('/teacher/sports', {
@@ -943,7 +958,7 @@ const currentTabDescription = computed(() => {
                                             </span>
                                         </td>
                                         <td class="py-3 px-4 text-right">
-                                            <button v-if="p.status === 'Pending'" @click="router.post(`/teacher/penalties/${p.id}/status`, { status: 'Waived' })" class="rounded-full bg-[#F1F3F4] hover:bg-[#E8EAED] px-3 py-1 text-2xs font-bold text-[#5F6368] transition-all">
+                                            <button v-if="p.status === 'Pending' || p.status === 'Issued'" @click="router.post(`/teacher/penalties/${p.id}/status`, { status: 'Waived' })" class="rounded-full bg-[#F1F3F4] hover:bg-[#E8EAED] px-3 py-1 text-2xs font-bold text-[#5F6368] transition-all">
                                                 Waive
                                             </button>
                                         </td>

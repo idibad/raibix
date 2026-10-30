@@ -62,10 +62,21 @@ const openPaymentModal = (challan) => {
 const gatewayNotice = ref('');
 const ptmReminderToast = ref(false);
 
+const printTranscript = () => {
+    window.print();
+};
+
 const submitPayment = () => {
     if (isAutoPaymentEnabled.value) {
         if (payForm.gateway === 'stripe') {
             payForm.post(`/payments/checkout/${selectedChallan.value.id}`);
+        } else if (payForm.gateway === 'jazzcash' || payForm.gateway === 'meezan_bank') {
+            payForm.post(`/parent/challans/${selectedChallan.value.id}/pay`, {
+                onSuccess: () => {
+                    selectedChallan.value = null;
+                    payForm.reset();
+                }
+            });
         } else {
             gatewayNotice.value = 'Note: Only Stripe is fully configured. Redirecting via Stripe checkout...';
             setTimeout(() => { gatewayNotice.value = ''; payForm.post(`/payments/checkout/${selectedChallan.value.id}`); }, 1500);
@@ -74,6 +85,7 @@ const submitPayment = () => {
         payForm.post(`/payments/checkout/${selectedChallan.value.id}`, {
             onSuccess: () => {
                 selectedChallan.value = null;
+                payForm.reset();
             }
         });
     }
@@ -398,7 +410,7 @@ const currentTabDescription = computed(() => {
                                 </h3>
                                 <p class="text-xs text-[#5F6368] mt-0.5">Comprehensive term assessment verified by class teachers and academic council.</p>
                             </div>
-                            <button @click="window.print()" class="rounded-full bg-[#8430CE] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#6B21A8] transition-all flex items-center gap-2 w-fit">
+                            <button @click="printTranscript" class="rounded-full bg-[#8430CE] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#6B21A8] transition-all flex items-center gap-2 w-fit">
                                 <i class="fa-solid fa-print"></i>
                                 <span>Print Official Transcript</span>
                             </button>
@@ -575,7 +587,7 @@ const currentTabDescription = computed(() => {
                                         <p class="text-2xs text-[#202124]">{{ pen.reason }}</p>
                                         <div class="flex justify-between items-center pt-1 text-2xs">
                                             <span class="text-[#5F6368]">Due: {{ pen.due_date }}</span>
-                                            <span class="font-bold uppercase px-2 py-0.5 rounded-full" :class="pen.status === 'paid' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-white text-[#C5221F] border border-[#FAD2CF]'">{{ pen.status }}</span>
+                                            <span class="font-bold uppercase px-2 py-0.5 rounded-full" :class="pen.status?.toLowerCase() === 'paid' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-white text-[#C5221F] border border-[#FAD2CF]'">{{ pen.status }}</span>
                                         </div>
                                     </div>
                                 </div>

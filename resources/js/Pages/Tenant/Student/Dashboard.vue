@@ -188,6 +188,27 @@ const submitPasswordChange = () => {
     });
 };
 
+const photoInput = ref(null);
+const triggerPhotoUpload = () => {
+    photoInput.value?.click();
+};
+
+const printPage = () => {
+    window.print();
+};
+
+const joinSportsActivity = (id) => {
+    useForm({}).post(`/student/sports/${id}/join`, {
+        preserveScroll: true
+    });
+};
+
+const leaveSportsActivity = (id) => {
+    useForm({}).post(`/student/sports/${id}/leave`, {
+        preserveScroll: true
+    });
+};
+
 const logout = () => {
     useForm({}).post('/logout');
 };
@@ -348,6 +369,13 @@ const navItems = computed(() => [
         badge: props.certificates?.length || null,
     },
     {
+        id: 'sports',
+        label: 'Sports & Clubs',
+        icon: 'fa-solid fa-trophy',
+        badge: props.sports_activities?.length || null,
+        badgeClass: 'bg-emerald-50 text-emerald-700 font-semibold',
+    },
+    {
         id: 'notices',
         label: 'Notice Board',
         icon: 'fa-solid fa-bullhorn',
@@ -371,6 +399,7 @@ const currentTabTitle = computed(() => {
         case 'exams': return 'Official Exam Results & Gradebook';
         case 'fees': return 'Fee Challans & Status';
         case 'certificates': return 'My Awarded Certificates';
+        case 'sports': return 'Extracurricular Sports, Teams & Clubs';
         case 'notices': return 'School Notice Board';
         case 'profile': return 'Profile, Digital ID & Security';
         default: return 'Student Portal';
@@ -387,6 +416,7 @@ const currentTabDescription = computed(() => {
         case 'exams': return 'View official examination date sheets, subject score breakdown, and report cards.';
         case 'fees': return 'Review challan balances and payment status (fee payments handled via parent portal).';
         case 'certificates': return 'Verified school achievement awards and merit certificates.';
+        case 'sports': return 'Join extracurricular teams, register for school tournaments, and track attendance.';
         case 'notices': return 'Institutional announcements, holiday schedules, and academic circulars.';
         case 'profile': return 'Manage contact information, access digital student identity card, and account settings.';
         default: return '';
@@ -1273,10 +1303,95 @@ const currentTabDescription = computed(() => {
                                 <!-- Footer -->
                                 <div class="pt-2 border-t border-[#DADCE0] flex items-center justify-between">
                                     <span class="text-2xs text-[#5F6368] font-semibold"><i class="fa-solid fa-calendar text-[#F59E0B] mr-1"></i>{{ cert.issue_date ? new Date(cert.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Issued' }}</span>
-                                    <button @click="window.print()" class="rounded-full bg-[#F59E0B] hover:bg-[#D97706] text-white px-3 py-1 text-2xs font-bold transition-all flex items-center gap-1 shadow-sm">
+                                    <button @click="printPage" class="rounded-full bg-[#F59E0B] hover:bg-[#D97706] text-white px-3 py-1 text-2xs font-bold transition-all flex items-center gap-1 shadow-sm">
                                         <i class="fa-solid fa-print"></i>
                                         <span>Print</span>
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB: SPORTS & EXTRACURRICULAR CLUBS ================= -->
+                <div v-if="activeTab === 'sports'" class="space-y-6 animate-fadeIn">
+                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
+                        <div class="flex items-center justify-between border-b border-[#DADCE0] pb-3">
+                            <div>
+                                <h3 class="text-base font-bold text-[#202124]">Sports & Extracurricular Clubs</h3>
+                                <p class="text-xs text-[#5F6368]">Register for competitive athletic teams, clubs, and tournaments.</p>
+                            </div>
+                            <span class="rounded-full bg-[#E6F4EA] px-3 py-1 text-xs font-bold text-[#137333]">
+                                {{ sports_activities?.length || 0 }} Available Activities
+                            </span>
+                        </div>
+
+                        <div v-if="!sports_activities || sports_activities.length === 0" class="py-12 text-center text-xs text-[#5F6368]">
+                            No extracurricular or sports activities announced right now.
+                        </div>
+                        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="act in sports_activities" :key="act.id" class="rounded-2xl border border-[#DADCE0] p-5 bg-[#F8F9FA] hover:border-[#1A73E8] transition-all space-y-3 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="rounded-full bg-[#FEF7E0] px-2.5 py-0.5 text-2xs font-bold text-[#B06000] border border-[#FEEFC3]">{{ act.category || 'Sports' }}</span>
+                                        <span v-if="act.participants?.includes(student?.id)" class="text-2xs font-bold text-[#137333] bg-[#E6F4EA] px-2 py-0.5 rounded-full border border-[#CEEAD6]">
+                                            <i class="fa-solid fa-check mr-1"></i> Enrolled
+                                        </span>
+                                        <span v-else class="text-2xs font-bold text-[#1A73E8] bg-[#E8F0FE] px-2 py-0.5 rounded-full border border-[#D2E3FC]">
+                                            Open
+                                        </span>
+                                    </div>
+                                    <h4 class="font-extrabold text-[#202124] text-base mt-2">{{ act.name || act.title }}</h4>
+                                    <p class="text-xs text-[#5F6368] mt-1">{{ act.description || 'School extracurricular club.' }}</p>
+                                    <div class="mt-2 text-2xs text-[#5F6368] space-y-1">
+                                        <p><i class="fa-solid fa-clock mr-1 text-[#1A73E8]"></i> {{ act.schedule || act.schedule_date || 'TBD' }}</p>
+                                        <p><i class="fa-solid fa-location-dot mr-1 text-[#1A73E8]"></i> {{ act.venue || 'Campus Sports Ground' }}</p>
+                                    </div>
+                                </div>
+                                <div class="pt-3 border-t border-[#DADCE0] flex items-center justify-between">
+                                    <span class="text-2xs text-[#5F6368] font-semibold">Coach: {{ act.coach?.name || 'Assigned Instructor' }}</span>
+                                    <button 
+                                        v-if="act.participants?.includes(student?.id)" 
+                                        @click="leaveSportsActivity(act.id)"
+                                        class="rounded-full bg-[#FCE8E6] hover:bg-[#FAD2CF] text-[#C5221F] px-3.5 py-1 text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                        Withdraw
+                                    </button>
+                                    <button 
+                                        v-else 
+                                        @click="joinSportsActivity(act.id)"
+                                        :disabled="(act.participants?.length || 0) >= act.max_participants"
+                                        class="rounded-full bg-[#1A73E8] hover:bg-[#1557B0] text-white px-3.5 py-1 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                                    >
+                                        {{ (act.participants?.length || 0) >= act.max_participants ? 'Full' : 'Join Club' }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Disciplinary Infractions & Conduct Standing -->
+                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 shadow-2xs space-y-4">
+                        <h3 class="text-base font-bold text-[#202124]">Disciplinary & Conduct Standing</h3>
+                        <div v-if="!penalties || penalties.length === 0" class="rounded-xl bg-[#E6F4EA] p-4 border border-[#CEEAD6] flex items-center gap-3">
+                            <i class="fa-solid fa-shield-check text-2xl text-[#137333]"></i>
+                            <div>
+                                <h4 class="text-xs font-bold text-[#137333]">Exemplary Disciplinary Standing</h4>
+                                <p class="text-2xs text-[#137333]/90">No fines, citations, or behavioral warnings recorded on your student file.</p>
+                            </div>
+                        </div>
+                        <div v-else class="space-y-3">
+                            <div v-for="pen in penalties" :key="pen.id" class="rounded-xl bg-[#FCE8E6] p-4 border border-[#FAD2CF] flex justify-between items-center text-xs">
+                                <div>
+                                    <span class="font-bold text-[#C5221F]">{{ pen.penalty_type }}</span>
+                                    <p class="text-2xs text-[#202124] mt-0.5">{{ pen.reason }}</p>
+                                    <span class="text-3xs text-[#5F6368]">Due: {{ pen.due_date || 'N/A' }}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="font-extrabold text-[#C5221F] block">PKR {{ pen.amount || 0 }}</span>
+                                    <span class="text-2xs font-bold uppercase px-2 py-0.5 rounded-full" :class="pen.status?.toLowerCase() === 'paid' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-white text-[#C5221F] border border-[#FAD2CF]'">
+                                        {{ pen.status }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1301,7 +1416,7 @@ const currentTabDescription = computed(() => {
                                     <div v-else class="h-24 w-24 rounded-2xl bg-[#E8F0FE] text-[#1A73E8] flex items-center justify-center text-3xl font-black border-2 border-[#D2E3FC]">
                                         {{ student?.user?.name?.slice(0, 2)?.toUpperCase() || 'ST' }}
                                     </div>
-                                    <button @click="$refs.photoInput.click()" class="absolute -bottom-2 -right-2 bg-[#1A73E8] text-white p-2 rounded-xl shadow-md hover:bg-[#1557B0] transition-colors text-xs" title="Change Photo">
+                                    <button @click="triggerPhotoUpload" class="absolute -bottom-2 -right-2 bg-[#1A73E8] text-white p-2 rounded-xl shadow-md hover:bg-[#1557B0] transition-colors text-xs cursor-pointer" title="Change Photo">
                                         <i class="fa-solid fa-camera"></i>
                                     </button>
                                     <input ref="photoInput" type="file" @change="e => profileForm.photo = e.target.files[0]" class="hidden" accept="image/*" />
@@ -1610,7 +1725,7 @@ const currentTabDescription = computed(() => {
                 <!-- ID Card Footer -->
                 <div class="bg-[#F8F9FA] p-4 border-t border-[#DADCE0] flex justify-between items-center text-xs">
                     <button @click="showIdCardModal = false" class="font-bold text-[#5F6368] hover:text-[#202124] px-3 py-1">Close</button>
-                    <button @click="window.print()" class="rounded-xl bg-[#1A73E8] text-white px-4 py-1.5 font-bold shadow-sm hover:bg-[#1557B0] flex items-center justify-center">
+                    <button @click="printPage" class="rounded-xl bg-[#1A73E8] text-white px-4 py-1.5 font-bold shadow-sm hover:bg-[#1557B0] flex items-center justify-center cursor-pointer">
                         <i class="fa-solid fa-print mr-1.5"></i> Print Card
                     </button>
                 </div>
