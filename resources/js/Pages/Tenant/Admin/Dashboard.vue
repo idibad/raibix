@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watchEffect, computed } from 'vue';
+import { ref, watchEffect, computed, onMounted, onUnmounted, watch } from 'vue';
 import { Link, useForm, usePage, router } from '@inertiajs/vue3';
 import TenantAppLayout from '@/Layouts/TenantAppLayout.vue';
+import { getAdminNavTree } from '@/Config/tenantAdminNav.js';
 
 const props = defineProps({
     tenant: Object,
@@ -40,7 +41,51 @@ const props = defineProps({
     trial_ends_at: String,
 });
 
-const activeTab = ref('overview');
+const getInitialTab = () => {
+    if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlTab = params.get('tab');
+        if (urlTab) return urlTab;
+    }
+    return 'overview';
+};
+
+const activeTab = ref(getInitialTab());
+
+const onPopState = () => {
+    if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlTab = params.get('tab') || 'overview';
+        activeTab.value = urlTab;
+    }
+};
+
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlTab = params.get('tab');
+        if (urlTab && urlTab !== activeTab.value) {
+            activeTab.value = urlTab;
+        }
+        window.addEventListener('popstate', onPopState);
+    }
+});
+
+onUnmounted(() => {
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', onPopState);
+    }
+});
+
+watch(activeTab, (newTab) => {
+    if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('tab') !== newTab) {
+            url.searchParams.set('tab', newTab);
+            window.history.replaceState({}, '', url.toString());
+        }
+    }
+});
 const isSidebarCollapsed = ref(false);
 const isMobileMenuOpen = ref(false);
 const isExecutiveView = ref(props.current_role === 'Principal' || props.current_role === 'principal' || props.current_role === 'admin');
@@ -103,6 +148,7 @@ const brandingForm = useForm({
     cover_color: props.tenant?.cover_color || '#1A73E8',
     secondary_color: props.tenant?.secondary_color || '#0F172A',
     accent_color: props.tenant?.accent_color || '#3B82F6',
+    logo_bg: props.tenant?.logo_bg || 'dark',
     tagline: props.tenant?.tagline || 'Empowering Minds, Shaping Futures',
     hero_heading: props.tenant?.hero_heading || 'Empowering Minds, Shaping Futures',
     hero_description: props.tenant?.hero_description || '',
@@ -110,19 +156,108 @@ const brandingForm = useForm({
     academics_description: props.tenant?.academics_description || '',
 });
 
-const colorPresets = [
-    { name: 'Royal & Gold', primary: '#1A73E8', secondary: '#0D47A1', accent: '#FFC107' },
-    { name: 'Emerald & Mint', primary: '#10B981', secondary: '#065F46', accent: '#34D399' },
-    { name: 'Crimson & Amber', primary: '#E11D48', secondary: '#881337', accent: '#F59E0B' },
-    { name: 'Imperial Purple', primary: '#7C3AED', secondary: '#4C1D95', accent: '#F43F5E' },
-    { name: 'Midnight Navy & Cyan', primary: '#0F172A', secondary: '#1E293B', accent: '#06B6D4' },
-    { name: 'Sunset Slate', primary: '#F97316', secondary: '#431407', accent: '#EAB308' },
+// Logo display background mode options (Dark contrast, Brand primary, Clean light)
+const logoBgOptions = [
+    {
+        id: 'dark',
+        name: 'Midnight Slate',
+        badge: 'Recommended for White Logos',
+        desc: 'Dark high-contrast tile. White, gold, and transparent logos pop with maximum clarity.',
+        bgClass: 'bg-[#0F172A]',
+        borderClass: 'border-[#1E293B]',
+    },
+    {
+        id: 'brand',
+        name: 'School Brand Primary',
+        badge: 'Dynamic Brand Match',
+        desc: 'Tile colored with your chosen primary brand color for cohesive school identity.',
+        bgClass: '',
+        borderClass: 'border-black/20',
+    },
+    {
+        id: 'light',
+        name: 'Clean Light',
+        badge: 'Classic Light',
+        desc: 'Clean white background tile with soft border. Best for dark crests & full-color emblems.',
+        bgClass: 'bg-white',
+        borderClass: 'border-[#DADCE0]',
+    },
 ];
 
-const selectColorPreset = (preset) => {
-    brandingForm.cover_color = preset.primary;
-    brandingForm.secondary_color = preset.secondary;
-    brandingForm.accent_color = preset.accent;
+const previewLogoBgStyle = computed(() => {
+    const bgMode = brandingForm.logo_bg || 'dark';
+    if (bgMode === 'brand') {
+        return {
+            backgroundColor: brandingForm.cover_color || '#1A73E8',
+            borderColor: 'rgba(0,0,0,0.15)',
+        };
+    }
+    if (bgMode === 'light') {
+        return {
+            backgroundColor: '#FFFFFF',
+            borderColor: '#DADCE0',
+        };
+    }
+    return {
+        backgroundColor: '#0F172A',
+        borderColor: '#1E293B',
+    };
+});
+
+// Auto-extracted palette sampled directly from the logo via canvas
+const autoExtractedPalette = ref({
+    id: 'auto',
+    name: 'Auto-Extracted from Logo',
+    description: 'Directly sampled from dominant hues in your uploaded logo',
+    primary: props.tenant?.cover_color || '#1A73E8',
+    secondary: props.tenant?.secondary_color || '#0F172A',
+    accent: props.tenant?.accent_color || '#3B82F6',
+    isAuto: true,
+});
+
+// 4 Curated Educational Palettes
+const curatedPalettes = [
+    {
+        id: 'royal_blue',
+        name: 'Royal Scholastic',
+        description: 'Vibrant academic blue paired with rich navy & gold amber',
+        primary: '#1A73E8',
+        secondary: '#0D47A1',
+        accent: '#F59E0B',
+    },
+    {
+        id: 'academic_navy',
+        name: 'Prestige Navy & Gold',
+        description: 'Traditional deep navy with gold crest accents',
+        primary: '#0F172A',
+        secondary: '#1E293B',
+        accent: '#D97706',
+    },
+    {
+        id: 'emerald_mint',
+        name: 'Heritage Emerald',
+        description: 'Rich forest green with fresh mint highlights',
+        primary: '#059669',
+        secondary: '#064E3B',
+        accent: '#10B981',
+    },
+    {
+        id: 'crimson_amber',
+        name: 'Crimson Honors',
+        description: 'Distinguished burgundy and warm amber gold',
+        primary: '#BE123C',
+        secondary: '#4C0519',
+        accent: '#F59E0B',
+    },
+];
+
+const selectedPaletteId = ref(props.tenant?.cover_color ? 'custom' : 'royal_blue');
+
+const selectPalette = (palette) => {
+    selectedPaletteId.value = palette.id;
+    brandingForm.cover_color = palette.primary;
+    brandingForm.secondary_color = palette.secondary;
+    brandingForm.accent_color = palette.accent;
 };
 
 const isExtractingColors = ref(false);
@@ -131,7 +266,6 @@ const extractColorsFromLogo = () => {
         alert('Please upload or select a school logo first before extracting colors.');
         return;
     }
-    // Resolve the image source: prefer the local preview blob, else use the saved logo URL
     const imgSource = logoPreviewUrl.value || props.tenant?.logo || usePage().props.tenant?.logo;
     if (!imgSource) return;
     isExtractingColors.value = true;
@@ -148,6 +282,9 @@ const extractColorsFromLogo = () => {
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
             
             const colorCounts = {};
+            let nonTransparentCount = 0;
+            let brightCount = 0;
+
             for (let i = 0; i < imageData.length; i += 16) {
                 const r = imageData[i];
                 const g = imageData[i + 1];
@@ -155,10 +292,13 @@ const extractColorsFromLogo = () => {
                 const a = imageData[i + 3];
 
                 if (a < 128) continue;
+                nonTransparentCount++;
                 const brightness = (r + g + b) / 3;
-                if (brightness > 245 || brightness < 15) continue;
+                if (brightness > 220) brightCount++;
+
+                if (brightness > 248 || brightness < 12) continue;
                 const saturation = Math.max(r, g, b) - Math.min(r, g, b);
-                if (saturation < 15 && brightness > 200) continue;
+                if (saturation < 15 && brightness > 190) continue;
 
                 const qr = Math.round(r / 32) * 32;
                 const qg = Math.round(g / 32) * 32;
@@ -172,14 +312,20 @@ const extractColorsFromLogo = () => {
             }
 
             const sortedColors = Object.values(colorCounts).sort((a, b) => b.count - a.count);
-            if (sortedColors.length > 0) {
-                const toHex = ([r, g, b]) => '#' + [r, g, b].map(x => {
-                    const hex = Math.min(255, Math.max(0, x)).toString(16);
-                    return hex.length === 1 ? '0' + hex : hex;
-                }).join('').toUpperCase();
+            const toHex = ([r, g, b]) => '#' + [r, g, b].map(x => {
+                const hex = Math.min(255, Math.max(0, x)).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('').toUpperCase();
 
+            // If logo is white / predominantly light, automatically set logo_bg to dark
+            const isWhiteLogo = nonTransparentCount > 0 && (brightCount / nonTransparentCount) > 0.6;
+            if (isWhiteLogo) {
+                brandingForm.logo_bg = 'dark';
+            }
+
+            if (sortedColors.length > 0) {
                 const dominantRgb = sortedColors[0].rgb;
-                brandingForm.cover_color = toHex(dominantRgb);
+                const primaryColor = toHex(dominantRgb);
 
                 let secondaryRgb = [15, 23, 42];
                 if (sortedColors.length > 1) {
@@ -188,22 +334,35 @@ const extractColorsFromLogo = () => {
                         const dist = Math.abs(r2 - dominantRgb[0]) + Math.abs(g2 - dominantRgb[1]) + Math.abs(b2 - dominantRgb[2]);
                         if (dist > 70) {
                             secondaryRgb = [r2, g2, b2];
-                            brandingForm.secondary_color = toHex(secondaryRgb);
                             break;
                         }
                     }
                 }
+
+                let accentRgb = [59, 130, 246];
                 if (sortedColors.length > 2) {
                     for (let k = 2; k < sortedColors.length; k++) {
                         const [r3, g3, b3] = sortedColors[k].rgb;
                         const dist1 = Math.abs(r3 - dominantRgb[0]) + Math.abs(g3 - dominantRgb[1]) + Math.abs(b3 - dominantRgb[2]);
                         const dist2 = Math.abs(r3 - secondaryRgb[0]) + Math.abs(g3 - secondaryRgb[1]) + Math.abs(b3 - secondaryRgb[2]);
                         if (dist1 > 50 && dist2 > 50) {
-                            brandingForm.accent_color = toHex([r3, g3, b3]);
+                            accentRgb = [r3, g3, b3];
                             break;
                         }
                     }
                 }
+
+                autoExtractedPalette.value.primary = primaryColor;
+                autoExtractedPalette.value.secondary = toHex(secondaryRgb);
+                autoExtractedPalette.value.accent = toHex(accentRgb);
+
+                selectPalette(autoExtractedPalette.value);
+            } else {
+                // Monochrome/white logo fallback
+                autoExtractedPalette.value.primary = '#1A73E8';
+                autoExtractedPalette.value.secondary = '#0F172A';
+                autoExtractedPalette.value.accent = '#F59E0B';
+                selectPalette(autoExtractedPalette.value);
             }
         } catch (e) {
             console.error('Error extracting colors:', e);
@@ -213,7 +372,6 @@ const extractColorsFromLogo = () => {
     };
     img.onerror = () => {
         isExtractingColors.value = false;
-        alert('Could not extract colors from image due to browser CORS restriction or loading error.');
     };
 };
 
@@ -234,6 +392,7 @@ const submitLogo = () => {
         cover_color: brandingForm.cover_color,
         secondary_color: brandingForm.secondary_color,
         accent_color: brandingForm.accent_color,
+        logo_bg: brandingForm.logo_bg || 'dark',
     })).post('/admin/settings/logo', {
         forceFormData: true,
         onSuccess: () => {
@@ -288,6 +447,12 @@ const generateUserPassword = () => {
         numPart += Math.floor(Math.random() * 10);
     }
     userForm.password = namePart + numPart;
+};
+
+const openCreateUserModal = () => {
+    userForm.reset();
+    generateUserPassword();
+    showAddUserModal.value = true;
 };
 
 const adminProfileForm = useForm({
@@ -595,6 +760,7 @@ const enrollApplicant = (application) => {
         useForm({}).post(`/admin/admissions/application/${application.id}/enroll`);
     }
 };
+const oneClickEnroll = enrollApplicant;
 
 // ================= P1 #5 TIMETABLE BUILDER =================
 const showTimetableModal = ref(false);
@@ -628,14 +794,14 @@ const deleteTimetableSlot = (slot) => {
 const showFeeOverrideModal = ref(false);
 const approveVoucher = (id) => {
     if (confirm("Verify bank receipt and mark this fee challan as FULLY PAID?")) {
-        router.post(`/admin/fees/approve-voucher/${id}`, {}, { preserveScroll: true });
+        router.post(`/admin/payments/approve/${id}`, {}, { preserveScroll: true });
     }
 };
 
 const rejectVoucher = (id) => {
     const remarks = prompt("Enter reason for rejecting this uploaded receipt:", "Blurry image / Bank deposit not reflected in account");
     if (remarks) {
-        router.post(`/admin/fees/reject-voucher/${id}`, { rejection_remarks: remarks }, { preserveScroll: true });
+        router.post(`/admin/payments/reject/${id}`, { rejection_remarks: remarks }, { preserveScroll: true });
     }
 };
 
@@ -967,6 +1133,20 @@ const deletePenalty = (id) => {
     }
 };
 
+const sendReminder = remindDefaulter;
+
+// Modal Aliases for Header Quick Action Triggers
+const showStudentModal = showAddStudentModal;
+const showNoticeModal = showAddNoticeModal;
+const showInquiryModal = ref(false);
+const showClassModal = showAddClassModal;
+const showFeeStructureModal = showMonthlyBillingModal;
+const showExamModal = showCreateExamModal;
+
+const downloadReport = (type) => {
+    window.location.href = `/admin/api/reports/export?type=${type}`;
+};
+
 // ================= CHARTS AND GRAPHS DATA COMPUTATIONS =================
 const hoveredBar = ref(null);
 
@@ -1089,83 +1269,13 @@ const canAccess = (moduleName) => {
 };
 
 const navItems = computed(() => {
-    const items = [];
-    if (canAccess('dashboard')) {
-        items.push({ id: 'overview', label: 'Command Center', icon: 'fa-solid fa-gauge-high' });
-    }
-    if (canAccess('students')) {
-        items.push({ id: 'students', label: 'Students', icon: 'fa-solid fa-graduation-cap' });
-    }
-    if (canAccess('users')) {
-        items.push({ id: 'users', label: 'Staff & Users', icon: 'fa-solid fa-users' });
-    }
-    if (canAccess('admissions')) {
-        items.push({ id: 'admissions', label: 'Admissions', icon: 'fa-solid fa-clipboard-list' });
-    }
-    if (canAccess('classes')) {
-        items.push({ id: 'classes', label: 'Classes & Sections', icon: 'fa-solid fa-chalkboard-user' });
-    }
-    if (canAccess('timetables')) {
-        items.push({ id: 'timetables', label: 'Timetables', icon: 'fa-solid fa-table-cells' });
-    }
-    if (canAccess('fees')) {
-        items.push({ id: 'fees', label: 'Fee Structures', icon: 'fa-solid fa-receipt' });
-        items.push({ 
-            id: 'defaulters', 
-            label: 'Defaulters', 
-            icon: 'fa-solid fa-triangle-exclamation',
-            badge: props.defaulters?.length ? `${props.defaulters.length}` : null,
-            badgeClass: 'bg-[#FEF2F2] text-[#991B1B] font-semibold'
-        });
-        items.push({ 
-            id: 'fee_approvals', 
-            label: 'Fee Approvals', 
-            icon: 'fa-solid fa-stamp',
-            badge: props.pending_payments?.length ? `${props.pending_payments.length}` : null,
-            badgeClass: 'bg-[#FEF3C7] text-[#92400E] font-semibold'
-        });
-    }
-    if (canAccess('staff_attendance')) {
-        items.push({ id: 'staff_attendance', label: 'Staff Attendance', icon: 'fa-solid fa-calendar-check' });
-    }
-    if (canAccess('exams')) {
-        items.push({ id: 'exams', label: 'Exams & Grades', icon: 'fa-solid fa-award' });
-    }
-    if (canAccess('notices')) {
-        items.push({ id: 'notices', label: 'Notice Board', icon: 'fa-solid fa-bullhorn' });
-    }
-    if (canAccess('sports')) {
-        items.push({ id: 'sports', label: 'Sports & Clubs', icon: 'fa-solid fa-trophy' });
-    }
-    if (canAccess('penalties')) {
-        items.push({ id: 'penalties', label: 'Penalties & Fines', icon: 'fa-solid fa-gavel' });
-    }
-    if (canAccess('reports')) {
-        items.push({ id: 'reports', label: 'Reports Export', icon: 'fa-solid fa-file-export' });
-    }
-    if (canAccess('subscription')) {
-        items.push({ id: 'subscription', label: 'Platform License', icon: 'fa-solid fa-shield-halved' });
-    }
-    if (canAccess('settings')) {
-        items.push({ id: 'settings', label: 'Settings', icon: 'fa-solid fa-gear' });
-    }
-    // ERP Navigation Links
-    if (canAccess('library')) {
-        items.push({ id: 'erp_library', label: 'Library Catalog', icon: 'fa-solid fa-book-open', href: '/admin/library' });
-    }
-    if (canAccess('hr')) {
-        items.push({ id: 'erp_hr', label: 'HR & Payroll', icon: 'fa-solid fa-users-gear', href: '/admin/hr' });
-    }
-    if (canAccess('finance')) {
-        items.push({ id: 'erp_finance', label: 'Finance & Accounts', icon: 'fa-solid fa-vault', href: '/admin/finance-reports' });
-    }
-    if (canAccess('certificates')) {
-        items.push({ id: 'erp_certificates', label: 'Certificates & IDs', icon: 'fa-solid fa-id-card', href: '/admin/certificates' });
-    }
-    if (canAccess('calendar')) {
-        items.push({ id: 'erp_calendar', label: 'Academic Calendar', icon: 'fa-solid fa-calendar-days', href: '/admin/calendar' });
-    }
-    return items;
+    return getAdminNavTree({
+        role: userRole.value || props.current_role,
+        canAccess: canAccess,
+        defaultersCount: props.defaulters?.length,
+        pendingApprovalsCount: props.pending_payments?.length,
+        pendingInquiriesCount: props.inquiries?.filter(i => i.status === 'pending')?.length,
+    });
 });
 
 const pendingActionsCount = computed(() => {
@@ -1231,25 +1341,26 @@ const currentTabDescription = computed(() => {
         :nav-items="navItems"
         :active-tab="activeTab"
         @tab-change="tab => activeTab = tab"
+        role-title="Principal"
     >
         <template #header-actions>
             <button v-if="activeTab === 'users'" @click="openCreateUserModal" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-plus text-2xs"></i>
                 <span>Add Staff User</span>
             </button>
-            <button v-if="activeTab === 'students'" @click="showStudentModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button v-if="activeTab === 'students'" @click="showAddStudentModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-user-plus text-2xs"></i>
                 <span>Add Student</span>
             </button>
-            <button v-if="activeTab === 'notices'" @click="showNoticeModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button v-if="activeTab === 'notices'" @click="showAddNoticeModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-bullhorn text-2xs"></i>
                 <span>Post Circular</span>
             </button>
-            <button v-if="activeTab === 'admissions'" @click="showInquiryModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button v-if="activeTab === 'admissions'" @click="router.visit('/admin/admissions')" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-plus text-2xs"></i>
                 <span>New Inquiry</span>
             </button>
-            <button v-if="activeTab === 'classes'" @click="showClassModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button v-if="activeTab === 'classes'" @click="showAddClassModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-plus text-2xs"></i>
                 <span>Create Class</span>
             </button>
@@ -1257,11 +1368,11 @@ const currentTabDescription = computed(() => {
                 <i class="fa-solid fa-plus text-2xs"></i>
                 <span>Schedule Period</span>
             </button>
-            <button v-if="activeTab === 'fees'" @click="showFeeStructureModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button v-if="activeTab === 'fees'" @click="showMonthlyBillingModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-plus text-2xs"></i>
-                <span>Add Fee Category</span>
+                <span>Generate Monthly Billing</span>
             </button>
-            <button v-if="activeTab === 'exams'" @click="showExamModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
+            <button v-if="activeTab === 'exams'" @click="showCreateExamModal = true" class="px-3.5 py-2 rounded-xl bg-[#0B0D14] hover:bg-[#2F6BFF] text-white text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer">
                 <i class="fa-solid fa-plus text-2xs"></i>
                 <span>Create Exam Term</span>
             </button>
@@ -1426,7 +1537,7 @@ const currentTabDescription = computed(() => {
                             <i class="fa-solid fa-user-plus text-2xs"></i>
                             <span>Admit Student</span>
                         </button>
-                        <button v-if="canAccess('notices')" @click="showNoticeModal = true" class="px-3 py-1.5 rounded-xl bg-[#F8F9FA] hover:bg-[#F4F5F8] border border-[#E5E7EB] text-xs font-semibold text-[#0B0D14] transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                        <button v-if="canAccess('notices')" @click="showAddNoticeModal = true" class="px-3 py-1.5 rounded-xl bg-[#F8F9FA] hover:bg-[#F4F5F8] border border-[#E5E7EB] text-xs font-semibold text-[#0B0D14] transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer">
                             <i class="fa-solid fa-bullhorn text-2xs"></i>
                             <span>Post Circular</span>
                         </button>
@@ -1536,7 +1647,7 @@ const currentTabDescription = computed(() => {
                                         </td>
                                         <td class="py-2 px-2.5 font-bold text-[#991B1B]">PKR {{ (d.total_amount - d.paid_amount).toLocaleString() }}</td>
                                         <td class="py-2 px-2.5 text-right">
-                                            <button @click="sendReminder(d.id)" class="px-2 py-1 rounded bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#991B1B] text-3xs font-semibold border border-[#FECACA] transition-colors cursor-pointer">
+                                            <button @click="remindDefaulter(d.id)" class="px-2 py-1 rounded bg-[#FEF2F2] hover:bg-[#FEE2E2] text-[#991B1B] text-3xs font-semibold border border-[#FECACA] transition-colors cursor-pointer">
                                                 Remind
                                             </button>
                                         </td>
@@ -2007,7 +2118,7 @@ const currentTabDescription = computed(() => {
                                             </span>
                                         </td>
                                         <td class="py-3 px-4 text-right">
-                                            <button v-if="!app.is_enrolled" @click="oneClickEnroll(app)" class="rounded-xl bg-[#137333] text-white px-3 py-1.5 text-xs font-bold shadow-2xs hover:bg-[#0d5625] transition-all flex items-center gap-1 inline-flex">
+                                            <button v-if="!app.is_enrolled" @click="enrollApplicant(app)" class="rounded-xl bg-[#137333] text-white px-3 py-1.5 text-xs font-bold shadow-2xs hover:bg-[#0d5625] transition-all flex items-center gap-1 inline-flex">
                                                 <i class="fa-solid fa-user-check"></i>
                                                 <span>One-Click Enroll</span>
                                             </button>
@@ -2604,7 +2715,7 @@ const currentTabDescription = computed(() => {
                                             <i class="fa-solid fa-chevron-down text-xs"></i>
                                         </div>
                                     </div>
-                                    <button onclick="window.location.href='/admin/api/reports/export?type=' + document.getElementById('studentReportType').value" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#1A73E8] py-2 text-sm font-bold text-white hover:bg-[#1557B0] transition-all">
+                                    <button type="button" @click="downloadReport($event.target.closest('.mt-auto').querySelector('select').value)" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#1A73E8] py-2 text-sm font-bold text-white hover:bg-[#1557B0] transition-all cursor-pointer">
                                         <i class="fa-solid fa-file-export"></i> Export to CSV
                                     </button>
                                 </div>
@@ -2637,7 +2748,7 @@ const currentTabDescription = computed(() => {
                                             <i class="fa-solid fa-chevron-down text-xs"></i>
                                         </div>
                                     </div>
-                                    <button onclick="window.location.href='/admin/api/reports/export?type=' + document.getElementById('feeReportType').value" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#137333] py-2 text-sm font-bold text-white hover:bg-[#0D5323] transition-all">
+                                    <button type="button" @click="downloadReport($event.target.closest('.mt-auto').querySelector('select').value)" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#137333] py-2 text-sm font-bold text-white hover:bg-[#0D5323] transition-all cursor-pointer">
                                         <i class="fa-solid fa-file-export"></i> Export to CSV
                                     </button>
                                 </div>
@@ -2663,7 +2774,7 @@ const currentTabDescription = computed(() => {
                                             <i class="fa-solid fa-chevron-down text-xs"></i>
                                         </div>
                                     </div>
-                                    <button onclick="window.location.href='/admin/api/reports/export?type=' + document.getElementById('staffReportType').value" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#E94235] py-2 text-sm font-bold text-white hover:bg-[#C5221F] transition-all">
+                                    <button type="button" @click="downloadReport($event.target.closest('.mt-auto').querySelector('select').value)" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#E94235] py-2 text-sm font-bold text-white hover:bg-[#C5221F] transition-all cursor-pointer">
                                         <i class="fa-solid fa-file-export"></i> Export to CSV
                                     </button>
                                 </div>
@@ -2689,7 +2800,7 @@ const currentTabDescription = computed(() => {
                                             <i class="fa-solid fa-chevron-down text-xs"></i>
                                         </div>
                                     </div>
-                                    <button onclick="window.location.href='/admin/api/reports/export?type=' + document.getElementById('classReportType').value" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#F29900] py-2 text-sm font-bold text-white hover:bg-[#D58300] transition-all">
+                                    <button type="button" @click="downloadReport($event.target.closest('.mt-auto').querySelector('select').value)" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#F29900] py-2 text-sm font-bold text-white hover:bg-[#D58300] transition-all cursor-pointer">
                                         <i class="fa-solid fa-file-export"></i> Export to CSV
                                     </button>
                                 </div>
@@ -2715,7 +2826,7 @@ const currentTabDescription = computed(() => {
                                             <i class="fa-solid fa-chevron-down text-xs"></i>
                                         </div>
                                     </div>
-                                    <button onclick="window.location.href='/admin/api/reports/export?type=' + document.getElementById('examReportType').value" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#8430CE] py-2 text-sm font-bold text-white hover:bg-[#6824A4] transition-all">
+                                    <button type="button" @click="downloadReport($event.target.closest('.mt-auto').querySelector('select').value)" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#8430CE] py-2 text-sm font-bold text-white hover:bg-[#6824A4] transition-all cursor-pointer">
                                         <i class="fa-solid fa-file-export"></i> Export to CSV
                                     </button>
                                 </div>
@@ -2743,7 +2854,7 @@ const currentTabDescription = computed(() => {
                                             <i class="fa-solid fa-chevron-down text-xs"></i>
                                         </div>
                                     </div>
-                                    <button onclick="window.location.href='/admin/api/reports/export?type=' + document.getElementById('adminReportType').value" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#5F6368] py-2 text-sm font-bold text-white hover:bg-[#3C4043] transition-all">
+                                    <button type="button" @click="downloadReport($event.target.closest('.mt-auto').querySelector('select').value)" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#5F6368] py-2 text-sm font-bold text-white hover:bg-[#3C4043] transition-all cursor-pointer">
                                         <i class="fa-solid fa-file-export"></i> Export to CSV
                                     </button>
                                 </div>
@@ -2993,58 +3104,108 @@ const currentTabDescription = computed(() => {
 
                 <!-- ================= TAB: SETTINGS & BRANDING ================= -->
                 <div v-if="activeTab === 'settings'" class="space-y-8 animate-fadeIn">
+                    <!-- 1. School Crest & Logo Customization -->
                     <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 sm:p-8 shadow-2xs">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <!-- Logo Upload Section -->
-                            <div class="space-y-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Logo Upload & Contrast Container Section -->
+                            <div class="space-y-5">
                                 <div>
                                     <h4 class="text-base font-extrabold text-[#202124] flex items-center gap-2">
-                                        <i class="fa-solid fa-palette text-[#1A73E8]"></i>
-                                        <span>Official School Logo</span>
+                                        <i class="fa-solid fa-shield-halved text-[#1A73E8]"></i>
+                                        <span>Official School Crest & Logo</span>
                                     </h4>
                                     <p class="text-xs text-[#5F6368] mt-1">
-                                        Upload your school crest or logo. This will be prominently displayed on the login screen (<code class="bg-[#F1F3F4] px-1.5 py-0.5 rounded text-2xs text-[#1A73E8]">/login</code>) and on all portal headers (Admin, Teacher, Student, Parent).
+                                        Upload your school crest or logo in any aspect ratio (square, crest, or wide banner). Displays across the portal navigation header and login screen.
                                     </p>
                                 </div>
 
-                                <form @submit.prevent="submitLogo" class="space-y-4">
-                                    <div class="rounded-2xl border-2 border-dashed border-[#DADCE0] bg-[#F8F9FA] p-6 text-center transition-all hover:border-[#1A73E8]/50 hover:bg-[#F8F9FA]/80">
-                                        <!-- Preview inside drag zone if a file is selected -->
-                                        <div v-if="logoPreviewUrl" class="mb-4 flex flex-col items-center">
-                                            <div class="h-28 w-28 rounded-2xl border border-[#DADCE0] bg-white p-2 shadow-md flex items-center justify-center overflow-hidden">
-                                                <img :src="logoPreviewUrl" class="max-h-full max-w-full object-contain" alt="Selected logo preview" />
+                                <form @submit.prevent="submitLogo" class="space-y-5">
+                                    <!-- Upload & Dynamic Preview Box -->
+                                    <div class="rounded-2xl border-2 border-dashed border-[#DADCE0] bg-[#F8F9FA] p-6 text-center transition-all hover:border-[#1A73E8]/50">
+                                        <!-- Logo Display Container -->
+                                        <div class="mb-4 flex flex-col items-center">
+                                            <div 
+                                                v-if="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" 
+                                                class="h-28 min-w-[120px] max-w-[280px] rounded-2xl border p-3 shadow-md flex items-center justify-center overflow-hidden transition-all duration-300"
+                                                :style="previewLogoBgStyle"
+                                            >
+                                                <img 
+                                                    :src="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" 
+                                                    class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.25)]" 
+                                                    alt="School Logo" 
+                                                />
                                             </div>
-                                            <span class="mt-2 text-xs font-semibold text-[#1A73E8] bg-[#E8F0FE] px-3 py-1 rounded-full">New file selected for upload</span>
-                                        </div>
-                                        <div v-else-if="$page.props.tenant?.logo || tenant?.logo" class="mb-4 flex flex-col items-center">
-                                            <div class="h-28 w-28 rounded-2xl border border-[#DADCE0] bg-white p-2 shadow-sm flex items-center justify-center overflow-hidden">
-                                                <img :src="$page.props.tenant?.logo || tenant?.logo" class="max-h-full max-w-full object-contain" alt="Current school logo" />
+                                            <div v-else class="h-20 w-20 rounded-2xl bg-[#E8F0FE] border border-[#D2E3FC] flex items-center justify-center text-3xl text-[#1A73E8]">
+                                                <i class="fa-solid fa-graduation-cap"></i>
                                             </div>
-                                            <span class="mt-2 text-xs font-semibold text-[#137333]">Current active school logo</span>
-                                        </div>
-                                        <div v-else class="mb-4 flex flex-col items-center">
-                                            <div class="h-16 w-16 rounded-2xl bg-[#E8F0FE] border border-[#D2E3FC] flex items-center justify-center text-2xl text-[#1A73E8]">
-                                                <i class="fa-solid fa-image"></i>
-                                            </div>
-                                            <span class="mt-2 text-xs font-medium text-[#5F6368]">No custom logo uploaded yet</span>
+
+                                            <span v-if="logoPreviewUrl" class="mt-2.5 text-xs font-semibold text-[#1A73E8] bg-[#E8F0FE] px-3 py-1 rounded-full border border-[#D2E3FC]">
+                                                New file ready for upload
+                                            </span>
+                                            <span v-else-if="$page.props.tenant?.logo || tenant?.logo" class="mt-2.5 text-xs font-semibold text-[#137333] bg-[#E6F4EA] px-3 py-1 rounded-full border border-[#CEEAD6]">
+                                                Active custom logo
+                                            </span>
+                                            <span v-else class="mt-2.5 text-xs font-medium text-[#5F6368]">
+                                                Default icon in use
+                                            </span>
                                         </div>
 
                                         <label class="cursor-pointer inline-flex items-center justify-center rounded-full bg-white border border-[#DADCE0] px-5 py-2.5 text-xs font-bold text-[#1A73E8] shadow-2xs hover:bg-[#E8F0FE] hover:border-[#D2E3FC] transition-all">
+                                            <i class="fa-solid fa-folder-open mr-2"></i>
                                             <span>{{ logoPreviewUrl ? 'Change Selected File' : 'Browse & Select Logo File' }}</span>
                                             <input type="file" @change="handleLogoSelect" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" class="hidden" />
                                         </label>
-                                        <p class="mt-2 text-2xs text-[#5F6368]">Supports PNG, JPG, WEBP or SVG up to 4MB.</p>
+                                        <p class="mt-2 text-2xs text-[#5F6368]">Supports PNG, JPG, WEBP, or SVG in any dimension up to 4MB.</p>
+                                    </div>
+
+                                    <!-- Logo Container Contrast Background Selection (Fixes white logos) -->
+                                    <div class="space-y-2.5 pt-1">
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-xs font-bold uppercase tracking-wider text-[#202124]">
+                                                Logo Backdrop Tile Style
+                                            </label>
+                                            <span class="text-3xs text-[#5F6368]">Optimizes contrast for white logos</span>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                            <button 
+                                                type="button"
+                                                v-for="opt in logoBgOptions" 
+                                                :key="opt.id"
+                                                @click="brandingForm.logo_bg = opt.id"
+                                                :class="[
+                                                    brandingForm.logo_bg === opt.id 
+                                                        ? 'border-[#1A73E8] ring-2 ring-[#1A73E8]/30 bg-[#F4F8FE]' 
+                                                        : 'border-[#DADCE0] bg-white hover:border-[#1A73E8]/40',
+                                                    'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between'
+                                                ]"
+                                            >
+                                                <div class="flex items-center justify-between">
+                                                    <span 
+                                                        class="h-4 w-4 rounded-full border border-black/10 shadow-2xs flex-shrink-0"
+                                                        :style="opt.id === 'brand' ? { backgroundColor: brandingForm.cover_color } : {}"
+                                                        :class="opt.bgClass"
+                                                    ></span>
+                                                    <i v-if="brandingForm.logo_bg === opt.id" class="fa-solid fa-circle-check text-xs text-[#1A73E8]"></i>
+                                                </div>
+                                                <div class="mt-2">
+                                                    <div class="text-xs font-bold text-[#202124]">{{ opt.name }}</div>
+                                                    <div class="text-3xs text-[#5F6368] mt-0.5 leading-tight">{{ opt.badge }}</div>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div v-if="logoForm.errors.logo" class="rounded-xl bg-[#FCE8E6] border border-[#FAD2CF] p-3 text-xs font-medium text-[#C5221F]">
                                         {{ logoForm.errors.logo }}
                                     </div>
 
+                                    <!-- Actions -->
                                     <div class="flex items-center gap-3 pt-2">
                                         <button
                                             type="submit"
                                             :disabled="!logoForm.logo || logoForm.processing"
-                                            class="flex-1 rounded-full bg-[#1A73E8] py-3 px-6 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition-all active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
+                                            class="flex-1 rounded-full bg-[#1A73E8] py-3 px-6 text-xs font-bold text-white shadow-sm hover:bg-[#1557B0] transition-all active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer"
                                         >
                                             <i class="fa-solid fa-cloud-arrow-up"></i>
                                             <span>{{ logoForm.processing ? 'Uploading Logo...' : 'Upload & Apply Logo' }}</span>
@@ -3053,45 +3214,276 @@ const currentTabDescription = computed(() => {
                                             v-if="$page.props.tenant?.logo || tenant?.logo"
                                             type="button"
                                             @click="removeLogo"
-                                            class="rounded-full bg-[#FCE8E6] border border-[#FAD2CF] py-3 px-5 text-xs font-bold text-[#C5221F] hover:bg-[#FAD2CF] transition-all flex items-center gap-1.5"
+                                            class="rounded-full bg-[#FCE8E6] border border-[#FAD2CF] py-3 px-5 text-xs font-bold text-[#C5221F] hover:bg-[#FAD2CF] transition-all flex items-center gap-1.5 cursor-pointer"
                                         >
                                             <i class="fa-solid fa-trash"></i>
-                                            <span>Remove Logo</span>
+                                            <span>Remove</span>
                                         </button>
                                     </div>
                                 </form>
                             </div>
 
-                            <!-- Branding Preview & Guidelines -->
+                            <!-- Live Branding Preview Column -->
                             <div class="rounded-2xl bg-[#F8F9FA] border border-[#DADCE0] p-6 space-y-5 flex flex-col justify-between">
                                 <div class="space-y-4">
-                                    <h4 class="text-sm font-extrabold uppercase tracking-wider text-[#5F6368]">Live Branding Preview</h4>
-                                    
-                                    <!-- Simulated Login Screen Card Preview -->
-                                    <div class="rounded-xl bg-white border border-[#DADCE0] p-5 shadow-xs space-y-3">
-                                        <div class="text-2xs font-bold text-[#5F6368] uppercase tracking-wider">Simulated Login Card</div>
-                                        <div class="flex items-center space-x-3.5 pt-1">
-                                            <div v-if="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" class="h-12 w-12 rounded-xl bg-white border border-[#DADCE0] p-1 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xs">
-                                                <img :src="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" class="max-h-full max-w-full object-contain" alt="Preview logo" />
+                                    <div class="flex items-center justify-between border-b border-[#DADCE0] pb-3">
+                                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-[#5F6368]">
+                                            Live Header & Login Preview
+                                        </h4>
+                                        <span class="text-3xs font-semibold text-[#1A73E8] bg-[#E8F0FE] px-2 py-0.5 rounded-full">
+                                            Interactive
+                                        </span>
+                                    </div>
+
+                                    <!-- Simulated Portal Sidebar Header Preview -->
+                                    <div class="space-y-1.5">
+                                        <span class="text-3xs font-bold uppercase tracking-wider text-[#5F6368]">Portal Sidebar Header</span>
+                                        <div class="h-16 flex items-center justify-between px-3.5 border border-[#E5E7EB] bg-white rounded-xl shadow-2xs">
+                                            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                                <div 
+                                                    :style="previewLogoBgStyle" 
+                                                    class="h-10 min-w-[40px] max-w-[110px] px-2 py-1 rounded-xl border flex items-center justify-center overflow-hidden shadow-2xs"
+                                                >
+                                                    <img 
+                                                        v-if="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" 
+                                                        :src="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" 
+                                                        class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.22)]" 
+                                                        alt="Logo Preview" 
+                                                    />
+                                                    <span v-else class="raibix-dot h-2.5 w-2.5"></span>
+                                                </div>
+                                                <div class="min-w-0 flex-1 truncate">
+                                                    <div class="text-xs font-bold text-[#0B0D14] truncate">
+                                                        {{ $page.props.tenant?.name || tenant?.name || 'School Name' }}
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                                        <span class="text-3xs font-semibold text-[#5B6270] uppercase tracking-wider">Principal</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div v-else class="h-12 w-12 rounded-xl bg-[#E8F0FE] border border-[#D2E3FC] flex items-center justify-center font-bold text-xl text-[#1A73E8] flex-shrink-0 shadow-2xs">
-                                                <i class="fa-solid fa-graduation-cap"></i>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <div class="font-bold text-sm text-[#202124] truncate">{{ $page.props.tenant?.name || tenant?.name || $page.props.platformName || 'School Portal' }}</div>
-                                                <div class="text-2xs text-[#5F6368]">Unified School Access</div>
+                                            <div class="h-7 w-7 rounded-lg text-[#5B6270] bg-[#F8F9FA] flex items-center justify-center border border-[#E5E7EB]">
+                                                <i class="fa-solid fa-chevron-left text-[10px]"></i>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="rounded-xl bg-[#E8F0FE]/60 border border-[#D2E3FC] p-4 text-xs text-[#1A73E8] space-y-1.5">
-                                        <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-lightbulb text-[#B06000]"></i> <span>Best Practices for School Branding:</span></p>
-                                        <ul class="list-disc list-inside space-y-1 text-2xs text-[#202124]/80">
-                                            <li>Use square or circular PNGs/SVGs with transparent backgrounds for best visual harmony across dark and light headers.</li>
-                                            <li>Changes take effect immediately across all active sessions upon upload.</li>
-                                        </ul>
+                                    <!-- Simulated Login Screen Card Preview -->
+                                    <div class="space-y-1.5">
+                                        <span class="text-3xs font-bold uppercase tracking-wider text-[#5F6368]">Login Screen Card</span>
+                                        <div class="rounded-xl bg-white border border-[#DADCE0] p-4 shadow-xs text-center space-y-3">
+                                            <div class="flex flex-col items-center">
+                                                <div 
+                                                    :style="previewLogoBgStyle" 
+                                                    class="h-16 min-w-[70px] max-w-[180px] p-2 rounded-2xl border shadow-sm flex items-center justify-center overflow-hidden mb-2"
+                                                >
+                                                    <img 
+                                                        v-if="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" 
+                                                        :src="logoPreviewUrl || $page.props.tenant?.logo || tenant?.logo" 
+                                                        class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.25)]" 
+                                                        alt="Login preview logo" 
+                                                    />
+                                                    <div v-else class="h-10 w-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center text-xl text-[#1A73E8]">
+                                                        <i class="fa-solid fa-graduation-cap"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="font-bold text-sm text-[#202124] truncate max-w-xs">
+                                                    {{ $page.props.tenant?.name || tenant?.name || $page.props.platformName || 'School Portal' }}
+                                                </div>
+                                                <div class="text-3xs text-[#5F6368]">School Unified Portal Access</div>
+                                            </div>
+
+                                            <div 
+                                                class="w-full py-2 rounded-full text-xs font-bold text-white shadow-xs transition-colors"
+                                                :style="{ backgroundColor: brandingForm.cover_color || '#1A73E8' }"
+                                            >
+                                                Sign In to Portal
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Best practices callout -->
+                                    <div class="rounded-xl bg-[#E8F0FE]/60 border border-[#D2E3FC] p-3 text-xs text-[#1A73E8] space-y-1">
+                                        <p class="font-bold flex items-center gap-1.5 text-2xs">
+                                            <i class="fa-solid fa-lightbulb text-[#B06000]"></i> 
+                                            <span>Pro-Tip for School Crests:</span>
+                                        </p>
+                                        <p class="text-3xs text-[#202124]/80">
+                                            White and transparent logos are automatically backed with Midnight Slate for pristine contrast. You can switch to School Brand Primary or Clean Light above.
+                                        </p>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Color Palette & Theme Selection (After Logo Upload) -->
+                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 sm:p-8 shadow-2xs space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DADCE0] pb-5">
+                            <div>
+                                <h4 class="text-base font-extrabold text-[#202124] flex items-center gap-2">
+                                    <i class="fa-solid fa-palette text-[#1A73E8]"></i>
+                                    <span>Brand Color Palette Options</span>
+                                </h4>
+                                <p class="text-xs text-[#5F6368] mt-1">
+                                    Colors are automatically sampled from your logo. If the auto-selected scheme is not ideal, select one of the curated academic palettes below.
+                                </p>
+                            </div>
+                            <button 
+                                type="button"
+                                @click="extractColorsFromLogo"
+                                :disabled="isExtractingColors"
+                                class="rounded-full bg-[#E8F0FE] hover:bg-[#D2E3FC] text-[#1A73E8] border border-[#D2E3FC] px-4 py-2 text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs self-start sm:self-auto"
+                            >
+                                <i class="fa-solid fa-wand-magic-sparkles text-xs" :class="{ 'animate-spin': isExtractingColors }"></i>
+                                <span>{{ isExtractingColors ? 'Extracting...' : 'Re-sample Logo Colors' }}</span>
+                            </button>
+                        </div>
+
+                        <!-- 4/5 Interactive Palette Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <!-- Card 1: Auto-Extracted from Logo -->
+                            <button
+                                type="button"
+                                @click="selectPalette(autoExtractedPalette)"
+                                :class="[
+                                    selectedPaletteId === autoExtractedPalette.id 
+                                        ? 'border-[#1A73E8] ring-2 ring-[#1A73E8]/30 bg-[#F4F8FE]' 
+                                        : 'border-[#DADCE0] bg-white hover:border-[#1A73E8]/40',
+                                    'p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between relative shadow-2xs'
+                                ]"
+                            >
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E8F0FE] text-[#1A73E8] border border-[#D2E3FC]">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-[9px]"></i>
+                                        <span>Auto Extracted</span>
+                                    </span>
+                                    <i v-if="selectedPaletteId === autoExtractedPalette.id" class="fa-solid fa-circle-check text-[#1A73E8] text-sm"></i>
+                                </div>
+
+                                <div class="my-3">
+                                    <div class="font-bold text-xs text-[#202124]">{{ autoExtractedPalette.name }}</div>
+                                    <p class="text-3xs text-[#5F6368] mt-0.5 leading-tight">{{ autoExtractedPalette.description }}</p>
+                                </div>
+
+                                <!-- Color swatches -->
+                                <div class="flex items-center gap-2 pt-2 border-t border-black/5">
+                                    <div class="flex items-center -space-x-1.5">
+                                        <span class="h-6 w-6 rounded-full border-2 border-white shadow-2xs" :style="{ backgroundColor: autoExtractedPalette.primary }" title="Primary"></span>
+                                        <span class="h-6 w-6 rounded-full border-2 border-white shadow-2xs" :style="{ backgroundColor: autoExtractedPalette.secondary }" title="Secondary"></span>
+                                        <span class="h-6 w-6 rounded-full border-2 border-white shadow-2xs" :style="{ backgroundColor: autoExtractedPalette.accent }" title="Accent"></span>
+                                    </div>
+                                    <span class="text-3xs font-mono text-[#5F6368] font-bold">{{ autoExtractedPalette.primary }}</span>
+                                </div>
+                            </button>
+
+                            <!-- Curated Palettes (2, 3, 4, 5) -->
+                            <button
+                                type="button"
+                                v-for="pal in curatedPalettes"
+                                :key="pal.id"
+                                @click="selectPalette(pal)"
+                                :class="[
+                                    selectedPaletteId === pal.id 
+                                        ? 'border-[#1A73E8] ring-2 ring-[#1A73E8]/30 bg-[#F4F8FE]' 
+                                        : 'border-[#DADCE0] bg-white hover:border-[#1A73E8]/40',
+                                    'p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between relative shadow-2xs'
+                                ]"
+                            >
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="text-3xs font-bold uppercase tracking-wider text-[#5F6368]">Curated Theme</span>
+                                    <i v-if="selectedPaletteId === pal.id" class="fa-solid fa-circle-check text-[#1A73E8] text-sm"></i>
+                                </div>
+
+                                <div class="my-3">
+                                    <div class="font-bold text-xs text-[#202124]">{{ pal.name }}</div>
+                                    <p class="text-3xs text-[#5F6368] mt-0.5 leading-tight">{{ pal.description }}</p>
+                                </div>
+
+                                <!-- Color swatches -->
+                                <div class="flex items-center gap-2 pt-2 border-t border-black/5">
+                                    <div class="flex items-center -space-x-1.5">
+                                        <span class="h-6 w-6 rounded-full border-2 border-white shadow-2xs" :style="{ backgroundColor: pal.primary }" title="Primary"></span>
+                                        <span class="h-6 w-6 rounded-full border-2 border-white shadow-2xs" :style="{ backgroundColor: pal.secondary }" title="Secondary"></span>
+                                        <span class="h-6 w-6 rounded-full border-2 border-white shadow-2xs" :style="{ backgroundColor: pal.accent }" title="Accent"></span>
+                                    </div>
+                                    <span class="text-3xs font-mono text-[#5F6368] font-bold">{{ pal.primary }}</span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Fine-tuning custom inputs & save form -->
+                        <div class="rounded-xl border border-[#DADCE0] bg-[#F8F9FA] p-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-[#202124]">
+                                    Active Color Swatches & Hex Codes
+                                </span>
+                                <span class="text-3xs text-[#5F6368]">Modify values directly for exact hex matching</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <!-- Primary Cover Color -->
+                                <div class="rounded-xl bg-white border border-[#DADCE0] p-3 flex items-center gap-3">
+                                    <input 
+                                        type="color" 
+                                        v-model="brandingForm.cover_color" 
+                                        class="h-9 w-9 rounded-lg border border-black/10 cursor-pointer p-0.5" 
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                        <label class="block text-3xs font-bold uppercase text-[#5F6368]">Primary Color</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="brandingForm.cover_color" 
+                                            class="w-full text-xs font-mono font-bold text-[#202124] focus:outline-none uppercase" 
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Secondary Color -->
+                                <div class="rounded-xl bg-white border border-[#DADCE0] p-3 flex items-center gap-3">
+                                    <input 
+                                        type="color" 
+                                        v-model="brandingForm.secondary_color" 
+                                        class="h-9 w-9 rounded-lg border border-black/10 cursor-pointer p-0.5" 
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                        <label class="block text-3xs font-bold uppercase text-[#5F6368]">Secondary Accent</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="brandingForm.secondary_color" 
+                                            class="w-full text-xs font-mono font-bold text-[#202124] focus:outline-none uppercase" 
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Accent Color -->
+                                <div class="rounded-xl bg-white border border-[#DADCE0] p-3 flex items-center gap-3">
+                                    <input 
+                                        type="color" 
+                                        v-model="brandingForm.accent_color" 
+                                        class="h-9 w-9 rounded-lg border border-black/10 cursor-pointer p-0.5" 
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                        <label class="block text-3xs font-bold uppercase text-[#5F6368]">Highlight Accent</label>
+                                        <input 
+                                            type="text" 
+                                            v-model="brandingForm.accent_color" 
+                                            class="w-full text-xs font-mono font-bold text-[#202124] focus:outline-none uppercase" 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-2">
+                                <button
+                                    type="button"
+                                    @click="submitBranding"
+                                    :disabled="brandingForm.processing"
+                                    class="rounded-full bg-[#1A73E8] hover:bg-[#1557B0] py-2.5 px-6 text-xs font-bold text-white shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                                >
+                                    <i class="fa-solid fa-check text-xs"></i>
+                                    <span>{{ brandingForm.processing ? 'Saving...' : 'Apply & Save Color Palette' }}</span>
+                                </button>
                             </div>
                         </div>
                     </div>

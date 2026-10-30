@@ -55,6 +55,7 @@ class HandleInertiaRequests extends Middleware
                 'name' => $t->name,
                 'status' => $t->status,
                 'logo' => $t->logo ?? null,
+                'logo_bg' => $t->logo_bg ?? ($dataBag['logo_bg'] ?? 'dark'),
                 'cover_color' => $t->cover_color ?? ($dataBag['cover_color'] ?? '#1A73E8'),
                 'secondary_color' => $t->secondary_color ?? ($dataBag['secondary_color'] ?? '#0F172A'),
                 'accent_color' => $t->accent_color ?? ($dataBag['accent_color'] ?? '#3B82F6'),

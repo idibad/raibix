@@ -36,6 +36,8 @@ class TenantAuthController extends Controller
                 'name' => $tenant?->name ?? config('app.name', 'School Portal'),
                 'domain' => $domain,
                 'logo' => $tenant?->logo ?? null,
+                'logo_bg' => $tenant?->logo_bg ?? 'dark',
+                'cover_color' => $tenant?->cover_color ?? '#1A73E8',
             ],
         ]);
     }
@@ -119,6 +121,8 @@ class TenantAuthController extends Controller
                 'name' => $tenant?->name ?? config('app.name', 'School Portal'),
                 'domain' => $domain,
                 'logo' => $tenant?->logo ?? null,
+                'logo_bg' => $tenant?->logo_bg ?? 'dark',
+                'cover_color' => $tenant?->cover_color ?? '#1A73E8',
             ],
             'status' => session('status'),
         ]);
@@ -180,6 +184,8 @@ class TenantAuthController extends Controller
                 'name' => $tenant?->name ?? config('app.name', 'School Portal'),
                 'domain' => $domain,
                 'logo' => $tenant?->logo ?? null,
+                'logo_bg' => $tenant?->logo_bg ?? 'dark',
+                'cover_color' => $tenant?->cover_color ?? '#1A73E8',
             ],
         ]);
     }

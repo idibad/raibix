@@ -444,6 +444,7 @@ class AdminPortalController extends Controller
             'cover_color'     => 'nullable|string|max:20',
             'secondary_color' => 'nullable|string|max:20',
             'accent_color'    => 'nullable|string|max:20',
+            'logo_bg'         => 'nullable|string|max:20',
         ]);
 
         $tenant = tenancy()->tenant;
@@ -476,6 +477,9 @@ class AdminPortalController extends Controller
         }
         if ($request->filled('accent_color')) {
             $tenant->accent_color = $request->accent_color;
+        }
+        if ($request->filled('logo_bg')) {
+            $tenant->logo_bg = $request->logo_bg;
         }
 
         $tenant->save();
@@ -523,6 +527,7 @@ class AdminPortalController extends Controller
             'cover_color'           => 'required|string|max:20',
             'secondary_color'       => 'nullable|string|max:20',
             'accent_color'          => 'nullable|string|max:20',
+            'logo_bg'               => 'nullable|string|max:20',
             'tagline'               => 'nullable|string|max:255',
             'hero_heading'          => 'nullable|string|max:255',
             'hero_description'      => 'nullable|string|max:2000',
@@ -538,6 +543,9 @@ class AdminPortalController extends Controller
         $tenant->cover_color           = $validated['cover_color'];
         $tenant->secondary_color       = $validated['secondary_color'] ?? '#0F172A';
         $tenant->accent_color          = $validated['accent_color'] ?? '#3B82F6';
+        if (isset($validated['logo_bg'])) {
+            $tenant->logo_bg = $validated['logo_bg'];
+        }
         if (isset($validated['tagline'])) {
             $tenant->tagline = $validated['tagline'];
         }
