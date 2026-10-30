@@ -59,6 +59,9 @@ class HandleInertiaRequests extends Middleware
                 'cover_color' => $t->cover_color ?? ($dataBag['cover_color'] ?? '#1A73E8'),
                 'secondary_color' => $t->secondary_color ?? ($dataBag['secondary_color'] ?? '#0F172A'),
                 'accent_color' => $t->accent_color ?? ($dataBag['accent_color'] ?? '#3B82F6'),
+                'phone' => $t->phone ?? ($dataBag['phone'] ?? ($t->admin_phone ?? ($dataBag['admin_phone'] ?? null))),
+                'email' => $t->email ?? ($dataBag['email'] ?? ($t->admin_email ?? ($dataBag['admin_email'] ?? null))),
+                'address' => $t->address ?? ($dataBag['address'] ?? null),
                 'domain' => $t->domains()->first()?->domain ?? null,
                 'academic_session' => $academicSession,
                 'plan' => $t->plan ? [

@@ -21,12 +21,24 @@ class TenantProvisioningService
             ? strtolower(preg_replace('/[^a-z0-9-]/', '', $data['id']))
             : strtolower(preg_replace('/[^a-z0-9-]/', '', $data['name']));
         
-        $tenant = Tenant::create([
+        $tenantAttributes = [
             'id' => $tenantId,
             'name' => $data['name'],
             'status' => 'active',
             'plan_id' => $data['plan_id'] ?? null,
-        ]);
+        ];
+
+        if (!empty($data['phone']) || !empty($data['admin_phone'])) {
+            $tenantAttributes['phone'] = $data['phone'] ?? $data['admin_phone'];
+        }
+        if (!empty($data['email']) || !empty($data['admin_email'])) {
+            $tenantAttributes['email'] = $data['email'] ?? $data['admin_email'];
+        }
+        if (!empty($data['address'])) {
+            $tenantAttributes['address'] = $data['address'];
+        }
+
+        $tenant = Tenant::create($tenantAttributes);
 
         // 2. Create Domain associated with tenant
         $rawDomain = strtolower(trim($data['domain'] ?? ''));

@@ -431,8 +431,15 @@ const userInitials = computed(() => {
                 <!-- Clean Footer -->
                 <footer class="border-t border-[#E5E7EB] bg-white py-4 px-4 sm:px-6 lg:px-8 mt-auto text-2xs text-[#5B6270]">
                     <div class="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
                             <span>{{ tenant?.name || 'Raibix' }}</span>
+                            <template v-if="tenant?.phone">
+                                <span>•</span>
+                                <span class="inline-flex items-center gap-1 text-[#5B6270]">
+                                    <i class="fa-solid fa-phone text-3xs"></i>
+                                    <span>{{ tenant.phone }}</span>
+                                </span>
+                            </template>
                             <span>•</span>
                             <span class="inline-flex items-center gap-1">
                                 <span class="raibix-dot h-1 w-1"></span>

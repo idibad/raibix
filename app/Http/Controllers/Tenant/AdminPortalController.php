@@ -519,7 +519,7 @@ class AdminPortalController extends Controller
     }
 
     /**
-     * Store and apply School Brand Color Scheme (Primary, Secondary, Accent).
+     * Store and apply School Brand Color Scheme, Contact Information, and Landing Page Content.
      */
     public function updateBranding(Request $request)
     {
@@ -533,6 +533,9 @@ class AdminPortalController extends Controller
             'hero_description'      => 'nullable|string|max:2000',
             'about_vision'          => 'nullable|string|max:5000',
             'academics_description' => 'nullable|string|max:5000',
+            'phone'                 => 'nullable|string|max:50',
+            'email'                 => 'nullable|email|max:255',
+            'address'               => 'nullable|string|max:500',
         ]);
 
         $tenant = tenancy()->tenant;
@@ -561,9 +564,18 @@ class AdminPortalController extends Controller
         if (isset($validated['academics_description'])) {
             $tenant->academics_description = $validated['academics_description'];
         }
+        if (array_key_exists('phone', $validated)) {
+            $tenant->phone = $validated['phone'];
+        }
+        if (array_key_exists('email', $validated)) {
+            $tenant->email = $validated['email'];
+        }
+        if (array_key_exists('address', $validated)) {
+            $tenant->address = $validated['address'];
+        }
         $tenant->save();
 
-        return redirect()->back()->with('success', 'School brand color scheme and landing page content saved successfully!');
+        return redirect()->back()->with('success', 'School branding, contact information, and public portal details saved successfully!');
     }
 
     /**

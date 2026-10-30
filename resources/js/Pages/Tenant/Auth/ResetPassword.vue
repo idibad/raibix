@@ -134,6 +134,13 @@ const submit = () => {
                     </Link>
                 </div>
             </form>
+
+            <div v-if="$page.props.tenant?.phone || $page.props.tenant?.email" class="mt-6 pt-4 border-t border-[#DADCE0] text-center text-2xs text-[#5F6368]">
+                <span>Need help? Contact school office: </span>
+                <a v-if="$page.props.tenant?.phone" :href="'tel:' + $page.props.tenant.phone" class="font-semibold text-[#202124] hover:underline">{{ $page.props.tenant.phone }}</a>
+                <span v-if="$page.props.tenant?.phone && $page.props.tenant?.email"> • </span>
+                <a v-if="$page.props.tenant?.email" :href="'mailto:' + $page.props.tenant.email" class="text-[#1A73E8] hover:underline font-semibold">{{ $page.props.tenant.email }}</a>
+            </div>
         </div>
     </div>
 </template>

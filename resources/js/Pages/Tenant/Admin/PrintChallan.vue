@@ -80,6 +80,7 @@ const formatDate = (dateString) => {
                         </div>
                         <div class="flex-1">
                             <h2 class="text-xl font-black uppercase tracking-tight text-black leading-none">{{ tenant?.name || 'School Name' }}</h2>
+                            <p v-if="tenant?.address" class="text-[10px] text-gray-600 font-medium mt-0.5">{{ tenant.address }}</p>
                             <p class="text-xs text-gray-600 mt-1 font-semibold">Official Fee Collection Voucher</p>
                         </div>
                         <div class="text-right">
@@ -142,6 +143,7 @@ const formatDate = (dateString) => {
                         <div>
                             <p><strong>Bank Details:</strong> Deposit at any branch of Meezan Bank Ltd.</p>
                             <p><strong>Account Title:</strong> {{ tenant?.name || 'School Name' }}</p>
+                            <p v-if="tenant?.phone || tenant?.email"><strong>Campus Helpline:</strong> {{ [tenant?.phone, tenant?.email].filter(Boolean).join(' | ') }}</p>
                         </div>
                         <div class="text-right flex items-end gap-4">
                             <div class="border-t border-gray-800 w-32 text-center pt-1 font-bold">Cashier / Bank Stamp</div>

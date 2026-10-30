@@ -1021,11 +1021,23 @@ class SuperAdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'domain' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
         ]);
 
-        $tenant->update([
-            'name' => $validated['name'],
-        ]);
+        $updateData = ['name' => $validated['name']];
+        if (array_key_exists('phone', $validated)) {
+            $updateData['phone'] = $validated['phone'];
+        }
+        if (array_key_exists('email', $validated)) {
+            $updateData['email'] = $validated['email'];
+        }
+        if (array_key_exists('address', $validated)) {
+            $updateData['address'] = $validated['address'];
+        }
+
+        $tenant->update($updateData);
 
         $cleanDomain = strtolower(trim($validated['domain']));
         if (!str_contains($cleanDomain, '.')) {

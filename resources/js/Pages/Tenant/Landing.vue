@@ -33,6 +33,10 @@ const activePortalTab = ref('student');
 
 const schoolType = computed(() => (props.school?.type || 'School').toString());
 
+const contactPhone = computed(() => props.school?.phone || null);
+const contactEmail = computed(() => props.school?.email || null);
+const contactAddress = computed(() => props.school?.address || null);
+
 const extractedColors = ref(null);
 const primaryColor = computed(() => extractedColors.value?.primary || props.school?.cover_color || '#1A73E8');
 const secondaryColor = computed(() => extractedColors.value?.secondary || props.school?.secondary_color || '#0F172A');
@@ -554,7 +558,7 @@ const faqs = [
                                     </span>
                                     <div>
                                         <p class="font-bold text-slate-900">Campus Location</p>
-                                        <p class="text-slate-600 mt-0.5">{{ school.address || 'Central Campus Learning Complex, Sector G-10, Islamabad / Regional Area.' }}</p>
+                                        <p class="text-slate-600 mt-0.5">{{ contactAddress || (school.name ? `${school.name} Main Campus` : 'Main Campus Premises') }}</p>
                                     </div>
                                 </li>
 
@@ -564,7 +568,8 @@ const faqs = [
                                     </span>
                                     <div>
                                         <p class="font-bold text-slate-900">Direct Contact & Support</p>
-                                        <p class="text-slate-600 mt-0.5">{{ school.phone || '+92 300 0000000 (Admissions Office Monday–Saturday)' }}</p>
+                                        <a v-if="contactPhone" :href="'tel:' + contactPhone" class="text-slate-600 hover:text-blue-600 font-medium transition-colors mt-0.5 block">{{ contactPhone }}</a>
+                                        <p v-else class="text-slate-600 mt-0.5">Admissions Office (Monday–Saturday)</p>
                                     </div>
                                 </li>
 
@@ -574,7 +579,8 @@ const faqs = [
                                     </span>
                                     <div>
                                         <p class="font-bold text-slate-900">Admissions Email</p>
-                                        <p class="text-slate-600 mt-0.5">{{ school.email || 'admissions@school.test' }}</p>
+                                        <a v-if="contactEmail" :href="'mailto:' + contactEmail" class="text-slate-600 hover:text-blue-600 font-medium transition-colors mt-0.5 block">{{ contactEmail }}</a>
+                                        <p v-else class="text-slate-600 mt-0.5">Admissions & Inquiries Desk</p>
                                     </div>
                                 </li>
                             </ul>
@@ -681,7 +687,12 @@ const faqs = [
 
                         <div class="pt-8 border-t border-white/15 mt-8 relative z-10">
                             <p class="text-xs text-white/70">Need urgent assistance?</p>
-                            <p class="text-sm font-bold text-white mt-0.5"><i class="fa-solid fa-phone mr-1.5"></i> {{ school.phone || '+92 300 0000000' }}</p>
+                            <a v-if="contactPhone" :href="'tel:' + contactPhone" class="text-sm font-bold text-white mt-0.5 block hover:underline">
+                                <i class="fa-solid fa-phone mr-1.5"></i> {{ contactPhone }}
+                            </a>
+                            <p v-else class="text-sm font-bold text-white mt-0.5">
+                                <i class="fa-solid fa-headset mr-1.5"></i> Admissions Help Desk
+                            </p>
                         </div>
 
                         <div class="absolute -right-16 -bottom-16 w-64 h-64 rounded-full bg-white/10 blur-[60px] pointer-events-none"></div>
@@ -905,11 +916,20 @@ const faqs = [
 
                 <!-- Col 3: Contact -->
                 <div>
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Admissions Office</h4>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Official School Contact</h4>
                     <ul class="space-y-2.5 text-xs text-slate-300">
-                        <li class="flex items-start gap-2"><i class="fa-solid fa-phone mt-0.5 text-blue-400"></i> <span>{{ school.phone || '+92 300 0000000' }}</span></li>
-                        <li class="flex items-start gap-2"><i class="fa-solid fa-envelope mt-0.5 text-blue-400"></i> <span>{{ school.email || 'admissions@school.test' }}</span></li>
-                        <li class="flex items-start gap-2"><i class="fa-solid fa-location-dot mt-0.5 text-blue-400"></i> <span>{{ school.address || 'Campus Learning Complex, Main Sector.' }}</span></li>
+                        <li v-if="contactPhone" class="flex items-start gap-2">
+                            <i class="fa-solid fa-phone mt-0.5 text-blue-400"></i>
+                            <a :href="'tel:' + contactPhone" class="hover:text-white transition-colors">{{ contactPhone }}</a>
+                        </li>
+                        <li v-if="contactEmail" class="flex items-start gap-2">
+                            <i class="fa-solid fa-envelope mt-0.5 text-blue-400"></i>
+                            <a :href="'mailto:' + contactEmail" class="hover:text-white transition-colors">{{ contactEmail }}</a>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <i class="fa-solid fa-location-dot mt-0.5 text-blue-400"></i>
+                            <span>{{ contactAddress || (school.name ? `${school.name} Campus` : 'Main Campus Premises') }}</span>
+                        </li>
                     </ul>
                 </div>
             </div>

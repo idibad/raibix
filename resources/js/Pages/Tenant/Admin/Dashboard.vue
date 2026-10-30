@@ -154,6 +154,9 @@ const brandingForm = useForm({
     hero_description: props.tenant?.hero_description || '',
     about_vision: props.tenant?.about_vision || '',
     academics_description: props.tenant?.academics_description || '',
+    phone: props.tenant?.phone || props.tenant?.data?.phone || props.tenant?.admin_phone || '',
+    email: props.tenant?.email || props.tenant?.data?.email || props.tenant?.admin_email || '',
+    address: props.tenant?.address || props.tenant?.data?.address || '',
 });
 
 // Logo display background mode options (Dark contrast, Brand primary, Clean light)
@@ -3486,6 +3489,76 @@ const currentTabDescription = computed(() => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Official School Contact Information -->
+                    <div class="google-card rounded-2xl border border-[#DADCE0] bg-white p-6 sm:p-8 shadow-sm space-y-6 mb-10">
+                        <div class="flex items-center justify-between border-b border-[#DADCE0] pb-5">
+                            <div>
+                                <h4 class="text-lg font-extrabold text-[#202124] flex items-center gap-2">
+                                    <i class="fa-solid fa-address-book text-[#1A73E8]"></i>
+                                    <span>Official School Contact Information</span>
+                                </h4>
+                                <p class="text-xs text-[#5F6368] mt-1">Configure your official school helpline, public contact email, and campus address displayed across all portals, landing pages, and fee challans.</p>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="submitBranding" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-1.5">
+                                    <label class="block text-xs font-bold text-[#202124] flex items-center gap-1.5">
+                                        <i class="fa-solid fa-phone text-[#1A73E8] text-2xs"></i>
+                                        <span>Official Admissions / Contact Phone</span>
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        v-model="brandingForm.phone" 
+                                        placeholder="+92 300 1234567 or (051) 1234567" 
+                                        class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]" 
+                                    />
+                                    <p class="text-[11px] text-[#5F6368]">Displayed in the public landing page header, footer, contact section, and student fee vouchers.</p>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label class="block text-xs font-bold text-[#202124] flex items-center gap-1.5">
+                                        <i class="fa-solid fa-envelope text-[#1A73E8] text-2xs"></i>
+                                        <span>Official Inquiries / Admissions Email</span>
+                                    </label>
+                                    <input 
+                                        type="email" 
+                                        v-model="brandingForm.email" 
+                                        placeholder="info@yourschool.edu.pk" 
+                                        class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]" 
+                                    />
+                                    <p class="text-[11px] text-[#5F6368]">Primary public inbox for parent inquiries, admissions, and system notifications.</p>
+                                </div>
+
+                                <div class="space-y-1.5 md:col-span-2">
+                                    <label class="block text-xs font-bold text-[#202124] flex items-center gap-1.5">
+                                        <i class="fa-solid fa-location-dot text-[#1A73E8] text-2xs"></i>
+                                        <span>Campus Physical Address</span>
+                                    </label>
+                                    <textarea 
+                                        v-model="brandingForm.address" 
+                                        rows="2" 
+                                        placeholder="Main Campus Street, Sector / Block, City, Province / State" 
+                                        class="w-full rounded-xl border border-[#DADCE0] px-4 py-2.5 text-sm focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
+                                    ></textarea>
+                                    <p class="text-[11px] text-[#5F6368]">Full postal address of the campus displayed on the website and printed documents.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-5 border-t border-[#DADCE0]">
+                                <button 
+                                    type="submit" 
+                                    :disabled="brandingForm.processing" 
+                                    class="rounded-full bg-[#1A73E8] py-2.5 px-7 text-xs font-bold text-white hover:bg-[#1557B0] transition-colors flex items-center gap-2 cursor-pointer"
+                                >
+                                    <i class="fa-solid fa-check text-xs"></i>
+                                    <span>{{ brandingForm.processing ? 'Saving...' : 'Save Contact Information' }}</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
 
                     <!-- Landing Page Content CMS -->
