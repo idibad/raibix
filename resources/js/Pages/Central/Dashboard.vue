@@ -1012,21 +1012,14 @@ const logout = () => {
             <div class="flex flex-col min-h-0 flex-1">
                 <!-- Brand Header -->
                 <div class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-[#E6E8EE] min-h-[73px]">
-                    <div class="flex items-center space-x-3 min-w-0 overflow-hidden">
+                    <div class="flex items-center min-w-0 overflow-hidden">
                         <Link href="/" class="flex items-center shrink-0">
                             <img 
-                                src="/images/raibix.png" 
+                                :src="isSidebarCollapsed && !isMobileMenuOpen ? '/images/raibix_orb.png' : '/images/raibix.png'" 
                                 alt="Raibix" 
-                                class="h-6 w-auto object-contain"
+                                :class="isSidebarCollapsed && !isMobileMenuOpen ? 'h-7 w-7 object-contain' : 'h-7 w-auto object-contain'"
                             />
                         </Link>
-                        <div v-if="!isSidebarCollapsed || isMobileMenuOpen" class="min-w-0 transition-all duration-200">
-                            <div class="flex items-center gap-1.5">
-                                <span class="font-bold text-sm tracking-tight text-[#111318] truncate">Control Panel</span>
-                                <span class="raibix-dot h-1.5 w-1.5"></span>
-                            </div>
-                            <p class="text-2xs font-semibold text-[#5B6270] truncate">Infrastructure Core</p>
-                        </div>
                     </div>
                     
                     <!-- Collapse Toggle Button -->
@@ -1238,30 +1231,17 @@ const logout = () => {
                     <div class="min-w-0">
                         <h2 class="text-lg sm:text-xl font-extrabold text-[#111318] capitalize truncate">
                             {{ 
-                                activeTab === 'overview' ? 'Platform Overview' : 
-                                activeTab === 'schools' ? 'Registered School Tenants' : 
-                                activeTab === 'inquiries' ? 'Public Inquiries & Leads' :
-                                activeTab === 'approvals' ? 'Payment Approvals Queue' : 
-                                activeTab === 'plans' ? 'Subscription Plans & Tiers' : 
-                                activeTab === 'payments' ? 'Subscription Revenue Ledger' : 
-                                activeTab === 'logs' ? 'System Audit Logs' : 
+                                activeTab === 'overview' ? 'Overview' : 
+                                activeTab === 'schools' ? 'Schools' : 
+                                activeTab === 'inquiries' ? 'Inquiries & Leads' :
+                                activeTab === 'approvals' ? 'Payment Approvals' : 
+                                activeTab === 'plans' ? 'Subscription Plans' : 
+                                activeTab === 'payments' ? 'Revenue Ledger' : 
+                                activeTab === 'logs' ? 'Audit Logs' : 
                                 activeTab === 'marketing' ? 'Coupons & Referrals' : 
-                                'Platform Settings' 
+                                'Settings' 
                             }}
                         </h2>
-                        <p class="text-xs text-[#5B6270] hidden sm:block font-medium">
-                            {{ 
-                                activeTab === 'overview' ? 'Real-time telemetry on tenant clusters, MRR growth, and system health.' : 
-                                activeTab === 'schools' ? 'Monitor, configure, backup, and manage isolated school databases.' : 
-                                activeTab === 'inquiries' ? 'Review questions, demo calls, and partnership requests submitted from the portal.' :
-                                activeTab === 'approvals' ? 'Verify payment slips submitted by schools to unlock full portal access.' : 
-                                activeTab === 'plans' ? 'Configure pricing models, feature tiers, and student enrollment limits.' : 
-                                activeTab === 'payments' ? 'Audit incoming payments, gateway receipts, and tax invoices.' : 
-                                activeTab === 'logs' ? 'Immutable central audit log recording all root administrative actions.' : 
-                                activeTab === 'marketing' ? 'Create promo discount vouchers and manage tenant referral programs.' : 
-                                'Global platform environment controls and maintenance configurations.' 
-                            }}
-                        </p>
                     </div>
                 </div>
 
@@ -1322,7 +1302,6 @@ const logout = () => {
                             </div>
                             <div class="mt-4 flex items-baseline justify-between">
                                 <span class="text-2xl sm:text-3xl font-extrabold text-[#111318]">PKR {{ (analytics?.total_revenue || 0).toLocaleString() }}</span>
-                                <span class="text-xs font-semibold text-[#5B6270]">Settled inflows</span>
                             </div>
                         </div>
 
@@ -1336,14 +1315,13 @@ const logout = () => {
                             </div>
                             <div class="mt-4 flex items-baseline justify-between">
                                 <span class="text-3xl font-extrabold text-[#111318]">{{ (analytics?.total_students || 0).toLocaleString() }}</span>
-                                <span class="text-xs font-semibold text-[#5B6270]">Active records</span>
                             </div>
                         </div>
 
                         <!-- Platform Engine Status -->
                         <div class="rounded-2xl p-6 bg-white border border-[#E6E8EE] shadow-2xs flex flex-col justify-between transition-all hover:border-[#2F6BFF]/40">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Platform Core</span>
+                                <span class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">System Status</span>
                                 <span class="h-9 w-9 rounded-xl bg-[#EEF3FF] text-[#2F6BFF] flex items-center justify-center text-sm font-bold shadow-2xs">
                                     <i class="fa-solid fa-shield-halved"></i>
                                 </span>
@@ -1353,7 +1331,6 @@ const logout = () => {
                                     <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
                                     Operational
                                 </span>
-                                <span class="text-xs font-semibold text-[#5B6270]">Core Engine</span>
                             </div>
                         </div>
                     </div>
@@ -1364,8 +1341,8 @@ const logout = () => {
                         <!-- Growth Trajectory -->
                         <div class="lg:col-span-2 rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
                             <div class="border-b border-[#E6E8EE] pb-4">
-                                <h3 class="text-base font-bold text-[#111318]">Tenant Growth Trajectory</h3>
-                                <p class="text-xs text-[#5B6270]">Cumulative onboarded school campuses</p>
+                                <h3 class="text-base font-bold text-[#111318]">Tenant Growth</h3>
+                                <p class="text-xs text-[#5B6270]">Cumulative onboarded schools</p>
                             </div>
                             
                             <div class="relative pt-4 flex flex-col items-center">
@@ -1393,14 +1370,6 @@ const logout = () => {
                                         class="hover:r-7 transition-all duration-200 cursor-pointer" 
                                     />
                                 </svg>
-                                <div class="w-full flex justify-between px-6 text-3xs font-bold uppercase tracking-wider text-[#8F94A0] pt-2">
-                                    <span>Phase 1</span>
-                                    <span>Phase 2</span>
-                                    <span>Phase 3</span>
-                                    <span>Phase 4</span>
-                                    <span>Phase 5</span>
-                                    <span>Current</span>
-                                </div>
                             </div>
                         </div>
 
@@ -1452,31 +1421,31 @@ const logout = () => {
                     <!-- Operations & Live Feeds -->
                     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                         
-                        <!-- System Infrastructure Telemetry -->
+                        <!-- System Services -->
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs space-y-4">
                             <h3 class="text-base font-bold text-[#111318] border-b border-[#E6E8EE] pb-4 flex items-center gap-2">
                                 <i class="fa-solid fa-server text-[#2F6BFF]"></i>
-                                <span>Infrastructure Telemetry</span>
+                                <span>System Services</span>
                             </h3>
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
                                     <div class="flex items-center gap-2.5">
                                         <i class="fa-solid fa-database text-[#2F6BFF] text-sm"></i>
-                                        <span class="text-xs font-semibold text-[#111318]">Tenant Schemas</span>
+                                        <span class="text-xs font-semibold text-[#111318]">Tenant Databases</span>
                                     </div>
                                     <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
                                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                        Online & Isolated
+                                        Online
                                     </span>
                                 </div>
                                 <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
                                     <div class="flex items-center gap-2.5">
                                         <i class="fa-solid fa-network-wired text-purple-600 text-sm"></i>
-                                        <span class="text-xs font-semibold text-[#111318]">Multi-Tenant Router</span>
+                                        <span class="text-xs font-semibold text-[#111318]">Routing & DNS</span>
                                     </div>
                                     <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
                                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                        Domain Resolved
+                                        Active
                                     </span>
                                 </div>
                                 <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
@@ -1486,13 +1455,13 @@ const logout = () => {
                                     </div>
                                     <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
                                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                        IPN Listening
+                                        Active
                                     </span>
                                 </div>
                                 <div class="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl border border-[#E6E8EE]">
                                     <div class="flex items-center gap-2.5">
                                         <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
-                                        <span class="text-xs font-semibold text-[#111318]">Automated Backup Engine</span>
+                                        <span class="text-xs font-semibold text-[#111318]">Backups</span>
                                     </div>
                                     <span class="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
                                         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
@@ -1783,7 +1752,6 @@ const logout = () => {
                                     <i class="fa-solid fa-inbox text-lg"></i>
                                 </div>
                             </div>
-                            <div class="text-2xs text-[#5B6270] mt-2 font-medium">All incoming portal requests</div>
                         </div>
 
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 shadow-2xs">
@@ -1796,7 +1764,6 @@ const logout = () => {
                                     <i class="fa-solid fa-bell text-lg"></i>
                                 </div>
                             </div>
-                            <div class="text-2xs text-[#5B6270] mt-2 font-medium">Require administrative follow-up</div>
                         </div>
 
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 shadow-2xs">
@@ -1811,7 +1778,6 @@ const logout = () => {
                                     <i class="fa-solid fa-circle-check text-lg"></i>
                                 </div>
                             </div>
-                            <div class="text-2xs text-[#5B6270] mt-2 font-medium">Successfully processed inquiries</div>
                         </div>
                     </div>
 
@@ -2287,7 +2253,6 @@ const logout = () => {
                             <div>
                                 <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Subscribed Schools</p>
                                 <h4 class="mt-2 text-2xl font-black text-emerald-600">{{ totalSubscribedSchools }}</h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Active across all subscription tiers</p>
                             </div>
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-2xs">
                                 <i class="fa-solid fa-school text-xl"></i>
@@ -2296,9 +2261,8 @@ const logout = () => {
 
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-5 sm:p-6 shadow-2xs flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Pricing Engine</p>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Pricing Tiers</p>
                                 <h4 class="mt-2 text-2xl font-black text-purple-600">Dynamic</h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Per-Student, Flat & Custom Tiers</p>
                             </div>
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 shadow-2xs">
                                 <i class="fa-solid fa-sliders text-xl"></i>
@@ -2627,9 +2591,8 @@ const logout = () => {
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Total Inflows Collected</p>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Total Revenue</p>
                                 <h4 class="mt-2 text-2xl font-black text-emerald-600">PKR {{ paymentStats.totalRevenue.toLocaleString() }}</h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Cumulative verified subscriptions</p>
                             </div>
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-2xs">
                                 <i class="fa-solid fa-wallet text-xl"></i>
@@ -2640,7 +2603,6 @@ const logout = () => {
                             <div>
                                 <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Processed Transactions</p>
                                 <h4 class="mt-2 text-2xl font-black text-[#2F6BFF]">{{ paymentStats.paidCount }} <span class="text-sm font-semibold text-[#5B6270]">/ {{ paymentStats.totalCount }}</span></h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Confirmed ledger receipts</p>
                             </div>
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF3FF] text-[#2F6BFF] shadow-2xs">
                                 <i class="fa-solid fa-check-double text-xl"></i>
@@ -2649,9 +2611,8 @@ const logout = () => {
 
                         <div class="rounded-2xl border border-[#E6E8EE] bg-white p-6 shadow-2xs flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Average Invoice Ticket</p>
+                                <p class="text-xs font-bold uppercase tracking-wider text-[#5B6270]">Average Invoice</p>
                                 <h4 class="mt-2 text-2xl font-black text-[#111318]">PKR {{ paymentStats.avgTicket.toLocaleString() }}</h4>
-                                <p class="mt-1 text-2xs font-semibold text-[#5B6270]">Per tenant billing mean</p>
                             </div>
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 shadow-2xs">
                                 <i class="fa-solid fa-chart-line text-xl"></i>
