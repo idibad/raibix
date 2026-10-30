@@ -51,6 +51,7 @@ Recent decisions affecting current work:
 - `20261022-clean-db-noreply-emails`: Database cleanup, password reset & alert email setup, and UI placeholder normalization.
 - `20261023-dynamic-subscription-plans`: Made landing page plans dynamic, aligned dashboard packages with public landing page, added 1-click publish/unpublish toggle, and upgraded plan editor modal with per-student and flat pricing models.
 - `20261030-cleanup-central-dashboard`: Removed redundant text labels ("Control Panel", "Infrastructure Core", noisy card captions) and cleaned up the main admin sidebar header to display the clean Raibix logo mark.
+- `20261030-optimize-tenant-logo-and-palettes`: Optimized tenant logo container for all dimensions, added contrast tile & drop-shadow support for white logos, added 4 curated + auto-extracted color palettes and interactive logo backdrop switcher in Principal settings.
 
 ### Pending Todos
 
