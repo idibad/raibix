@@ -33,6 +33,17 @@ const activePortalTab = ref('student');
 
 const schoolType = computed(() => (props.school?.type || 'School').toString());
 
+const logoBg = computed(() => props.school?.logo_bg || 'dark');
+const logoBgStyle = computed(() => {
+    if (logoBg.value === 'dark') {
+        return { backgroundColor: '#0F172A', borderColor: '#1E293B' };
+    }
+    if (logoBg.value === 'brand') {
+        return { backgroundColor: primaryColor.value, borderColor: 'rgba(0,0,0,0.15)' };
+    }
+    return { backgroundColor: '#FFFFFF', borderColor: '#E2E8F0' };
+});
+
 const contactPhone = computed(() => props.school?.phone || null);
 const contactEmail = computed(() => props.school?.email || null);
 const contactAddress = computed(() => props.school?.address || null);
@@ -206,25 +217,40 @@ const faqs = [
         <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-2xs transition-all">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                 <!-- Brand Logo & Name -->
-                <Link href="/" class="flex items-center group">
-                    <img v-if="school.logo" :src="school.logo" :alt="school.name || 'School Logo'" class="h-12 sm:h-14 w-auto max-w-[240px] object-contain transition-transform duration-300 group-hover:scale-105" />
-                    <div v-else class="flex items-center gap-3.5">
-                        <div class="h-12 w-12 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105" :style="{ background: accentColor }">
-                            <i class="fa-solid fa-graduation-cap"></i>
+                <Link href="/" class="flex items-center gap-3.5 group min-w-0 max-w-[50%] sm:max-w-none">
+                    <!-- Logo Tile Container -->
+                    <div 
+                        v-if="school.logo" 
+                        class="h-12 sm:h-14 min-w-[48px] max-w-[140px] px-2 py-1.5 rounded-2xl border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-2xs transition-all duration-300 group-hover:scale-105"
+                        :style="logoBgStyle"
+                    >
+                        <img 
+                            :src="school.logo" 
+                            :alt="school.name || 'School Logo'" 
+                            class="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.22)]" 
+                        />
+                    </div>
+                    <div 
+                        v-else 
+                        class="h-12 w-12 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
+                        :style="{ background: accentColor }"
+                    >
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+
+                    <!-- School Name, Type & Tagline (Always Visible!) -->
+                    <div class="min-w-0 truncate">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg sm:text-xl font-black tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                                {{ school.name || 'Campus Portal' }}
+                            </span>
+                            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/60 flex-shrink-0">
+                                {{ schoolType }}
+                            </span>
                         </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
-                                    {{ school.name || 'Campus Portal' }}
-                                </span>
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/60">
-                                    {{ schoolType }}
-                                </span>
-                            </div>
-                            <p class="text-xs font-medium text-slate-500 truncate max-w-[240px] sm:max-w-md">
-                                {{ school.tagline || 'Excellence in Academic Growth & Leadership' }}
-                            </p>
-                        </div>
+                        <p class="text-xs font-medium text-slate-500 truncate max-w-[200px] sm:max-w-md mt-0.5">
+                            {{ school.tagline || 'Official Academic Portal' }}
+                        </p>
                     </div>
                 </Link>
 
@@ -541,8 +567,16 @@ const faqs = [
                             <div class="absolute top-0 right-0 h-32 w-32 bg-blue-500/5 rounded-bl-full pointer-events-none"></div>
 
                             <div class="flex items-center gap-4 pb-6 border-b border-slate-100">
-                                <div class="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl font-black text-slate-700 overflow-hidden shrink-0 border border-slate-200">
-                                    <img v-if="school.logo" :src="school.logo" :alt="school.name" class="max-h-full max-w-full object-contain p-1" />
+                                <div 
+                                    class="h-16 w-16 rounded-2xl flex items-center justify-center text-2xl font-black overflow-hidden shrink-0 border border-slate-200 shadow-2xs p-1.5"
+                                    :style="school.logo ? logoBgStyle : { background: '#F1F5F9' }"
+                                >
+                                    <img 
+                                        v-if="school.logo" 
+                                        :src="school.logo" 
+                                        :alt="school.name" 
+                                        class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.22)]" 
+                                    />
                                     <i v-else class="fa-solid fa-school text-blue-600"></i>
                                 </div>
                                 <div>
@@ -884,13 +918,25 @@ const faqs = [
                 <!-- Col 1: School Info -->
                 <div class="md:col-span-2 space-y-4">
                     <div class="flex items-center gap-3">
-                        <img v-if="school.logo" :src="school.logo" :alt="school.name || 'School Logo'" class="h-10 sm:h-12 w-auto max-w-[180px] object-contain" />
-                        <div v-else class="flex items-center gap-3">
-                            <div class="h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold text-white" :style="{ background: accentColor }">
-                                <i class="fa-solid fa-graduation-cap"></i>
-                            </div>
-                            <span class="text-lg font-black tracking-tight">{{ school.name || 'Campus Portal' }}</span>
+                        <div 
+                            v-if="school.logo" 
+                            class="h-11 min-w-[44px] max-w-[120px] px-2 py-1 rounded-xl border border-slate-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-2xs"
+                            :style="logoBgStyle"
+                        >
+                            <img 
+                                :src="school.logo" 
+                                :alt="school.name || 'School Logo'" 
+                                class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.22)]" 
+                            />
                         </div>
+                        <div 
+                            v-else 
+                            class="h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold text-white flex-shrink-0" 
+                            :style="{ background: accentColor }"
+                        >
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <span class="text-lg font-black tracking-tight text-white">{{ school.name || 'Campus Portal' }}</span>
                     </div>
                     <p class="text-xs text-slate-400 max-w-md leading-relaxed">
                         {{ school.tagline || 'Excellence in education, character development, and future readiness.' }}

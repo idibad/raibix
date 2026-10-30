@@ -465,6 +465,10 @@ class AdminPortalController extends Controller
             // Move directly into public/uploads/logos/ — accessible on ANY tenant subdomain
             $file->move($destDir, $filename);
 
+            // Auto-trim excessive transparent margins if it is a PNG or WEBP logo
+            $fullSavedPath = $destDir . DIRECTORY_SEPARATOR . $filename;
+            $this->trimTransparentPadding($fullSavedPath);
+
             // Store a root-relative path so it resolves against whatever host the browser is on
             $tenant->logo = '/uploads/logos/' . $filename;
         }
@@ -516,6 +520,90 @@ class AdminPortalController extends Controller
         }
 
         return redirect()->back()->with('success', 'School logo removed. Default branding restored.');
+    }
+
+    /**
+     * Auto-trim excessive transparent padding from uploaded PNG or WEBP logos.
+     * Ensures logos exported with large transparent artboards (e.g. Canva 2000x2000)
+     * render at full crisp size rather than being shrunken to an illegible dot.
+     */
+    protected function trimTransparentPadding(string $sourcePath): void
+    {
+        if (!file_exists($sourcePath) || !function_exists('imagecreatefrompng')) {
+            return;
+        }
+
+        $info = @getimagesize($sourcePath);
+        if (!$info) {
+            return;
+        }
+
+        $mime = $info['mime'] ?? '';
+        if ($mime !== 'image/png' && $mime !== 'image/webp') {
+            return;
+        }
+
+        $im = $mime === 'image/png' ? @imagecreatefrompng($sourcePath) : @imagecreatefromwebp($sourcePath);
+        if (!$im) {
+            return;
+        }
+
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $minX = $w; $maxX = 0; $minY = $h; $maxY = 0;
+
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $rgba = imagecolorat($im, $x, $y);
+                $alpha = ($rgba & 0x7F000000) >> 24;
+                if ($alpha < 125) { // Visible non-transparent pixel
+                    if ($x < $minX) $minX = $x;
+                    if ($x > $maxX) $maxX = $x;
+                    if ($y < $minY) $minY = $y;
+                    if ($y > $maxY) $maxY = $y;
+                }
+            }
+        }
+
+        // If entire image is transparent or inverted
+        if ($maxX <= $minX || $maxY <= $minY) {
+            imagedestroy($im);
+            return;
+        }
+
+        $contentWidth = $maxX - $minX + 1;
+        $contentHeight = $maxY - $minY + 1;
+
+        // Only crop if there is significant empty padding (> 5% on any dimension)
+        if ($contentWidth >= $w * 0.95 && $contentHeight >= $h * 0.95) {
+            imagedestroy($im);
+            return;
+        }
+
+        // Add balanced safe breathing padding around the logo content (12px or ~2%)
+        $pad = max(10, (int) round(min($contentWidth, $contentHeight) * 0.03));
+        $minX = max(0, $minX - $pad);
+        $minY = max(0, $minY - $pad);
+        $maxX = min($w - 1, $maxX + $pad);
+        $maxY = min($h - 1, $maxY + $pad);
+
+        $cropW = $maxX - $minX + 1;
+        $cropH = $maxY - $minY + 1;
+
+        $cropped = imagecreatetruecolor($cropW, $cropH);
+        imagealphablending($cropped, false);
+        imagesavealpha($cropped, true);
+
+        imagecopy($cropped, $im, 0, 0, $minX, $minY, $cropW, $cropH);
+
+        if ($mime === 'image/png') {
+            imagepng($cropped, $sourcePath, 9);
+        } else {
+            imagewebp($cropped, $sourcePath, 90);
+        }
+
+        imagedestroy($im);
+        imagedestroy($cropped);
     }
 
     /**

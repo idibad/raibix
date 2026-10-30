@@ -34,6 +34,7 @@ class TenantHomeController extends Controller
             'phone'       => $tenant?->phone ?? ($data['phone'] ?? ($tenant?->admin_phone ?? ($data['admin_phone'] ?? null))),
             'email'       => $tenant?->email ?? ($data['email'] ?? ($tenant?->admin_email ?? ($data['admin_email'] ?? null))),
             'logo'                 => $tenant?->logo ?? null,
+            'logo_bg'              => $tenant?->logo_bg ?? ($data['logo_bg'] ?? 'dark'),
             'cover_color'          => $tenant?->cover_color ?? ($data['cover_color'] ?? '#1A73E8'),
             'secondary_color'      => $tenant?->secondary_color ?? ($data['secondary_color'] ?? '#0F172A'),
             'accent_color'         => $tenant?->accent_color ?? ($data['accent_color'] ?? '#3B82F6'),
