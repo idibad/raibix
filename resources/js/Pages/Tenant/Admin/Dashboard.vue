@@ -148,7 +148,8 @@ const brandingForm = useForm({
     cover_color: props.tenant?.cover_color || '#1A73E8',
     secondary_color: props.tenant?.secondary_color || '#0F172A',
     accent_color: props.tenant?.accent_color || '#3B82F6',
-    logo_bg: props.tenant?.logo_bg || 'dark',
+    navbar_theme: props.tenant?.navbar_theme || props.tenant?.logo_bg || 'auto',
+    logo_bg: props.tenant?.logo_bg || props.tenant?.navbar_theme || 'auto',
     tagline: props.tenant?.tagline || 'Empowering Minds, Shaping Futures',
     hero_heading: props.tenant?.hero_heading || 'Empowering Minds, Shaping Futures',
     hero_description: props.tenant?.hero_description || '',
@@ -159,52 +160,67 @@ const brandingForm = useForm({
     address: props.tenant?.address || props.tenant?.data?.address || '',
 });
 
-// Logo display background mode options (Dark contrast, Brand primary, Clean light)
-const logoBgOptions = [
+// Navbar Theme & Contrast Options (Predictable contrast: Light logo -> Dark navbar; Dark logo -> Light navbar)
+const navbarThemeOptions = [
     {
-        id: 'dark',
-        name: 'Midnight Slate',
-        badge: 'Recommended for White Logos',
-        desc: 'Dark high-contrast tile. White, gold, and transparent logos pop with maximum clarity.',
-        bgClass: 'bg-[#0F172A]',
+        id: 'auto',
+        name: 'Auto-Contrast (Smart)',
+        badge: 'Predictive & Recommended',
+        desc: 'Predictive auto-inversion: Light logos automatically get a sleek dark navbar; dark logos get a crisp light navbar.',
+        icon: 'fa-wand-magic-sparkles',
+        bgClass: 'bg-gradient-to-r from-slate-900 to-white',
         borderClass: 'border-[#1E293B]',
     },
     {
-        id: 'brand',
-        name: 'School Brand Primary',
-        badge: 'Dynamic Brand Match',
-        desc: 'Tile colored with your chosen primary brand color for cohesive school identity.',
-        bgClass: '',
-        borderClass: 'border-black/20',
+        id: 'dark',
+        name: 'Dark Navbar',
+        badge: 'Midnight Obsidian',
+        desc: 'Dark navbar (#0B0F19) with light navigation links. High contrast for white, salmon, and gold logos.',
+        icon: 'fa-moon',
+        bgClass: 'bg-[#0B0F19]',
+        borderClass: 'border-[#1E293B]',
     },
     {
         id: 'light',
-        name: 'Clean Light',
-        badge: 'Classic Light',
-        desc: 'Clean white background tile with soft border. Best for dark crests & full-color emblems.',
+        name: 'Light Navbar',
+        badge: 'Classic Bright',
+        desc: 'Clean white navbar with dark navigation links. Ideal for dark emblems and full-color crests.',
+        icon: 'fa-sun',
         bgClass: 'bg-white',
         borderClass: 'border-[#DADCE0]',
     },
 ];
 
+const selectNavbarTheme = (id) => {
+    brandingForm.navbar_theme = id;
+    brandingForm.logo_bg = id;
+};
+
 const previewLogoBgStyle = computed(() => {
-    const bgMode = brandingForm.logo_bg || 'dark';
-    if (bgMode === 'brand') {
+    const theme = brandingForm.navbar_theme || brandingForm.logo_bg || 'auto';
+    if (theme === 'dark') {
         return {
-            backgroundColor: brandingForm.cover_color || '#1A73E8',
-            borderColor: 'rgba(0,0,0,0.15)',
+            backgroundColor: '#0B0F19',
+            borderColor: '#1E293B',
+            color: '#FFFFFF'
         };
     }
-    if (bgMode === 'light') {
+    if (theme === 'light') {
         return {
             backgroundColor: '#FFFFFF',
             borderColor: '#DADCE0',
+            color: '#202124'
         };
     }
-    return {
-        backgroundColor: '#0F172A',
-        borderColor: '#1E293B',
-    };
+    // Auto mode: check detected brightness or default to dark if school has light logo
+    const brightness = props.tenant?.logo_brightness;
+    if (brightness === 'light') {
+        return { backgroundColor: '#0B0F19', borderColor: '#1E293B', color: '#FFFFFF' };
+    }
+    if (brightness === 'dark') {
+        return { backgroundColor: '#FFFFFF', borderColor: '#DADCE0', color: '#202124' };
+    }
+    return { backgroundColor: '#0B0F19', borderColor: '#1E293B', color: '#FFFFFF' };
 });
 
 // Auto-extracted palette sampled directly from the logo via canvas
@@ -3161,35 +3177,42 @@ const currentTabDescription = computed(() => {
                                         <p class="mt-2 text-2xs text-[#5F6368]">Supports PNG, JPG, WEBP, or SVG in any dimension up to 4MB.</p>
                                     </div>
 
-                                    <!-- Logo Container Contrast Background Selection (Fixes white logos) -->
+                                    <!-- Landing Navbar Theme & Predictable Contrast Selection -->
                                     <div class="space-y-2.5 pt-1">
                                         <div class="flex items-center justify-between">
                                             <label class="block text-xs font-bold uppercase tracking-wider text-[#202124]">
-                                                Logo Backdrop Tile Style
+                                                Landing Navbar Theme & Contrast
                                             </label>
-                                            <span class="text-3xs text-[#5F6368]">Optimizes contrast for white logos</span>
+                                            <span class="text-3xs text-[#1A73E8] font-semibold bg-[#E8F0FE] px-2 py-0.5 rounded-full">
+                                                Predictable Smart Contrast
+                                            </span>
                                         </div>
+                                        <p class="text-xs text-[#5F6368]">
+                                            If your logo is light, the navbar automatically becomes dark for natural, crisp contrast. If dark, the navbar stays light.
+                                        </p>
 
                                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                             <button 
                                                 type="button"
-                                                v-for="opt in logoBgOptions" 
+                                                v-for="opt in navbarThemeOptions" 
                                                 :key="opt.id"
-                                                @click="brandingForm.logo_bg = opt.id"
+                                                @click="selectNavbarTheme(opt.id)"
                                                 :class="[
-                                                    brandingForm.logo_bg === opt.id 
+                                                    (brandingForm.navbar_theme === opt.id || brandingForm.logo_bg === opt.id)
                                                         ? 'border-[#1A73E8] ring-2 ring-[#1A73E8]/30 bg-[#F4F8FE]' 
                                                         : 'border-[#DADCE0] bg-white hover:border-[#1A73E8]/40',
                                                     'p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between'
                                                 ]"
                                             >
                                                 <div class="flex items-center justify-between">
-                                                    <span 
-                                                        class="h-4 w-4 rounded-full border border-black/10 shadow-2xs flex-shrink-0"
-                                                        :style="opt.id === 'brand' ? { backgroundColor: brandingForm.cover_color } : {}"
-                                                        :class="opt.bgClass"
-                                                    ></span>
-                                                    <i v-if="brandingForm.logo_bg === opt.id" class="fa-solid fa-circle-check text-xs text-[#1A73E8]"></i>
+                                                    <div class="flex items-center gap-2">
+                                                        <span 
+                                                            class="h-4 w-4 rounded-full border border-black/10 shadow-2xs flex-shrink-0"
+                                                            :class="opt.bgClass"
+                                                        ></span>
+                                                        <i :class="['fa-solid text-xs text-[#5F6368]', opt.icon]"></i>
+                                                    </div>
+                                                    <i v-if="brandingForm.navbar_theme === opt.id || brandingForm.logo_bg === opt.id" class="fa-solid fa-circle-check text-xs text-[#1A73E8]"></i>
                                                 </div>
                                                 <div class="mt-2">
                                                     <div class="text-xs font-bold text-[#202124]">{{ opt.name }}</div>

@@ -469,6 +469,9 @@ class AdminPortalController extends Controller
             $fullSavedPath = $destDir . DIRECTORY_SEPARATOR . $filename;
             $this->trimTransparentPadding($fullSavedPath);
 
+            // Calculate luminance to determine if logo is predominantly light or dark
+            $tenant->logo_brightness = $this->calculateLogoBrightness($fullSavedPath);
+
             // Store a root-relative path so it resolves against whatever host the browser is on
             $tenant->logo = '/uploads/logos/' . $filename;
         }
@@ -482,8 +485,9 @@ class AdminPortalController extends Controller
         if ($request->filled('accent_color')) {
             $tenant->accent_color = $request->accent_color;
         }
-        if ($request->filled('logo_bg')) {
-            $tenant->logo_bg = $request->logo_bg;
+        if ($request->filled('logo_bg') || $request->filled('navbar_theme')) {
+            $tenant->logo_bg = $request->input('logo_bg') ?: $request->input('navbar_theme');
+            $tenant->navbar_theme = $tenant->logo_bg;
         }
 
         $tenant->save();
@@ -607,6 +611,68 @@ class AdminPortalController extends Controller
     }
 
     /**
+     * Determine if a logo is predominantly light or dark by calculating
+     * the average luminance of all visible (non-transparent) pixels.
+     * Returns 'light' if average luminance > 130, else 'dark'.
+     */
+    protected function calculateLogoBrightness(string $sourcePath): string
+    {
+        if (!file_exists($sourcePath) || !function_exists('imagecreatefrompng')) {
+            return 'dark';
+        }
+
+        $info = @getimagesize($sourcePath);
+        if (!$info) {
+            return 'dark';
+        }
+
+        $mime = $info['mime'] ?? '';
+        $im = null;
+        if ($mime === 'image/png') {
+            $im = @imagecreatefrompng($sourcePath);
+        } elseif ($mime === 'image/webp') {
+            $im = @imagecreatefromwebp($sourcePath);
+        } elseif ($mime === 'image/jpeg') {
+            $im = @imagecreatefromjpeg($sourcePath);
+        }
+
+        if (!$im) {
+            return 'dark';
+        }
+
+        $w = imagesx($im);
+        $h = imagesy($im);
+        $stepX = max(1, (int) round($w / 100));
+        $stepY = max(1, (int) round($h / 100));
+
+        $rTot = 0; $gTot = 0; $bTot = 0; $count = 0;
+        for ($y = 0; $y < $h; $y += $stepY) {
+            for ($x = 0; $x < $w; $x += $stepX) {
+                $rgba = imagecolorat($im, $x, $y);
+                $alpha = ($rgba & 0x7F000000) >> 24;
+                if ($alpha < 100) { // Solid / visible pixel
+                    $rTot += ($rgba >> 16) & 0xFF;
+                    $gTot += ($rgba >> 8) & 0xFF;
+                    $bTot += $rgba & 0xFF;
+                    $count++;
+                }
+            }
+        }
+        imagedestroy($im);
+
+        if ($count === 0) {
+            return 'dark';
+        }
+
+        $avgR = $rTot / $count;
+        $avgG = $gTot / $count;
+        $avgB = $bTot / $count;
+        $lum = 0.299 * $avgR + 0.587 * $avgG + 0.114 * $avgB;
+
+        return $lum > 130 ? 'light' : 'dark';
+    }
+
+    /**
      * Store and apply School Brand Color Scheme, Contact Information, and Landing Page Content.
      */
     public function updateBranding(Request $request)
@@ -616,6 +682,7 @@ class AdminPortalController extends Controller
             'secondary_color'       => 'nullable|string|max:20',
             'accent_color'          => 'nullable|string|max:20',
             'logo_bg'               => 'nullable|string|max:20',
+            'navbar_theme'          => 'nullable|string|max:20',
             'tagline'               => 'nullable|string|max:255',
             'hero_heading'          => 'nullable|string|max:255',
             'hero_description'      => 'nullable|string|max:2000',
@@ -634,7 +701,11 @@ class AdminPortalController extends Controller
         $tenant->cover_color           = $validated['cover_color'];
         $tenant->secondary_color       = $validated['secondary_color'] ?? '#0F172A';
         $tenant->accent_color          = $validated['accent_color'] ?? '#3B82F6';
-        if (isset($validated['logo_bg'])) {
+        if (isset($validated['navbar_theme'])) {
+            $tenant->navbar_theme = $validated['navbar_theme'];
+            $tenant->logo_bg = $validated['navbar_theme'];
+        } elseif (isset($validated['logo_bg'])) {
+            $tenant->navbar_theme = $validated['logo_bg'];
             $tenant->logo_bg = $validated['logo_bg'];
         }
         if (isset($validated['tagline'])) {

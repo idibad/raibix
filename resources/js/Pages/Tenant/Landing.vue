@@ -33,9 +33,31 @@ const activePortalTab = ref('student');
 
 const schoolType = computed(() => (props.school?.type || 'School').toString());
 
-const logoBg = computed(() => props.school?.logo_bg || 'dark');
+const clientLogoBrightness = ref(props.school?.logo_brightness || null);
+
+// Predictable Navbar Theme:
+// If the logo is light -> navbar is dark!
+// If the logo is dark  -> navbar is light!
+const isDarkNavbar = computed(() => {
+    // 1. Explicit setting chosen by the Principal
+    const pref = props.school?.navbar_theme || props.school?.logo_bg;
+    if (pref === 'dark') return true;
+    if (pref === 'light') return false;
+
+    // 2. Automated contrast:
+    // Light logo -> Dark navbar!
+    // Dark logo -> Light navbar!
+    const brightness = clientLogoBrightness.value || props.school?.logo_brightness;
+    if (brightness === 'light') return true;
+    if (brightness === 'dark') return false;
+
+    // Default to clean light navbar
+    return false;
+});
+
+const logoBg = computed(() => props.school?.logo_bg || 'auto');
 const logoBgStyle = computed(() => {
-    if (logoBg.value === 'dark') {
+    if (logoBg.value === 'dark' || (logoBg.value === 'auto' && isDarkNavbar.value)) {
         return { backgroundColor: '#0F172A', borderColor: '#1E293B' };
     }
     if (logoBg.value === 'brand') {
@@ -55,9 +77,9 @@ const highlightColor = computed(() => extractedColors.value?.accent || props.sch
 const accentColor = computed(() => primaryColor.value);
 
 onMounted(() => {
-    // Only auto-extract colors from logo if no custom colors have been explicitly saved
+    // Auto-detect logo brightness & extract color palette
     const hasCustomColors = props.school?.cover_color && props.school.cover_color !== '#1A73E8';
-    if (props.school?.logo && !hasCustomColors) {
+    if (props.school?.logo) {
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.src = props.school.logo;
@@ -69,43 +91,66 @@ onMounted(() => {
                 canvas.height = img.height || 120;
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                
+                let totalLum = 0;
+                let solidPixels = 0;
                 const counts = {};
+
                 for (let i = 0; i < imageData.length; i += 16) {
-                    if (imageData[i + 3] < 128) continue;
-                    const brightness = (imageData[i] + imageData[i+1] + imageData[i+2]) / 3;
-                    if (brightness > 245 || brightness < 15) continue;
-                    const qr = Math.round(imageData[i] / 32) * 32;
-                    const qg = Math.round(imageData[i+1] / 32) * 32;
-                    const qb = Math.round(imageData[i+2] / 32) * 32;
-                    const key = `${qr},${qg},${qb}`;
-                    counts[key] = (counts[key] || { count: 0, rgb: [qr, qg, qb] });
-                    counts[key].count++;
+                    const alpha = imageData[i + 3];
+                    if (alpha < 80) continue; // Skip transparent pixels
+
+                    const r = imageData[i];
+                    const g = imageData[i + 1];
+                    const b = imageData[i + 2];
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    totalLum += lum;
+                    solidPixels++;
+
+                    if (lum <= 245 && lum >= 15) {
+                        const qr = Math.round(r / 32) * 32;
+                        const qg = Math.round(g / 32) * 32;
+                        const qb = Math.round(b / 32) * 32;
+                        const key = `${qr},${qg},${qb}`;
+                        counts[key] = (counts[key] || { count: 0, rgb: [qr, qg, qb] });
+                        counts[key].count++;
+                    }
                 }
-                const sorted = Object.values(counts).sort((a, b) => b.count - a.count);
-                if (sorted.length > 0) {
-                    const toHex = ([r, g, b]) => '#' + [r, g, b].map(x => Math.min(255, Math.max(0, x)).toString(16).padStart(2, '0')).join('').toUpperCase();
-                    const primary = toHex(sorted[0].rgb);
-                    let secondary = '#0F172A';
-                    let accent = '#3B82F6';
-                    if (sorted.length > 1) {
-                        for (let j = 1; j < sorted.length; j++) {
-                            const [r2, g2, b2] = sorted[j].rgb;
-                            if (Math.abs(r2 - sorted[0].rgb[0]) + Math.abs(g2 - sorted[0].rgb[1]) + Math.abs(b2 - sorted[0].rgb[2]) > 60) {
-                                secondary = toHex(sorted[j].rgb);
+
+                // If brightness was not already established from backend, calculate it client-side
+                if (solidPixels > 0 && !clientLogoBrightness.value) {
+                    const avgLuminance = totalLum / solidPixels;
+                    // Luminance > 130 is classified as Light logo (requires Dark navbar)
+                    clientLogoBrightness.value = avgLuminance > 130 ? 'light' : 'dark';
+                }
+
+                if (!hasCustomColors) {
+                    const sorted = Object.values(counts).sort((a, b) => b.count - a.count);
+                    if (sorted.length > 0) {
+                        const toHex = ([r, g, b]) => '#' + [r, g, b].map(x => Math.min(255, Math.max(0, x)).toString(16).padStart(2, '0')).join('').toUpperCase();
+                        const primary = toHex(sorted[0].rgb);
+                        let secondary = '#0F172A';
+                        let accent = '#3B82F6';
+                        if (sorted.length > 1) {
+                            for (let j = 1; j < sorted.length; j++) {
+                                const [r2, g2, b2] = sorted[j].rgb;
+                                if (Math.abs(r2 - sorted[0].rgb[0]) + Math.abs(g2 - sorted[0].rgb[1]) + Math.abs(b2 - sorted[0].rgb[2]) > 60) {
+                                    secondary = toHex(sorted[j].rgb);
+                                    break;
+                                }
+                            }
+                        }
+                        if (sorted.length > 2) {
+                            for (let k = 2; k < sorted.length; k++) {
+                                accent = toHex(sorted[k].rgb);
                                 break;
                             }
                         }
+                        extractedColors.value = { primary, secondary, accent };
                     }
-                    if (sorted.length > 2) {
-                        for (let k = 2; k < sorted.length; k++) {
-                            accent = toHex(sorted[k].rgb);
-                            break;
-                        }
-                    }
-                    extractedColors.value = { primary, secondary, accent };
                 }
             } catch (e) {
-                console.error('Canvas color extraction error:', e);
+                console.error('Canvas image analysis error:', e);
             }
         };
     }
@@ -214,25 +259,26 @@ const faqs = [
         </div>
 
         <!-- Top Navigation Header -->
-        <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-2xs transition-all">
+        <header 
+            class="sticky top-0 z-50 backdrop-blur-xl transition-all duration-300"
+            :class="isDarkNavbar 
+                ? 'bg-[#0B0F19]/95 border-b border-slate-800/90 shadow-lg' 
+                : 'bg-white/95 border-b border-slate-200/80 shadow-2xs'"
+        >
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
                 <!-- Brand Logo & Name -->
-                <Link href="/" class="flex items-center gap-3.5 group min-w-0 max-w-[50%] sm:max-w-none">
-                    <!-- Logo Tile Container -->
-                    <div 
-                        v-if="school.logo" 
-                        class="h-12 sm:h-14 min-w-[48px] max-w-[140px] px-2 py-1.5 rounded-2xl border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-2xs transition-all duration-300 group-hover:scale-105"
-                        :style="logoBgStyle"
-                    >
+                <Link href="/" class="flex items-center gap-3.5 group min-w-0 max-w-[65%] sm:max-w-none">
+                    <!-- Clean Logo (Directly on Navbar, No Awkward Tile Container) -->
+                    <div v-if="school.logo" class="flex items-center flex-shrink-0">
                         <img 
                             :src="school.logo" 
                             :alt="school.name || 'School Logo'" 
-                            class="max-h-full max-w-full w-auto h-auto object-contain transition-transform duration-200 filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.22)]" 
+                            class="h-10 sm:h-12 w-auto max-w-[160px] sm:max-w-[220px] object-contain transition-transform duration-200 group-hover:scale-105" 
                         />
                     </div>
                     <div 
                         v-else 
-                        class="h-12 w-12 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
+                        class="h-11 w-11 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
                         :style="{ background: accentColor }"
                     >
                         <i class="fa-solid fa-graduation-cap"></i>
@@ -241,34 +287,49 @@ const faqs = [
                     <!-- School Name, Type & Tagline (Always Visible!) -->
                     <div class="min-w-0 truncate">
                         <div class="flex items-center gap-2">
-                            <span class="text-lg sm:text-xl font-black tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                            <span 
+                                class="text-lg sm:text-xl font-black tracking-tight transition-colors truncate"
+                                :class="isDarkNavbar ? 'text-white group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'"
+                            >
                                 {{ school.name || 'Campus Portal' }}
                             </span>
-                            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/60 flex-shrink-0">
+                            <span 
+                                class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
+                                :class="isDarkNavbar ? 'bg-white/10 text-slate-200 border border-white/15' : 'bg-blue-50 text-blue-700 border border-blue-200/60'"
+                            >
                                 {{ schoolType }}
                             </span>
                         </div>
-                        <p class="text-xs font-medium text-slate-500 truncate max-w-[200px] sm:max-w-md mt-0.5">
+                        <p 
+                            class="text-xs font-medium truncate max-w-[200px] sm:max-w-md mt-0.5"
+                            :class="isDarkNavbar ? 'text-slate-400' : 'text-slate-500'"
+                        >
                             {{ school.tagline || 'Official Academic Portal' }}
                         </p>
                     </div>
                 </Link>
 
                 <!-- Desktop Navigation Links -->
-                <nav class="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
-                    <a href="#about" class="hover:text-blue-600 transition-colors py-1">About Campus</a>
-                    <a href="#portals" class="hover:text-blue-600 transition-colors py-1">Portal Gateways</a>
-                    <a href="#stats" class="hover:text-blue-600 transition-colors py-1">Excellence Metrics</a>
-                    <a href="#faq" class="hover:text-blue-600 transition-colors py-1">FAQ</a>
+                <nav 
+                    class="hidden md:flex items-center gap-7 text-sm font-semibold transition-colors"
+                    :class="isDarkNavbar ? 'text-slate-300' : 'text-slate-600'"
+                >
+                    <a href="#about" :class="isDarkNavbar ? 'hover:text-white' : 'hover:text-blue-600'" class="transition-colors py-1">About Campus</a>
+                    <a href="#portals" :class="isDarkNavbar ? 'hover:text-white' : 'hover:text-blue-600'" class="transition-colors py-1">Portal Gateways</a>
+                    <a href="#stats" :class="isDarkNavbar ? 'hover:text-white' : 'hover:text-blue-600'" class="transition-colors py-1">Excellence Metrics</a>
+                    <a href="#faq" :class="isDarkNavbar ? 'hover:text-white' : 'hover:text-blue-600'" class="transition-colors py-1">FAQ</a>
                 </nav>
 
                 <!-- Desktop Action Buttons -->
                 <div class="hidden sm:flex items-center gap-3">
                     <Link 
                         href="/login" 
-                        class="px-5 py-2.5 rounded-full border border-slate-300/80 bg-white text-slate-700 text-sm font-bold shadow-2xs hover:bg-slate-50 hover:border-slate-400 hover:text-slate-900 transition-all flex items-center gap-2 active:scale-95"
+                        :class="isDarkNavbar 
+                            ? 'border-white/20 bg-white/10 text-white hover:bg-white/20 hover:border-white/30' 
+                            : 'border-slate-300/80 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 hover:text-slate-900'"
+                        class="px-5 py-2.5 rounded-full border text-sm font-bold shadow-2xs transition-all flex items-center gap-2 active:scale-95"
                     >
-                        <i class="fa-solid fa-lock text-blue-600 text-xs"></i>
+                        <i class="fa-solid fa-lock text-xs" :class="isDarkNavbar ? 'text-blue-400' : 'text-blue-600'"></i>
                         <span>Portal Login</span>
                     </Link>
                     <a 
@@ -284,26 +345,41 @@ const faqs = [
                 <!-- Mobile Menu Button -->
                 <button 
                     @click="showMobileMenu = !showMobileMenu"
-                    class="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                    :class="isDarkNavbar 
+                        ? 'text-slate-300 hover:text-white hover:bg-white/10' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+                    class="md:hidden p-2 rounded-xl transition-colors"
                 >
                     <i :class="showMobileMenu ? 'fa-solid fa-xmark text-xl' : 'fa-solid fa-bars text-xl'"></i>
                 </button>
             </div>
 
             <!-- Mobile Dropdown Menu -->
-            <div v-if="showMobileMenu" class="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur-xl px-4 pt-3 pb-6 space-y-3 animate-fadeIn">
-                <div class="flex flex-col space-y-2 text-sm font-semibold text-slate-700">
-                    <a @click="showMobileMenu = false" href="#about" class="px-3 py-2 rounded-lg hover:bg-slate-100">About Campus</a>
-                    <a @click="showMobileMenu = false" href="#portals" class="px-3 py-2 rounded-lg hover:bg-slate-100">Portal Gateways</a>
-                    <a @click="showMobileMenu = false" href="#stats" class="px-3 py-2 rounded-lg hover:bg-slate-100">Excellence Metrics</a>
-                    <a @click="showMobileMenu = false" href="#faq" class="px-3 py-2 rounded-lg hover:bg-slate-100">FAQ</a>
+            <div 
+                v-if="showMobileMenu" 
+                :class="isDarkNavbar 
+                    ? 'border-t border-slate-800 bg-[#0B0F19]/98 text-white' 
+                    : 'border-t border-slate-200 bg-white/98 text-slate-800'"
+                class="md:hidden backdrop-blur-xl px-4 pt-3 pb-6 space-y-3 animate-fadeIn shadow-xl"
+            >
+                <div 
+                    class="flex flex-col space-y-2 text-sm font-semibold"
+                    :class="isDarkNavbar ? 'text-slate-200' : 'text-slate-700'"
+                >
+                    <a @click="showMobileMenu = false" href="#about" :class="isDarkNavbar ? 'hover:bg-white/10' : 'hover:bg-slate-100'" class="px-3 py-2 rounded-lg">About Campus</a>
+                    <a @click="showMobileMenu = false" href="#portals" :class="isDarkNavbar ? 'hover:bg-white/10' : 'hover:bg-slate-100'" class="px-3 py-2 rounded-lg">Portal Gateways</a>
+                    <a @click="showMobileMenu = false" href="#stats" :class="isDarkNavbar ? 'hover:bg-white/10' : 'hover:bg-slate-100'" class="px-3 py-2 rounded-lg">Excellence Metrics</a>
+                    <a @click="showMobileMenu = false" href="#faq" :class="isDarkNavbar ? 'hover:bg-white/10' : 'hover:bg-slate-100'" class="px-3 py-2 rounded-lg">FAQ</a>
                 </div>
-                <div class="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
+                <div :class="isDarkNavbar ? 'border-t border-slate-800' : 'border-t border-slate-100'" class="pt-3 flex flex-col gap-2.5">
                     <Link 
                         href="/login" 
-                        class="w-full py-3 rounded-xl border border-slate-300 bg-white text-center text-sm font-bold text-slate-800 shadow-2xs flex items-center justify-center gap-2"
+                        :class="isDarkNavbar 
+                            ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20' 
+                            : 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50'"
+                        class="w-full py-3 rounded-xl text-center text-sm font-bold shadow-2xs flex items-center justify-center gap-2"
                     >
-                        <i class="fa-solid fa-lock text-blue-600"></i>
+                        <i class="fa-solid fa-lock" :class="isDarkNavbar ? 'text-blue-400' : 'text-blue-600'"></i>
                         <span>Access Portal Login</span>
                     </Link>
                     <a 
@@ -918,15 +994,12 @@ const faqs = [
                 <!-- Col 1: School Info -->
                 <div class="md:col-span-2 space-y-4">
                     <div class="flex items-center gap-3">
-                        <div 
-                            v-if="school.logo" 
-                            class="h-11 min-w-[44px] max-w-[120px] px-2 py-1 rounded-xl border border-slate-700 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-2xs"
-                            :style="logoBgStyle"
-                        >
+                        <div v-if="school.logo" class="flex items-center flex-shrink-0">
                             <img 
                                 :src="school.logo" 
                                 :alt="school.name || 'School Logo'" 
-                                class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.22)]" 
+                                class="h-10 w-auto max-w-[140px] object-contain" 
+                                :class="isDarkNavbar ? '' : 'bg-white/95 p-1 rounded-lg border border-slate-700'"
                             />
                         </div>
                         <div 
