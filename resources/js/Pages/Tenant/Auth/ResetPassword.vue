@@ -51,19 +51,18 @@ const submit = () => {
             <div class="text-center">
                 <div 
                     v-if="$page.props.tenant?.logo || tenant?.logo" 
-                    class="mx-auto flex h-20 min-w-[80px] max-w-[220px] items-center justify-center overflow-hidden rounded-2xl p-2.5 border shadow-sm transition-all"
-                    :style="logoBgStyle"
+                    class="mx-auto flex h-20 items-center justify-center mb-2"
                 >
                     <img 
                         :src="$page.props.tenant?.logo || tenant?.logo" 
                         :alt="tenant?.name || 'School Logo'" 
-                        class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.25)]" 
+                        class="max-h-20 max-w-[260px] w-auto h-auto object-contain" 
                     />
                 </div>
-                <div v-else class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F0FE] font-bold text-2xl text-[#1A73E8] border border-[#D2E3FC] shadow-2xs">
+                <div v-else class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F0FE] font-bold text-2xl text-[#1A73E8] border border-[#D2E3FC] shadow-2xs mb-2">
                     <i class="fa-solid fa-lock"></i>
                 </div>
-                <h1 class="mt-4 text-2xl font-bold tracking-tight text-[#202124]">
+                <h1 class="mt-2 text-2xl font-bold tracking-tight text-[#202124]">
                     Create New Password
                 </h1>
                 <p class="mt-1 text-sm text-[#5F6368]">
@@ -128,7 +127,7 @@ const submit = () => {
                 </button>
 
                 <div class="text-center pt-2">
-                    <Link :href="route('tenant.login')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A73E8] hover:underline">
+                    <Link href="/login" class="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1A73E8] hover:underline">
                         <i class="fa-solid fa-arrow-left text-2xs"></i>
                         <span>Return to Sign In</span>
                     </Link>

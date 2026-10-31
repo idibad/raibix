@@ -266,46 +266,47 @@ const faqs = [
                 : 'bg-white/95 border-b border-slate-200/80 shadow-2xs'"
         >
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-                <!-- Brand Logo & Name -->
-                <Link href="/" class="flex items-center gap-3.5 group min-w-0 max-w-[65%] sm:max-w-none">
-                    <!-- Clean Logo (Directly on Navbar, No Awkward Tile Container) -->
-                    <div v-if="school.logo" class="flex items-center flex-shrink-0">
+                <!-- Brand Logo (When uploaded: only the clean image logo is shown, no duplicate name text) -->
+                <Link href="/" class="flex items-center group flex-shrink-0">
+                    <div v-if="school.logo" class="flex items-center flex-shrink-0 py-1">
                         <img 
                             :src="school.logo" 
                             :alt="school.name || 'School Logo'" 
-                            class="h-10 sm:h-12 w-auto max-w-[160px] sm:max-w-[220px] object-contain transition-transform duration-200 group-hover:scale-105" 
+                            class="h-12 sm:h-14 w-auto max-w-[220px] sm:max-w-[320px] object-contain transition-transform duration-200 group-hover:scale-105" 
                         />
                     </div>
-                    <div 
-                        v-else 
-                        class="h-11 w-11 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
-                        :style="{ background: accentColor }"
-                    >
-                        <i class="fa-solid fa-graduation-cap"></i>
-                    </div>
 
-                    <!-- School Name, Type & Tagline (Always Visible!) -->
-                    <div class="min-w-0 truncate">
-                        <div class="flex items-center gap-2">
-                            <span 
-                                class="text-lg sm:text-xl font-black tracking-tight transition-colors truncate"
-                                :class="isDarkNavbar ? 'text-white group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'"
-                            >
-                                {{ school.name || 'Campus Portal' }}
-                            </span>
-                            <span 
-                                class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
-                                :class="isDarkNavbar ? 'bg-white/10 text-slate-200 border border-white/15' : 'bg-blue-50 text-blue-700 border border-blue-200/60'"
-                            >
-                                {{ schoolType }}
-                            </span>
-                        </div>
-                        <p 
-                            class="text-xs font-medium truncate max-w-[200px] sm:max-w-md mt-0.5"
-                            :class="isDarkNavbar ? 'text-slate-400' : 'text-slate-500'"
+                    <!-- Fallback: Only shown if NO logo is uploaded -->
+                    <div v-else class="flex items-center gap-3">
+                        <div 
+                            class="h-11 w-11 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-md transition-transform duration-300 group-hover:scale-105 flex-shrink-0" 
+                            :style="{ background: accentColor }"
                         >
-                            {{ school.tagline || 'Official Academic Portal' }}
-                        </p>
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+
+                        <div class="min-w-0 truncate">
+                            <div class="flex items-center gap-2">
+                                <span 
+                                    class="text-lg sm:text-xl font-black tracking-tight transition-colors truncate"
+                                    :class="isDarkNavbar ? 'text-white group-hover:text-blue-400' : 'text-slate-900 group-hover:text-blue-600'"
+                                >
+                                    {{ school.name || 'Campus Portal' }}
+                                </span>
+                                <span 
+                                    class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
+                                    :class="isDarkNavbar ? 'bg-white/10 text-slate-200 border border-white/15' : 'bg-blue-50 text-blue-700 border border-blue-200/60'"
+                                >
+                                    {{ schoolType }}
+                                </span>
+                            </div>
+                            <p 
+                                class="text-xs font-medium truncate max-w-[200px] sm:max-w-md mt-0.5"
+                                :class="isDarkNavbar ? 'text-slate-400' : 'text-slate-500'"
+                            >
+                                {{ school.tagline || 'Official Academic Portal' }}
+                            </p>
+                        </div>
                     </div>
                 </Link>
 
@@ -998,18 +999,19 @@ const faqs = [
                             <img 
                                 :src="school.logo" 
                                 :alt="school.name || 'School Logo'" 
-                                class="h-10 w-auto max-w-[140px] object-contain" 
+                                class="h-11 w-auto max-w-[180px] object-contain" 
                                 :class="isDarkNavbar ? '' : 'bg-white/95 p-1 rounded-lg border border-slate-700'"
                             />
                         </div>
-                        <div 
-                            v-else 
-                            class="h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold text-white flex-shrink-0" 
-                            :style="{ background: accentColor }"
-                        >
-                            <i class="fa-solid fa-graduation-cap"></i>
-                        </div>
-                        <span class="text-lg font-black tracking-tight text-white">{{ school.name || 'Campus Portal' }}</span>
+                        <template v-else>
+                            <div 
+                                class="h-10 w-10 rounded-xl flex items-center justify-center text-lg font-bold text-white flex-shrink-0" 
+                                :style="{ background: accentColor }"
+                            >
+                                <i class="fa-solid fa-graduation-cap"></i>
+                            </div>
+                            <span class="text-lg font-black tracking-tight text-white">{{ school.name || 'Campus Portal' }}</span>
+                        </template>
                     </div>
                     <p class="text-xs text-slate-400 max-w-md leading-relaxed">
                         {{ school.tagline || 'Excellence in education, character development, and future readiness.' }}

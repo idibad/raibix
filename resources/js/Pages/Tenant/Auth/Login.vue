@@ -1,5 +1,6 @@
 <script setup>
-import { useForm, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { useForm, usePage, Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     tenant: Object,
@@ -14,7 +15,7 @@ const form = useForm({
 const page = usePage();
 
 const logoBgStyle = computed(() => {
-    const bgMode = page.props.tenant?.logo_bg || props.tenant?.logo_bg || 'dark';
+    const bgMode = page.props.tenant?.logo_bg || props.tenant?.logo_bg || 'auto';
     if (bgMode === 'brand') {
         return {
             backgroundColor: page.props.tenant?.cover_color || props.tenant?.cover_color || '#1A73E8',
@@ -45,24 +46,27 @@ const submit = () => {
         <div class="google-card z-10 w-full max-w-md rounded-2xl border border-[#DADCE0] bg-white p-8 shadow-sm">
             <!-- Header -->
             <div class="text-center">
+                <!-- If logo uploaded: show ONLY the uploaded logo image, no redundant text name -->
                 <div 
                     v-if="$page.props.tenant?.logo || tenant?.logo" 
-                    class="mx-auto flex h-20 min-w-[80px] max-w-[220px] items-center justify-center overflow-hidden rounded-2xl p-2.5 border shadow-sm transition-all"
-                    :style="logoBgStyle"
+                    class="mx-auto flex h-20 items-center justify-center mb-2"
                 >
                     <img 
                         :src="$page.props.tenant?.logo || tenant?.logo" 
                         :alt="tenant?.name || 'School Logo'" 
-                        class="max-h-full max-w-full w-auto h-auto object-contain filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.25)]" 
+                        class="max-h-20 max-w-[260px] w-auto h-auto object-contain" 
                     />
                 </div>
-                <div v-else class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F0FE] font-bold text-2xl text-[#1A73E8] border border-[#D2E3FC] shadow-2xs">
-                    <i class="fa-solid fa-graduation-cap"></i>
+                <!-- If NO logo uploaded: show graduation cap icon + school name -->
+                <div v-else class="mx-auto flex flex-col items-center">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F0FE] font-bold text-2xl text-[#1A73E8] border border-[#D2E3FC] shadow-2xs mb-2">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold tracking-tight text-[#202124]">
+                        {{ $page.props.tenant?.name || tenant?.name || $page.props.platformName || 'School Portal' }}
+                    </h1>
                 </div>
-                <h1 class="mt-4 text-2xl font-bold tracking-tight text-[#202124]">
-                    {{ $page.props.tenant?.name || tenant?.name || $page.props.platformName || 'School Portal' }}
-                </h1>
-                <p class="mt-1 text-sm text-[#5F6368]">
+                <p class="mt-1 text-xs font-semibold uppercase tracking-wider text-[#5F6368]">
                     School Unified Portal Access
                 </p>
             </div>
@@ -105,7 +109,7 @@ const submit = () => {
                         <input v-model="form.remember" type="checkbox" class="rounded border-[#DADCE0] bg-white text-[#1A73E8] focus:ring-0" />
                         <span>Remember credentials</span>
                     </label>
-                    <Link :href="route('tenant.password.request')" class="text-[#1A73E8] hover:underline font-medium">Forgot password?</Link>
+                    <Link href="/forgot-password" class="text-[#1A73E8] hover:underline font-medium">Forgot password?</Link>
                 </div>
 
                 <button 
